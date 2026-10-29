@@ -93,7 +93,9 @@ a { color: inherit; text-decoration: none; }
 
 .bar-track { height: 8px; background: var(--ink-700); border-radius: 999px; overflow: hidden; position: relative; }
 
-.safe-bottom { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+/* tab bar fixa: altura + safe-area + folga, pro último item sempre ficar acima da barra */
+:root { --tabbar-h: 64px; }
+.safe-bottom { padding-bottom: calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); scroll-padding-bottom: calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); }
 
 .timer-bar {
   position: sticky; top: 0; z-index: 30;

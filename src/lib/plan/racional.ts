@@ -77,7 +77,7 @@ export function derivarRacional(args: {
   const volume_semanal = [...vol.entries()]
     .map(([grupo, series]) => {
       const f = faixaAlvo(grupo, objetivo);
-      return { grupo, series_diretas: series, faixa_alvo: f, status: series < f[0] ? "abaixo (R10: indiretas/compostos completam)" : series > f[1] ? "acima (R11: vigiar fadiga)" : "dentro" };
+      return { grupo, series_diretas: series, faixa_alvo: f, status: series < f[0] ? "abaixo (compostos e trabalho indireto completam)" : series > f[1] ? "acima (vigiar fadiga)" : "dentro" };
     })
     .sort((a, b) => b.series_diretas - a.series_diretas);
   const frequencia_por_musculo = [...freq.entries()]
@@ -90,7 +90,7 @@ export function derivarRacional(args: {
     why1,
     `${dias} dias/semana, ${plano.minutos_por_sessao} min/sessão${perfil ? `, nível ${perfil.experiencia}` : ""}, objetivo ${objetivo}.`,
     perfil && (perfil.cardio_min_semana ?? 0) > 120 ? `Cardio ${perfil.cardio_min_semana} min/sem: volume de força levemente reduzido.` : "",
-    "Minha prioridade: cada grande grupo ≥2×/semana e 10–20 séries/semana (R10/R11), sessões que cabem no tempo.",
+    "Minha prioridade: cada grande grupo ≥2×/semana e 10–20 séries/semana, que é a faixa que mais rende pra hipertrofia, em sessões que cabem no seu tempo.",
   ].filter(Boolean);
 
   // Fases (planos antigos → 1 fase derivada)

@@ -1,5 +1,6 @@
 "use client";
 
+import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
@@ -152,12 +153,12 @@ export default function ProgressoPage() {
                 <Card key={a.id}>
                   <div className="mb-1 flex flex-wrap gap-2">
                     <Badge tone={isR10 ? "warn" : "danger"}>
-                      {isR10 ? "R10" : "R11"}
+                      {isR10 ? "Abaixo da faixa" : "Acima da faixa"}
                     </Badge>
                     <Badge tone="muted">N1</Badge>
                   </div>
                   <p className="text-sm">
-                    {a.motivo.replace(/\[[^\]]+\]\s*/, "")}
+                    {semCodigoRegra(a.motivo.replace(/\[[^\]]+\]\s*/, ""))}
                   </p>
                   <p className="mt-1 text-xs text-accent">{a.recomendacao}</p>
                 </Card>
@@ -234,7 +235,7 @@ export default function ProgressoPage() {
                   {d.carga_anterior_kg}→{d.nova_carga_kg} kg
                 </span>
               </p>
-              <p className="mt-1 text-xs text-muted">{d.motivo}</p>
+              <p className="mt-1 text-xs text-muted">{semCodigoRegra(d.motivo)}</p>
             </Card>
           );
         })}

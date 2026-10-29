@@ -1,5 +1,6 @@
 "use client";
 
+import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
@@ -142,7 +143,7 @@ export default function PlanoPage() {
       </Card>
 
       <Card className="mb-4">
-        <p className="text-sm leading-relaxed text-muted">{plano.justificativa.texto}</p>
+        <p className="text-sm leading-relaxed text-muted">{semCodigoRegra(plano.justificativa.texto)}</p>
         <div className="mt-2">
           <EvidenciaBadge evidencia={plano.justificativa.evidencia} />
         </div>

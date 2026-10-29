@@ -1,5 +1,6 @@
 "use client";
 
+import { semCodigoRegra } from "@/lib/llm/tom";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -125,8 +126,8 @@ export default function FeedbackPage() {
         const r10 = volAlerts.filter((a) => a.motivo.includes("[R10:")).length;
         const r11 = volAlerts.filter((a) => a.motivo.includes("[R11:")).length;
         const bits = [
-          r10 ? `${r10} grupo(s) abaixo (R10)` : null,
-          r11 ? `${r11} grupo(s) acima (R11)` : null,
+          r10 ? `${r10} grupo(s) abaixo da faixa` : null,
+          r11 ? `${r11} grupo(s) acima da faixa` : null,
         ].filter(Boolean);
         return (
           <Card className="mb-4 border-warn/40 bg-[rgba(255,184,60,.08)]">
@@ -196,7 +197,7 @@ export default function FeedbackPage() {
                 {d.carga_anterior_kg} → {d.nova_carga_kg} kg
                 {d.faixa_reps_reiniciada ? " · faixa reiniciada" : ""}
               </p>
-              <p className="mt-2 text-sm text-muted">{d.motivo}</p>
+              <p className="mt-2 text-sm text-muted">{semCodigoRegra(d.motivo)}</p>
             </Card>
           );
         })}

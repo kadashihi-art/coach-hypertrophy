@@ -1,5 +1,6 @@
 "use client";
 
+import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -228,7 +229,7 @@ export default function HojePage() {
               )}
             </Card>
           ) : alertaUnico === "alerta" && alerta ? (
-            <AlertaBanner nivel={alerta.nivel} motivo={alerta.motivo} recomendacao={alerta.recomendacao} />
+            <AlertaBanner nivel={alerta.nivel} motivo={semCodigoRegra(alerta.motivo)} recomendacao={alerta.recomendacao} />
           ) : (
             <div className="rounded-2xl border border-accent/30 bg-[rgba(184,255,60,.08)] px-4 py-3 pr-10 text-sm text-accent">
               {deloadResumo}
@@ -288,7 +289,7 @@ export default function HojePage() {
           ) : null}
           {ultimaDecisao && sugerida?.id === sess.id && estadoHero === "novo" && (
             <p className="mt-3 text-xs text-muted">
-              {ultimaDecisao.motivo.slice(0, 120)}
+              {semCodigoRegra(ultimaDecisao.motivo).slice(0, 120)}
               {ultimaDecisao.motivo.length > 120 ? "…" : ""}
             </p>
           )}
