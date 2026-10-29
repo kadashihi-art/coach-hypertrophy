@@ -17,7 +17,7 @@ import { incrementoCargaKg } from "@/lib/domain";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
-import { cargaAquecimento, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
+import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
 
 const FASE_META: Record<
   TipoSerie,
@@ -118,6 +118,10 @@ export default function TreinoPage() {
   /** kg pré-preenchido por fase: top = motor; trabalho 80% / back-off 90% do top (arredondado); aquecimento 60%. */
   const cargaDaFase = (f: TipoSerie | null, topKg: number = cargaTop): number => {
     if (f === "aquecimento") return cargaAquecimento(topKg, stepKg);
+    if (f === "feeder" && presc) {
+      const primeira = cargaPrimeiraTrabalho(presc, topKg, prefillCarga, stepKg);
+      return cargaAproximacao(primeira, stepKg, cargaAquecimento(topKg, stepKg));
+    }
     if (usaOrdem && (f === "trabalho" || f === "top_set" || f === "back_off")) {
       return cargasDaEstrutura(topKg, stepKg)[f];
     }
