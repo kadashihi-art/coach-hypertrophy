@@ -36,6 +36,11 @@ const EQUIP_TXT: Record<string, string> = {
   elastico: "o elástico",
   outros: "outro equipamento",
 };
+const EQUIP_POR: Record<string, string> = {
+  barra: "pela barra", halteres: "por halteres", maquina: "pela máquina", cabo: "pelo cabo",
+  kettlebell: "pelo kettlebell", peso_corporal: "pelo peso do corpo", banco: "pelo banco",
+  rack: "pelo rack", elastico: "pelo elástico", outros: "por outro equipamento",
+};
 
 export type AlternativaTroca = {
   exercicio: Exercicio;
@@ -82,7 +87,7 @@ function explicar(de: Exercicio, para: Exercicio, perfil: Perfil | null | undefi
   const alvo = labelGrupo(para.grupo_primario).toLowerCase();
   const partes: string[] = [];
   if (para.equipamento !== de.equipamento) {
-    partes.push(`Mesmo movimento, trocando ${EQUIP_TXT[de.equipamento] ?? "o equipamento atual"} por ${EQUIP_TXT[para.equipamento] ?? "outra opção"}`);
+    partes.push(`Mesmo movimento, trocando ${EQUIP_TXT[de.equipamento] ?? "o equipamento atual"} ${EQUIP_POR[para.equipamento] ?? "por outra opção"}`);
   } else {
     partes.push(`Mesmo movimento e mesmo equipamento, com outro ângulo`);
   }
