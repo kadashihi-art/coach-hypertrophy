@@ -163,6 +163,13 @@ export default function PerfilPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Sheet aberto: esconde a tab bar (o main da página cria stacking context; z-index sozinho não basta)
+  useEffect(() => {
+    const aberto = !!(campo && draft);
+    document.body.classList.toggle("sheet-open", aberto);
+    return () => document.body.classList.remove("sheet-open");
+  }, [campo, draft]);
+
   // Haptic curto uma vez por abertura do Ver ajuste (só se algo muda; nunca em loop)
   const aberturaAjuste = useRef(0);
   useEffect(() => {

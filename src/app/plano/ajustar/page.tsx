@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
@@ -155,6 +155,12 @@ export default function MeuTreinoPage() {
       setBusy(false);
     }
   }
+
+  useEffect(() => {
+    const aberto = !!(negociando || confirmOpen);
+    document.body.classList.toggle("sheet-open", aberto);
+    return () => document.body.classList.remove("sheet-open");
+  }, [negociando, confirmOpen]);
 
   async function doRemount() {
     setConfirmOpen(false);
