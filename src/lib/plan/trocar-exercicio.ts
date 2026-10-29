@@ -25,15 +25,15 @@ import {
 import { labelGrupo } from "@/lib/labels";
 
 const EQUIP_TXT: Record<string, string> = {
-  barra: "barra",
+  barra: "a barra",
   halteres: "halteres",
-  maquina: "máquina",
-  cabo: "cabo",
-  kettlebell: "kettlebell",
-  peso_corporal: "peso do corpo",
-  banco: "banco",
-  rack: "rack",
-  elastico: "elástico",
+  maquina: "a máquina",
+  cabo: "o cabo",
+  kettlebell: "o kettlebell",
+  peso_corporal: "o peso do corpo",
+  banco: "o banco",
+  rack: "o rack",
+  elastico: "o elástico",
   outros: "outro equipamento",
 };
 
@@ -82,7 +82,7 @@ function explicar(de: Exercicio, para: Exercicio, perfil: Perfil | null | undefi
   const alvo = labelGrupo(para.grupo_primario).toLowerCase();
   const partes: string[] = [];
   if (para.equipamento !== de.equipamento) {
-    partes.push(`Mesmo movimento, só que na ${EQUIP_TXT[para.equipamento] ?? "outra opção"} em vez de ${EQUIP_TXT[de.equipamento] ?? "o atual"}`);
+    partes.push(`Mesmo movimento, trocando ${EQUIP_TXT[de.equipamento] ?? "o equipamento atual"} por ${EQUIP_TXT[para.equipamento] ?? "outra opção"}`);
   } else {
     partes.push(`Mesmo movimento e mesmo equipamento, com outro ângulo`);
   }
