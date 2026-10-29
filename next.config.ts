@@ -24,6 +24,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    // Nav 5 abas: rotas antigas → Plano > Calendário / Ajustar
+    return [
+      { source: "/calendario", destination: "/plano/calendario", permanent: false },
+      { source: "/meu-treino", destination: "/plano/ajustar", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
+import { PlanoTabs } from "@/components/PlanoTabs";
 import { Badge, Button, Card, NumStepper, SectionTitle } from "@/components/ui";
 import type { Equipamento, Experiencia, Objetivo, Perfil } from "@/lib/domain";
 import { racionalDoPlano } from "@/lib/plan/racional";
@@ -49,7 +50,7 @@ function Chip({
   );
 }
 
-/** Editar perfil → remount plano + data início + links calendário/progresso */
+/** Plano > Ajustar: estilo, negociação com o coach, remontar, data de início */
 export default function MeuTreinoPage() {
   const { state, ready, updatePerfilAndRemount, setDataInicio } = useApp();
   const router = useRouter();
@@ -197,10 +198,11 @@ export default function MeuTreinoPage() {
 
   return (
     <main className="motion-fade-up px-5 pb-10 pt-8">
+      <PlanoTabs />
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
-        Meu treino
+        Plano · Ajustar
       </p>
-      <h1 className="mb-2 text-2xl font-bold">Perfil & plano</h1>
+      <h1 className="mb-2 text-2xl font-bold">Ajustar plano</h1>
       <p className="mb-4 text-sm text-muted">
         Edite os dados iniciais. Ao salvar, o motor remonta o plano (LLM só
         estrutura/copy — kg continua no motor).
@@ -208,11 +210,8 @@ export default function MeuTreinoPage() {
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={parqLabel.tone}>{parqLabel.text}</Badge>
-        <Link href="/progresso" className="text-xs font-semibold text-accent">
-          Progresso →
-        </Link>
-        <Link href="/calendario" className="text-xs font-semibold text-accent">
-          Calendário →
+        <Link href="/perfil" className="text-xs font-semibold text-accent">
+          Mudar dias/equipamento →
         </Link>
       </div>
 
@@ -221,10 +220,10 @@ export default function MeuTreinoPage() {
           <p className="text-sm font-semibold text-danger">Remount bloqueado</p>
           <p className="mt-1 text-xs text-muted">{PARQ_BLOQUEIO_MSG}</p>
           <Link
-            href="/onboarding"
+            href="/perfil"
             className="mt-2 inline-block text-xs font-semibold text-accent"
           >
-            Re-responder PAR-Q+ no onboarding →
+            Ver PAR-Q+ no Perfil →
           </Link>
         </Card>
       ) : null}

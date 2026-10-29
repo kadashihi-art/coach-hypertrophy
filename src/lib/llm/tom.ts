@@ -24,6 +24,7 @@ export function limparSaidaCoach(texto: string): { texto: string; sugestao: stri
     .join("\n")
     .replace(/\s*\(?\b(em|no|na)\s+\/meu-treino\)?/gi, ` em "${AJUSTAR_PLANO_NOME}"`)
     .replace(/\/meu-treino/gi, `"${AJUSTAR_PLANO_NOME}"`)
+    .replace(/\/plano\/ajustar/gi, `"${AJUSTAR_PLANO_NOME}"`)
     .replace(/\bdo motor\b/gi, "do plano")
     .replace(/\bo motor\b/gi, "eu")
     .replace(/\n{3,}/g, "\n\n")

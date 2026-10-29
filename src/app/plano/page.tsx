@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
+import { PlanoTabs } from "@/components/PlanoTabs";
 import {
   Badge,
   Button,
@@ -71,6 +72,7 @@ export default function PlanoPage() {
 
   return (
     <main className="motion-fade-up px-5 pb-8 pt-8">
+      <PlanoTabs />
       {banner ? (
         <div className="motion-swap mb-4 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-bone-50">
           <p className="font-bold text-accent">Plano gerado</p>
@@ -87,10 +89,6 @@ export default function PlanoPage() {
         <h1 className="text-2xl font-bold capitalize">
           {plano.divisao.replace(/_/g, " ")}
         </h1>
-        <div className="flex gap-3 text-xs font-semibold text-accent">
-          <Link href="/calendario">Calendário</Link>
-          <Link href="/meu-treino">Meu treino</Link>
-        </div>
       </div>
       <p className="mb-3 text-sm text-muted">
         {plano.dias_por_semana}×/semana · {plano.minutos_por_sessao} min ·{" "}
