@@ -163,14 +163,14 @@ export default function PerfilPage() {
 
   const catalog = state.exercicios.length ? state.exercicios : CATALOG_EXERCICIOS;
   const racionalAtual = useMemo(() => {
-    if (!state.plano) return null;
+    if (!ready || !state.plano) return null; // sem new Date() no prerender
     if (state.plano.racional) return state.plano.racional;
     try {
       return racionalDoPlano({ plano: state.plano, sessoes: state.sessoes, perfil: p, catalog: state.exercicios });
     } catch {
       return null;
     }
-  }, [state.plano, state.sessoes, state.exercicios, p]);
+  }, [ready, state.plano, state.sessoes, state.exercicios, p]);
 
   if (!ready || !p) {
     return (
