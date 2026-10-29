@@ -1,3 +1,4 @@
+import { ehSeriePreparatoria } from "@/lib/domain/enums";
 /**
  * Motor determinístico R1–R12 (brief-produto-v1 §6).
  * IA NÃO inventa números — só este motor calcula carga/ação.
@@ -41,7 +42,7 @@ function hoje(): string {
 }
 
 function trabalho(series: RegistroSerie[]): RegistroSerie[] {
-  return series.filter((s) => s.tipo_serie !== "aquecimento");
+  return series.filter((s) => !ehSeriePreparatoria(s.tipo_serie));
 }
 
 /** Âncora de progressão p/ top_set_backoff: top_set, senão heaviest trabalho. */

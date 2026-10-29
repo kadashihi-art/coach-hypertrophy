@@ -590,3 +590,40 @@ a { color: inherit; text-decoration: none; }
   border-top: 1px solid rgba(245, 245, 240, .08);
 }
 body.sheet-open nav.fixed { display: none; }
+
+/* Rest timer — pill sticky no rodapé (acima da tab bar quando ela existir), só transform/opacity */
+.rt-spacer { height: calc(112px + env(safe-area-inset-bottom, 0px)); }
+.rt-pill {
+  position: fixed; left: 50%; z-index: 45; width: calc(100% - 24px); max-width: 456px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  border-radius: 20px; padding: 10px 12px 10px 14px;
+  background: rgba(14, 14, 14, .96); border: 1px solid rgba(184, 255, 60, .35);
+  box-shadow: 0 0 0 1px rgba(184,255,60,.08), 0 8px 28px rgba(0,0,0,.55), 0 0 22px rgba(184,255,60,.18);
+  overflow: hidden; backdrop-filter: blur(12px);
+}
+/* no logger o CTA "Concluir série" fica no rodapé: o pill sobe acima dele */
+body:has(.thumb-zone) .rt-pill { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+body:has(nav.fixed) .rt-pill { bottom: calc(var(--tabbar-h) + 10px + env(safe-area-inset-bottom, 0px)); }
+.rt-tempo { font-size: 34px; line-height: 1; font-weight: 800; color: var(--accent); letter-spacing: -.02em; text-shadow: 0 0 14px rgba(184,255,60,.45); }
+.rt-btn { border-radius: 14px; border: 1px solid var(--ink-600); padding: 9px 10px; font-size: 13px; font-weight: 700; color: var(--text); background: rgba(245,245,240,.04); transition: transform .12s; }
+.rt-btn:active { transform: scale(.94); }
+.rt-btn-main { background: var(--accent); color: #050505; border-color: var(--accent); }
+.rt-track { position: relative; margin-top: 8px; height: 6px; border-radius: 999px; background: rgba(245,245,240,.08); overflow: hidden; }
+.rt-fill { position: absolute; inset: 0; border-radius: 999px; background: var(--accent); box-shadow: 0 0 10px rgba(184,255,60,.5); transform-origin: left; transform: scaleX(var(--rt-p)); transition: transform 250ms linear; }
+.rt-reta .rt-tempo { animation: rtPulse 1s ease-in-out both; color: var(--warn, #ffb020); text-shadow: 0 0 16px rgba(255,176,32,.55); }
+.rt-reta { border-color: rgba(255,176,32,.6); }
+.rt-reta .rt-fill { background: var(--warn, #ffb020); }
+@keyframes rtPulse { 0% { transform: scale(1.18); opacity: .7; } 40% { transform: scale(1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+.rt-fim { border-color: var(--go); box-shadow: 0 0 0 1px rgba(61,255,138,.3), 0 0 30px rgba(61,255,138,.35); }
+.rt-fim .rt-tempo { color: var(--go); text-shadow: 0 0 18px rgba(61,255,138,.6); }
+.rt-fim .rt-fill { background: var(--go); }
+.rt-fim::after { content: ""; position: absolute; inset: 0; background: rgba(61,255,138,.35); opacity: 0; animation: rtFlash 700ms ease-out 1; pointer-events: none; }
+.rt-burst { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 999px; border: 3px solid var(--go); opacity: 0; animation: rtBurst 650ms ease-out 1; pointer-events: none; }
+@keyframes rtFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes rtBurst { 0% { transform: scale(.2); opacity: .9; } 100% { transform: scale(4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .rt-reta .rt-tempo, .rt-fim::after, .rt-burst { animation: none !important; }
+  .rt-fill { transition: none; }
+}
+.rt-rm .rt-tempo, .rt-rm::after { animation: none !important; }

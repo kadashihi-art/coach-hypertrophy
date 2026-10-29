@@ -18,6 +18,7 @@ import {
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { VOLUME_MAX } from "@/lib/domain";
 import { narrarCargaPrescricao } from "@/lib/llm/coach";
+import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
 
 /** T8 — Split visual + mesociclo · plano gerado do perfil */
 export default function PlanoPage() {
@@ -27,6 +28,8 @@ export default function PlanoPage() {
   const next = proximaSessao(state);
   const [banner, setBanner] = useState(false);
   const [barsOn, setBarsOn] = useState(false);
+  const [trocar, setTrocar] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     if (!plano) return;
@@ -76,6 +79,14 @@ export default function PlanoPage() {
   return (
     <main className="motion-fade-up px-5 pb-8 pt-8">
       <PlanoTabs />
+      {aviso ? (
+        <div role="status" className="motion-swap mb-4 rounded-2xl border border-go/40 bg-go/10 px-4 py-3 text-sm text-bone-50">
+          {aviso}
+        </div>
+      ) : null}
+      {trocar ? (
+        <TrocarExercicioSheet deId={trocar} onClose={() => setTrocar(null)} onTrocado={setAviso} />
+      ) : null}
       {banner ? (
         <div className="motion-swap mb-4 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-bone-50">
           <p className="font-bold text-accent">Plano gerado</p>
@@ -231,7 +242,7 @@ export default function PlanoPage() {
             </div>
             {s!.prescricoes.length > 0 && (
               <ul className="mt-2 space-y-1 text-xs text-muted">
-                {s!.prescricoes.map((p) => {
+                {s!.prescricoes.map((p, i) => {
                   const ex = state.exercicios.find((e) => e.id === p.exercicio_id);
                   const est = state.estados.find(
                     (e) => e.exercicio_id === p.exercicio_id,
@@ -239,10 +250,25 @@ export default function PlanoPage() {
                   const carga =
                     est?.alvo_proxima_sessao.carga_kg ?? p.carga.trabalho_kg;
                   return (
-                    <li key={p.id}>
-                      {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
-                      {carga} kg
-                      {p.tecnica === "top_set_backoff" ? " · top/back-off" : ""}
+                    <li key={p.id} className="flex items-center justify-between gap-2">
+                      <span>
+                        {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
+                        {carga} kg
+                        {p.tecnica === "top_set_backoff" ? " · top/back-off" : ""}
+                        {i === 0 ? (
+                          <span className="text-accent"> · aquece + aproximação antes</span>
+                        ) : null}
+                      </span>
+                      {s!.status !== "em_andamento" ? (
+                        <button
+                          type="button"
+                          aria-label={`Trocar ${ex?.nome ?? "exercício"}`}
+                          onClick={() => setTrocar(p.exercicio_id)}
+                          className="shrink-0 rounded-full border border-border bg-ink-900 px-2.5 py-1 text-[10px] font-semibold text-accent"
+                        >
+                          Trocar
+                        </button>
+                      ) : null}
                     </li>
                   );
                 })}

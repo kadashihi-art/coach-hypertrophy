@@ -98,12 +98,18 @@ export type Experiencia = z.infer<typeof ExperienciaSchema>;
 
 export const TipoSerieSchema = z.enum([
   "aquecimento",
+  "feeder",
   "top_set",
   "back_off",
   "trabalho",
   "drop",
 ]);
 export type TipoSerie = z.infer<typeof TipoSerieSchema>;
+
+/** Séries preparatórias (aquecimento + aproximação/feeder) — nunca contam como volume nem progressão. */
+export function ehSeriePreparatoria(t: TipoSerie | string | undefined): boolean {
+  return t === "aquecimento" || t === "feeder";
+}
 
 export const RegraProgressaoSchema = z.enum([
   "R1",
