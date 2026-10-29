@@ -12,7 +12,7 @@ import { hasBlobCredentials } from "@/lib/blob";
 import { readUserState } from "@/lib/user-state";
 import { buildCoachContext, type CoachContext } from "@/lib/llm/coach-context";
 import { validarContratoLlm } from "@/lib/llm/contract";
-import { getCoachProvider } from "@/lib/llm/coach";
+import { COACH_FALLBACK_MSG, getCoachProvider } from "@/lib/llm/coach";
 import { limparSaidaCoach } from "@/lib/llm/tom";
 import { AJUSTAR_PLANO_HREF } from "@/lib/nav";
 
@@ -137,6 +137,18 @@ export async function POST(request: Request) {
       );
     }
     const lv = (coach as { lastVision?: unknown }).lastVision ?? null;
+    const lc = (coach as { lastChat?: { ok: boolean } | null }).lastChat ?? null;
+    const semLlm = (coach as { semLlm?: boolean }).semLlm === true;
+    if (!body.midia && (semLlm || (lc && !lc.ok))) {
+      if (semLlm) console.warn("[coach/chat] llm_nao_configurada");
+      return NextResponse.json({
+        contrato_versao: v.data.contrato_versao,
+        tipo_resposta: "resposta_conversacional",
+        mensagem_usuario: COACH_FALLBACK_MSG,
+        cta: null,
+        falha_llm: true,
+      });
+    }
     const limpo = limparSaidaCoach(v.data.mensagem_usuario ?? "");
     const cta = limpo.sugestao ? { label: limpo.sugestao, href: AJUSTAR_PLANO_HREF } : null;
     return NextResponse.json({ ...v.data, mensagem_usuario: limpo.texto, cta, ...(body.midia ? { meta_visao: lv ?? { modelo: "stub", ok: false } } : {}) });
