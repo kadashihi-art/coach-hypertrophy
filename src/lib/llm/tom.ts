@@ -56,6 +56,13 @@ export function semCodigoRegra(texto: string): string {
     .replace(/\s+([.,;:!?)])/g, "$1");
 }
 
+/** Remove ids/enum snake_case e nomes de tipos internos de qualquer texto de saída. */
+export function semIdsInternos(t: string): string {
+  return t
+    .replace(/\bEstadoExercicio\b/g, "histórico")
+    .replace(/\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g, (m) => m.replace(/_/g, " "));
+}
+
 export function limparSaidaCoach(texto: string): { texto: string; sugestao: string | null } {
   let sugestao: string | null = null;
   let t = texto.replace(/\[\[\s*sugest[aã]o\s*:\s*([^\]]{2,80})\]\]/gi, (_m, s: string) => {
@@ -71,6 +78,6 @@ export function limparSaidaCoach(texto: string): { texto: string; sugestao: stri
     .replace(/\/plano\/ajustar/gi, `"${AJUSTAR_PLANO_NOME}"`)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  t = acentuar(humanizarSplits(semCodigoRegra(semMotor(t))));
+  t = semIdsInternos(acentuar(humanizarSplits(semCodigoRegra(semMotor(t)))));
   return { texto: t, sugestao };
 }

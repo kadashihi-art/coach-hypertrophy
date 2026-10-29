@@ -2,7 +2,8 @@
  * Camada coach explicativa — LLM read-only.
  * Narrativa sobre saída do motor. Nunca grava Blob/AppState.
  */
-import { TOM_COACH } from "./tom";
+import { TOM_COACH, semIdsInternos } from "./tom";
+
 import { visaoHabilitada } from "@/lib/flags";
 import { AJUSTAR_PLANO_NOME } from "@/lib/nav";
 import {
@@ -483,7 +484,7 @@ export function buildConversarStub(
     // Generic: cite what's in context
     if (e0 && carga != null) {
       partes.push(
-        `${e0.nome || e0.exercicio_id}: ~${carga} kg no estado` +
+        `${e0.nome || nomeLegivel(e0.exercicio_id)}: carga atual ~${carga} kg` +
           (e0.ultimo_top_kg != null ? ` (último top ${e0.ultimo_top_kg} kg)` : "") +
           (e0.ultimo_rir != null ? `, RIR ${e0.ultimo_rir}` : "") +
           ".",
@@ -510,7 +511,7 @@ export function buildConversarStub(
       );
     } else {
       partes.push(
-        "Números acima vêm do seu histórico/EstadoExercicio. Qualquer kg novo só entra pelas regras de progressão.",
+        "Esses números vêm do seu histórico de treino. Carga nova só entra pelas regras de progressão do plano.",
       );
     }
   }
@@ -523,7 +524,7 @@ export function buildConversarStub(
     );
   }
 
-  const mensagem_usuario = partes.join(" ").trim();
+  const mensagem_usuario = semIdsInternos(partes.join(" ").trim());
   const envelope: LlmResponseEnvelope = {
     contrato_versao: CONTRATO_VERSAO,
     tipo_resposta: "resposta_conversacional",
@@ -540,7 +541,18 @@ export function buildConversarStub(
   return v.data;
 }
 
+/** Mensagem humana quando a LLM não respondeu (erro/timeout/sem config). Nunca expõe stub nem ids. */
+export const COACH_FALLBACK_MSG =
+  "Tive um problema pra pensar agora. Tenta de novo em alguns segundos — seu plano e seu histórico continuam intactos.";
+
+/** "triceps_halteres" → "triceps halteres": nunca mostra id snake_case cru. */
+export function nomeLegivel(id: string): string {
+  return id.replace(/_/g, " ");
+}
+
 export class StubCoachProvider implements CoachProvider {
+  /** Sem LLM configurada: a rota troca a resposta por COACH_FALLBACK_MSG. */
+  public readonly semLlm = true;
   async explicarPosTreino(
     input: CoachPosTreinoInput,
   ): Promise<LlmResponseEnvelope> {
@@ -719,6 +731,9 @@ export class HttpCoachProvider implements CoachProvider {
     }
   }
 
+  /** Resultado da última chamada de texto (a rota usa pra decidir o fallback humano). */
+  public lastChat: { ok: boolean; status: number; erro?: string; ms?: number } | null = null;
+
   /** Último diagnóstico de visão (exposto pela rota para debug). */
   public lastVision: { modelo: string; ok: boolean; status: number; erro?: string; tentativas?: string[] } | null = null;
 
@@ -783,6 +798,10 @@ export class HttpCoachProvider implements CoachProvider {
       if (vision) this.lastVision = { modelo: m, ok: !!r.text, status: r.status, ...(r.erro ? { erro: r.erro } : {}), ...(tentativas.length > 1 ? { tentativas } : {}) } as typeof this.lastVision;
       if (r.text || !vision) break;
       if (!(r.status >= 400 && r.status < 500)) break;
+    }
+    if (!vision) {
+      this.lastChat = { ok: !!r.text, status: r.status, ms: Date.now() - t0, ...(r.text ? {} : { erro: (r.erro ?? "").replace(/(Bearer\s+|sk-|key[=:]\s*)[^\s"']+/gi, "$1***").slice(0, 200) }) };
+      if (!r.text) console.warn("[coach/chat] llm_falhou", JSON.stringify({ modelo: modelText, ...this.lastChat }));
     }
     if (r.text) {
       const env: LlmResponseEnvelope = {

@@ -34,9 +34,35 @@ type ChatMsg = {
   role: "user" | "assistant";
   content: string;
   stubHint?: boolean;
+  /** Texto da pergunta pra reenviar quando a LLM falhou. */
+  retry?: string;
   thumbs?: string[];
   cta?: { label: string; href: string } | null;
 };
+
+const FASE_LABEL: Record<string, string> = {
+  acumulo: "acúmulo",
+  intensificacao: "intensificação",
+  realizacao: "realização",
+  deload: "deload",
+};
+
+/** Header humano: "Semana 1 de 6 · Fase de acúmulo · Sem check-in hoje". */
+function resumoContexto(
+  ctx: { plano: { mesociclo?: { semana_atual: number; total_semanas: number; foco: string } } | null } | null,
+  hasCk: boolean,
+  grupo?: string,
+): string {
+  const partes: string[] = [];
+  const m = ctx?.plano?.mesociclo;
+  if (m) {
+    partes.push(`Semana ${m.semana_atual} de ${m.total_semanas}`);
+    partes.push(`Fase de ${FASE_LABEL[m.foco] ?? m.foco.replace(/_/g, " ")}`);
+  }
+  if (ctx?.plano) partes.push(hasCk ? "Check-in de hoje feito" : "Sem check-in hoje");
+  if (grupo) partes.push(`Foco em ${labelGrupo(grupo).toLowerCase()}`);
+  return partes.join(" · ");
+}
 
 const GRUPOS: GrupoMuscular[] = [
   "peito",
@@ -176,6 +202,7 @@ export default function CoachPage() {
         cta?: { label: string; href: string } | null;
         error?: string;
         errors?: string[];
+        falha_llm?: boolean;
       };
       if (!res.ok) {
         throw new Error(
@@ -194,6 +221,7 @@ export default function CoachPage() {
           role: "assistant",
           content: reply,
           cta: json.cta ?? null,
+          ...(json.falha_llm && !midia ? { retry: mensagem } : {}),
         },
       ]);
     } catch (e) {
@@ -205,8 +233,9 @@ export default function CoachPage() {
           id: `a-err-${Date.now()}`,
           role: "assistant",
           content:
-            "Não consegui responder agora. Seu plano e o histórico continuam intactos — tente de novo em instantes.",
+            "Tive um problema pra pensar agora. Tenta de novo em alguns segundos — seu plano e seu histórico continuam intactos.",
           stubHint: true,
+          ...(!midia ? { retry: mensagem } : {}),
         },
       ]);
     } finally {
@@ -222,8 +251,6 @@ export default function CoachPage() {
     );
   }
 
-  const nEst = contextoPreview?.estados.length ?? 0;
-  const nVol = contextoPreview?.volumes_semanais.length ?? 0;
   const hasCk = Boolean(contextoPreview?.checkin_hoje);
 
   return (
@@ -235,14 +262,9 @@ export default function CoachPage() {
           </h1>
           <Badge tone="accent">Coach PhD · treino geral</Badge>
         </div>
-        <p className="mt-1 text-[11px] leading-snug text-muted">
-          Contexto: 4–8 sem + estado + check-in
-          {grupo ? ` · foco ${labelGrupo(grupo).toLowerCase()}` : ""}.{" "}
-          <span className="text-faint">
-            {nEst} estado(s) · {nVol} vol · check-in{" "}
-            {hasCk ? "hoje" : "—"}
-          </span>
-        </p>
+        {resumoContexto(contextoPreview, hasCk, grupo) ? (
+          <p className="mt-1 text-[11px] leading-snug text-muted">{resumoContexto(contextoPreview, hasCk, grupo)}</p>
+        ) : null}
       </header>
 
       <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
@@ -296,6 +318,24 @@ export default function CoachPage() {
               <Link href={m.cta.href || AJUSTAR_PLANO_HREF} className="mt-2 inline-block rounded-full bg-accent/20 px-3 py-1 text-[11px] font-semibold text-accent">
                 {m.cta.label} →
               </Link>
+            ) : null}
+            {m.role === "assistant" && m.retry ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  const q = m.retry!;
+                  setMsgs((all) => {
+                    const i = all.findIndex((x) => x.id === m.id);
+                    const prev = all[i - 1];
+                    return all.filter((x, j) => j !== i && !(j === i - 1 && prev?.role === "user"));
+                  });
+                  void send(q);
+                }}
+                className="mt-2 inline-block rounded-full bg-accent/20 px-3 py-1 text-[11px] font-semibold text-accent disabled:opacity-50"
+              >
+                Tentar de novo
+              </button>
             ) : null}
           </div>
         ))}

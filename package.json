@@ -17,7 +17,8 @@
     "smoke:negociacao": "npx --yes tsx scripts/smoke-negociacao.ts",
     "smoke:coleta": "npx --yes tsx scripts/smoke-coleta.ts",
     "smoke:tom": "npx --yes tsx scripts/smoke-tom.ts",
-    "smoke:refazer": "npx tsx scripts/smoke-refazer.ts"
+    "smoke:refazer": "npx tsx scripts/smoke-refazer.ts",
+    "smoke:coach-geral": "npx --yes tsx scripts/smoke-coach-geral.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
