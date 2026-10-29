@@ -165,7 +165,8 @@ export default function CalendarioPage() {
       </div>
 
       {selected ? (
-        <Card className="mb-4" data-testid="card-dia">
+        <section data-testid="card-dia" aria-label="Dia selecionado">
+        <Card className="mb-4">
           <p className="font-semibold">
             {dataHumana(selected.data)}
             {selected.nome ? ` · ${selected.nome}` : ""}
@@ -208,6 +209,7 @@ export default function CalendarioPage() {
             </p>
           )}
         </Card>
+        </section>
       ) : null}
 
       {!dataInicio && state.plano ? (
