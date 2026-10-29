@@ -175,19 +175,19 @@ export default function CalendarioPage() {
             <div className="mt-3 flex flex-col gap-2">
               {(
                 [
-                  ["planejar", "planejado", "Planejado", "bg-accent/20 text-accent"],
-                  ["feito", "feito", "Feito", "bg-go text-ink-950"],
-                  ["pular", "pulado", "Pular", "bg-warn/30 text-warn"],
+                  ["planejar", "planejado", "Planejado", "primary"],
+                  ["feito", "feito", "Feito", "go"],
+                  ["pular", "pulado", "Pular", "warn"],
                 ] as const
               ).map(([acao, st, label, ativo]) => {
                 const on = selected.status === st;
                 return (
                   <Button
                     key={acao}
-                    variant="ghost"
+                    variant={on ? ativo : "ghost"}
                     aria-pressed={on}
                     disabled={selected.status === "em_andamento"}
-                    className={`min-h-11 text-sm ${on ? `${ativo} ring-2 ring-current` : ""}`}
+                    className={`min-h-11 text-sm ${on ? "ring-2 ring-white/60" : ""}`}
                     onClick={() => markCalendario(selected.sessao_id!, acao)}
                   >
                     {on ? `✓ ${label}` : label}
