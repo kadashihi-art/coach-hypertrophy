@@ -301,14 +301,18 @@ export function decidirProgressao(
     );
   }
 
+  // R4 conta falhas em todas as séries que valem (limiar inalterado: ≥ 2).
   const abaixoPiso = series.filter((s) => s.reps < piso).length;
-  const rirBaixo = series.filter((s) => s.rir_percebido < estado.rir_alvo).length;
-  const todasNaFaixa = series.every((s) => s.reps >= piso && s.reps <= topo);
-  const todasNoTopo = series.every((s) => s.reps >= topo);
-  const ultima = series[series.length - 1]!;
+  // Estrutura trabalho → top → back-off: R1–R3 avaliam o top (reps/RIR do top vs alvo).
+  const tops = series.filter((s) => s.tipo_serie === "top_set");
+  const avaliadas = tops.length > 0 ? tops : series;
+  const rirBaixo = avaliadas.filter((s) => s.rir_percebido < estado.rir_alvo).length;
+  const todasNaFaixa = avaliadas.every((s) => s.reps >= piso && s.reps <= topo);
+  const todasNoTopo = avaliadas.every((s) => s.reps >= topo);
+  const ultima = avaliadas[avaliadas.length - 1]!;
   const rirUltimaOk = ultima.rir_percebido >= estado.rir_alvo;
-  const todasRirOk = series.every((s) => s.rir_percebido >= estado.rir_alvo);
-  const repsAbaixoTopo = series.some((s) => s.reps < topo);
+  const todasRirOk = avaliadas.every((s) => s.rir_percebido >= estado.rir_alvo);
+  const repsAbaixoTopo = avaliadas.some((s) => s.reps < topo);
 
   // —— R4 Reduzir por falha prematura ——
   if (abaixoPiso >= 2) {

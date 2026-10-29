@@ -79,6 +79,7 @@ type Ctx = {
   setLoggerPrescricao: (prescricaoId: string) => void;
   logSerie: (
     serie: Omit<RegistroSerie, "id" | "executado_em">,
+    opts?: { ancorar?: boolean },
   ) => {
     cargas_atualizadas: boolean;
     trabalho_kg?: number;
@@ -516,7 +517,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logSerie = useCallback(
-    (serie: Omit<RegistroSerie, "id" | "executado_em">) => {
+    (serie: Omit<RegistroSerie, "id" | "executado_em">, opts?: { ancorar?: boolean }) => {
       let result: {
         cargas_atualizadas: boolean;
         trabalho_kg?: number;
@@ -539,7 +540,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           next.exercicios.find((e) => e.id === presc?.exercicio_id);
 
         // Âncora de aquecimento → recalcula sugestões das séries restantes
-        if (serie.tipo_serie === "aquecimento") {
+        // ancorar=false: o logger já pré-preenche o aquecimento com a carga de aquecimento (60%),
+        // então ela não pode virar a carga de trabalho do dia.
+        if (serie.tipo_serie === "aquecimento" && opts?.ancorar !== false) {
           if (presc && ex) {
             const ancora = ancorarCargaDeAquecimento({
               cargaKg: serie.carga_kg,
