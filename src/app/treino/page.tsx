@@ -15,6 +15,8 @@ import {
 import type { TipoSerie } from "@/lib/domain";
 import { incrementoCargaKg } from "@/lib/domain";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
+import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
+import { descansoSugerido } from "@/lib/treino/rest-timer";
 
 const FASE_META: Record<
   TipoSerie,
@@ -60,10 +62,6 @@ export default function TreinoPage() {
     startSession,
     setLoggerPrescricao,
     logSerie,
-    startRest,
-    tickRest,
-    skipRest,
-    addRest,
     finishSession,
   } = useApp();
   const router = useRouter();
@@ -142,21 +140,7 @@ export default function TreinoPage() {
     };
   }, []);
 
-  const rest = sess?.rest_timer;
-  const running = rest?.status === "running";
-  const showTimer =
-    rest &&
-    (rest.status === "running" ||
-      rest.status === "done" ||
-      (rest.segundos_restantes > 0 && rest.segundos_totais > 0 && seriesDone.length > 0));
-
-  useEffect(() => {
-    if (!running || !rest) return;
-    const id = window.setInterval(() => {
-      tickRest(Math.max(0, rest.segundos_restantes - 1));
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [running, rest?.segundos_restantes, rest, tickRest]);
+  const rt = useRestTimer();
 
   const alvoLabel = useMemo(() => {
     if (!presc) return "";
@@ -265,7 +249,7 @@ export default function TreinoPage() {
       if (hitTimer.current) window.clearTimeout(hitTimer.current);
       hitTimer.current = window.setTimeout(() => setHitFlash(false), 300);
     }
-    startRest(presc.descanso_seg);
+    rt.iniciar(descansoSugerido({ fase: tipo, composto: exercicioAtivo?.composto ?? true, prescritoSeg: presc.descanso_seg }), tipo);
     if (tipo === "aquecimento" && result.cargas_atualizadas) {
       const nextKg = result.trabalho_kg ?? carga;
       setCarga(nextKg);
@@ -319,8 +303,6 @@ export default function TreinoPage() {
     router.push("/treino/feedback");
   }
 
-  const mm = Math.floor((rest?.segundos_restantes ?? 0) / 60);
-  const ss = String((rest?.segundos_restantes ?? 0) % 60).padStart(2, "0");
 
   return (
     <main className="motion-fade-up flex min-h-dvh flex-col pb-8">
@@ -329,52 +311,6 @@ export default function TreinoPage() {
           {cargasToast}
         </div>
       ) : null}
-      {/* Timer sticky — surface-2 como HTML */}
-      {showTimer && (
-        <div className="timer-bar px-4 py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-faint">
-              Descanso
-            </div>
-            <div className="timer-display num text-xl font-bold text-accent">
-              {mm}:{ss}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => addRest(30)}
-                className="rounded-[14px] border border-border px-3 py-1.5 text-xs text-muted"
-              >
-                +30s
-              </button>
-              <button
-                type="button"
-                onClick={skipRest}
-                className="rounded-[14px] border border-border px-3 py-1.5 text-xs text-muted"
-              >
-                Pular
-              </button>
-            </div>
-          </div>
-          {rest && rest.segundos_totais > 0 && (
-            <div className="bar-track mt-2">
-              <div
-                className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
-                style={{
-                  width: `${Math.min(
-                    100,
-                    ((rest.segundos_totais - rest.segundos_restantes) /
-                      rest.segundos_totais) *
-                      100,
-                  )}%`,
-                  height: "100%",
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="px-4 pt-4">
         <div className="mb-2 flex items-center justify-between">
           <Link href="/hoje" className="text-sm text-muted">
@@ -708,6 +644,7 @@ export default function TreinoPage() {
           </Button>
         </div>
       )}
+      <RestTimerPill rt={rt} />
     </main>
   );
 }
