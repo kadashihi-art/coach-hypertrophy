@@ -3,14 +3,11 @@
  * Usado na montagem/remount e como fallback on-the-fly para planos antigos.
  */
 import type { Exercicio, GrupoMuscular, Perfil, Plano, PlanoRacional, Sessao, TipoDia } from "@/lib/domain";
+import { SPLIT_LABEL, humanizarSplits } from "./split-label";
 import { MUSCULOS_POR_TIPO, microcicloTexto, posicionarDescanso } from "./estrutura";
 
 const MAIORES: GrupoMuscular[] = ["peito", "costas", "ombros", "quadriceps", "isquiotibiais", "gluteos"];
-const NOME_DIV: Record<string, string> = {
-  full_body: "Full Body", upper_lower: "Upper/Lower", ppl: "Push/Pull/Legs",
-  ppl_upper_lower: "Híbrido PPL + Upper/Lower", hibrido: "Híbrido Full Body + Upper/Lower",
-  push_pull: "Push/Pull", bro_split: "Bro split",
-};
+const NOME_DIV: Record<string, string> = SPLIT_LABEL;
 
 function faixaAlvo(g: GrupoMuscular, objetivo: string): [number, number] {
   const major = MAIORES.includes(g);
@@ -85,7 +82,7 @@ export function derivarRacional(args: {
     .sort((a, b) => b.vezes_semana - a.vezes_semana);
 
   const dias = plano.dias_por_semana;
-  const why1 = args.whyPorFase?.[0] ?? (plano.justificativa?.texto?.split(".")[0] ?? "");
+  const why1 = humanizarSplits(args.whyPorFase?.[0] ?? (plano.justificativa?.texto?.split(".")[0] ?? ""));
   const porque = [
     why1,
     `${dias} dias/semana, ${plano.minutos_por_sessao} min/sessão${perfil ? `, nível ${perfil.experiencia}` : ""}, objetivo ${objetivo}.`,
@@ -101,7 +98,7 @@ export function derivarRacional(args: {
       nome: f.nome,
       estilo: f.estilo,
       semanas: `semanas ${f.semana_inicio}–${f.semana_inicio + f.semanas - 1}`,
-      porque: [args.whyPorFase?.[i] ?? ""].filter(Boolean),
+      porque: [humanizarSplits(args.whyPorFase?.[i] ?? "")].filter(Boolean),
       descanso: f.descanso_porque,
       microciclo: microcicloTexto(f.microciclo.map((d) => d.tipo)),
       ...(i > 0 ? { troca: `Troca para ${f.nome} na semana ${f.semana_inicio} (variação de estímulo/frequência; volume reavaliado pelo coach).` } : {}),

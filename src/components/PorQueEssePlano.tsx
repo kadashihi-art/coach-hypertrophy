@@ -1,15 +1,18 @@
 "use client";
 
+import { humanizarSplits } from "@/lib/plan/split-label";
+import { semCodigoRegra } from "@/lib/llm/tom";
 import { Card } from "@/components/ui";
 import type { PlanoRacional } from "@/lib/domain";
+const h = (t: string) => humanizarSplits(semCodigoRegra(t));
 
 /** Card "Por que esse plano/treino": mesmo racional determinístico do motor. animado = entrada escalonada (onboarding). */
 export function PorQueEssePlano({ racional, animado = false, compacto = false }: { racional: PlanoRacional; animado?: boolean; compacto?: boolean }) {
   const blocos = [
     <div key="split">
-      <p className="text-sm font-semibold text-bone-50">{racional.split.nome}</p>
+      <p className="text-sm font-semibold text-bone-50">{h(racional.split.nome)}</p>
       {racional.split.porque.slice(0, 3).map((t, i) => (
-        <p key={i}>{t}</p>
+        <p key={i}>{h(t)}</p>
       ))}
     </div>,
     racional.frequencia_por_musculo.length ? (
@@ -20,19 +23,19 @@ export function PorQueEssePlano({ racional, animado = false, compacto = false }:
     ) : null,
     ...racional.fases.map((f) => (
       <div key={f.id} className="rounded-lg bg-white/5 p-2">
-        <p className="font-semibold">{f.nome} · {f.semanas}</p>
+        <p className="font-semibold">{h(f.nome)} · {f.semanas}</p>
         <p className="text-muted">{f.microciclo}</p>
         {f.descanso.slice(0, 3).map((d, i) => (
-          <p key={i} className="text-faint">{d}</p>
+          <p key={i} className="text-faint">{h(d)}</p>
         ))}
-        {f.troca ? <p className="text-accent">{f.troca}</p> : null}
+        {f.troca ? <p className="text-accent">{h(f.troca)}</p> : null}
       </div>
     )),
     racional.acordos?.length ? (
       <div key="acordos" className="rounded-lg border border-accent/30 p-2">
         <p className="font-semibold text-accent">Condições acordadas</p>
         {racional.acordos.map((a, i) => (
-          <p key={i}>• {a}</p>
+          <p key={i}>• {h(a)}</p>
         ))}
       </div>
     ) : null,
@@ -44,7 +47,7 @@ export function PorQueEssePlano({ racional, animado = false, compacto = false }:
     ) : null,
     ...(compacto ? [] : racional.alternativas.slice(0, 3).map((a) => (
       <p key={a.divisao} className="text-faint">
-        <span className="text-muted">{a.nome}:</span> {a.por_que_nao}. Faz sentido se: {a.quando_faria_sentido}.
+        <span className="text-muted">{h(a.nome)}:</span> {h(a.por_que_nao)}. Faz sentido se: {h(a.quando_faria_sentido)}.
       </p>
     ))),
     !compacto ? (

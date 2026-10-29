@@ -11,6 +11,7 @@ import type { Equipamento, Experiencia, Objetivo, Perfil, PlanoRacional } from "
 import { CATALOG_EXERCICIOS } from "@/lib/catalog/exercicios";
 import { gerarProposta } from "@/lib/plan/negociacao";
 import { racionalDoPlano } from "@/lib/plan/racional";
+import { humanizarSplits } from "@/lib/plan/split-label";
 import { REFAZER_HREF } from "@/lib/plan/refazer";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao, precisaResponderParq } from "@/lib/plan/parq";
 
@@ -470,12 +471,12 @@ export default function PerfilPage() {
       ) : null}
 
       {campo && draft ? (
-        <div className="fixed inset-x-0 bottom-0 top-0 z-30 flex items-end justify-center bg-black/60" onClick={fechar}>
+        <div className="sheet-overlay fixed inset-0 flex items-end justify-center bg-black/60" onClick={fechar}>
           <div
             role="dialog"
             aria-label={TITULO[campo]}
             onClick={(e) => e.stopPropagation()}
-            className="sheet-enter mb-[calc(64px+env(safe-area-inset-bottom,0px))] max-h-[78dvh] w-full max-w-[480px] overflow-y-auto rounded-t-3xl border border-border bg-ink-950 px-5 pb-5 pt-3"
+            className="sheet-enter max-h-[85dvh] w-full max-w-[480px] overflow-y-auto overscroll-contain rounded-t-3xl border border-border bg-ink-950 px-5 pt-3"
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-800" />
             {!ajuste ? (
@@ -485,6 +486,7 @@ export default function PerfilPage() {
                 </p>
                 <h2 className="mb-4 text-xl font-bold">{TITULO[campo]}</h2>
                 <div className="mb-5">{controle(campo, draft)}</div>
+                <div className="sheet-actions">
                 {MUDA_PLANO[campo] ? (
                   <Button className="motion-cta-glow min-h-12" disabled={!dirty || parqBloqueado} onClick={verAjuste}>
                     Ver ajuste
@@ -497,14 +499,17 @@ export default function PerfilPage() {
                 <button type="button" onClick={fechar} className="mt-2 min-h-11 w-full text-sm text-muted">
                   Cancelar
                 </button>
+                </div>
               </>
             ) : ajuste.tipo === "erro" ? (
               <>
                 <h2 className="mb-2 text-xl font-bold">Não deu pra ajustar</h2>
                 <p className="mb-4 text-sm text-muted">{ajuste.msg}</p>
+                <div className="sheet-actions">
                 <Button variant="ghost" onClick={fechar}>
                   Voltar
                 </Button>
+                </div>
               </>
             ) : (
               <div className="motion-stagger">
@@ -522,7 +527,7 @@ export default function PerfilPage() {
                 </p>
                 <ul className="mb-3 space-y-1 text-sm text-bone-300">
                   {ajuste.depois.split.porque.slice(0, 3).map((x) => (
-                    <li key={x}>• {x}</li>
+                    <li key={x}>• {humanizarSplits(x)}</li>
                   ))}
                 </ul>
                 <p className="mb-2 text-xs uppercase text-muted">Séries por semana · antes → depois</p>
@@ -543,12 +548,14 @@ export default function PerfilPage() {
                     ));
                   })()}
                 </div>
+                <div className="sheet-actions">
                 <Button className="motion-cta-glow min-h-12" disabled={busy} onClick={() => void confirmarESalvar()}>
                   {busy ? "Salvando…" : "Confirmar e salvar"}
                 </Button>
                 <button type="button" disabled={busy} onClick={fechar} className="mt-2 min-h-11 w-full text-sm text-muted">
                   Cancelar
                 </button>
+                </div>
               </div>
             )}
           </div>

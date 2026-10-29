@@ -1,6 +1,7 @@
 /** Tom do Coach (WhatsApp de treinador experiente) + limpeza de saída. */
 import { AJUSTAR_PLANO_NOME } from "@/lib/nav";
 
+import { humanizarSplits } from "@/lib/plan/split-label";
 export const TOM_COACH = [
   "TOM: fale em primeira pessoa, como um treinador experiente conversando no WhatsApp. PT-BR natural, frases curtas, calor humano, sem enrolação.",
   "Use \"eu montei\", \"eu coloquei\", \"posso ajustar\", \"se quiser, eu troco\". NUNCA use a palavra \"motor\" (nem \"o motor\", \"do motor\", \"pelo motor\"), nem \"o sistema\" ou \"o algoritmo\" — quem monta e ajusta o plano é você, o coach. NUNCA cite códigos internos de regra (R1–R12, N1/N2): diga o conteúdo em palavras (ex.: \"10–20 séries/semana, que é a faixa que mais rende pra hipertrofia\").",
@@ -69,6 +70,6 @@ export function limparSaidaCoach(texto: string): { texto: string; sugestao: stri
     .replace(/\/plano\/ajustar/gi, `"${AJUSTAR_PLANO_NOME}"`)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  t = semCodigoRegra(semMotor(t));
+  t = humanizarSplits(semCodigoRegra(semMotor(t)));
   return { texto: t, sugestao };
 }

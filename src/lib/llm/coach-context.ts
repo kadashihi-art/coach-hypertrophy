@@ -334,7 +334,7 @@ export function buildCoachContext(
     fase_ativa,
     opcoes_remontagem: {
       url: AJUSTAR_PLANO_HREF,
-      estilos: ["auto (coach escolhe)", "full_body", "upper_lower", "ppl", "hibrido_ppl_ul", "hibrido_fb_ul"],
+      estilos: ["auto (coach escolhe)", "na resposta use só os nomes humanos, nunca o id com underline", "full_body = Full Body", "upper_lower = Upper/Lower", "ppl = Push/Pull/Legs", "hibrido_ppl_ul = Híbrido PPL + Upper/Lower", "hibrido_fb_ul = Híbrido Full Body + Upper/Lower"],
       fases: "Fase 2 opcional: outro estilo após N semanas",
     },
     ...(opts.mensagem ? { mensagem_usuario: opts.mensagem } : {}),

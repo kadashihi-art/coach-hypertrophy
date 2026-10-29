@@ -8,6 +8,7 @@ console.log("hibrido+limpeza OK", JSON.stringify(r.ajustes), JSON.stringify(l));
 
 // "motor" nunca aparece na saída (salvaguarda), sem quebrar "motora"/"psicomotor"
 import { ABERTURA_SINCERA, comAberturaSincera, semMotor, semCodigoRegra } from "../src/lib/llm/tom";
+import { temIdSplit, labelSplit, humanizarSplits } from "../src/lib/plan/split-label";
 import { racionalDoPlano } from "../src/lib/plan/racional";
 import { gerarPlanoFromPerfil } from "../src/lib/plan/gerar-plano";
 import { CATALOG_EXERCICIOS } from "../src/lib/catalog/exercicios";
@@ -37,4 +38,17 @@ if (semCodigoRegra("Coordenação, RPE 8, Rir 2") !== "Coordenação, RPE 8, Rir
   const rac = JSON.stringify(g.plano.racional ?? racionalDoPlano({ plano: g.plano, sessoes: g.sessoes, perfil: pf, catalog: CATALOG_EXERCICIOS }));
   if (RCOD.test(rac)) throw new Error("racional visivel com codigo de regra: " + rac.match(/.{40}\bR\d{1,2}\b.{20}/)?.[0]);
 }
-console.log("sem-motor+abertura+guard+sem-RNN OK", JSON.stringify(m));
+// Sem id interno de split (snake_case) no texto visível
+const sp = limparSaidaCoach("3 dias → full_body (FB A/B/C). Ou upper_lower, ppl, hibrido_ppl_ul, ppl_upper_lower. PPL clássico.").texto;
+if (temIdSplit(sp) || /\b[a-z]+_[a-z_]+\b/.test(sp)) throw new Error("id de split na saida: " + sp);
+if (!sp.includes("Full Body") || !sp.includes("Upper/Lower") || !sp.includes("Push/Pull/Legs") || !sp.includes("PPL clássico")) throw new Error("label split: " + sp);
+if (labelSplit("hibrido_fb_ul") !== "Híbrido Full Body + Upper/Lower") throw new Error("labelSplit");
+for (const d of [2, 3, 4, 5, 6]) {
+  const now2 = new Date().toISOString();
+  const pf2 = { id: "t", peso_kg: 80, altura_cm: 178, experiencia: "intermediario", dias_por_semana: d, minutos_por_sessao: 60, cardio_min_semana: 0, equipamentos: ["barra","halteres","maquina","cabo"], restricoes: [], objetivo: "hipertrofia", onboarding_concluido: true, parq_liberado: true, parq_respondido_em: now2, parq_respostas: [false,false,false,false,false,false,false], criado_em: now2 } as never;
+  const g2 = gerarPlanoFromPerfil(pf2, CATALOG_EXERCICIOS);
+  const r2 = g2.plano.racional ?? racionalDoPlano({ plano: g2.plano, sessoes: g2.sessoes, perfil: pf2, catalog: CATALOG_EXERCICIOS });
+  const vis = humanizarSplits([r2.split.nome, ...r2.split.porque, ...r2.fases.flatMap((f) => [f.nome, ...f.porque]), ...r2.alternativas.flatMap((a) => [a.nome, a.por_que_nao])].join(" | "));
+  if (temIdSplit(vis)) throw new Error(`racional ${d}d com id de split: ` + vis);
+}
+console.log("sem-motor+abertura+guard+sem-RNN+sem-split-id OK", JSON.stringify(m));

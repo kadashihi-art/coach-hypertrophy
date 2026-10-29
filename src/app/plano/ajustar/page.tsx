@@ -286,7 +286,7 @@ export default function MeuTreinoPage() {
             </>
           ) : null}
           {negociando && state.perfil ? (
-            <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-ink-950 px-5 pb-8 pt-6">
+            <div className="sheet-overlay fixed inset-0 flex flex-col overflow-y-auto overscroll-contain bg-ink-950 px-5 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-6">
               <div className="motion-swap flex flex-1 flex-col">
                 <NegociacaoPlano
                   perfilInicial={state.perfil}
@@ -397,8 +397,8 @@ export default function MeuTreinoPage() {
       </Button>
 
       {confirmOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
-          <Card className="w-full max-w-md border border-accent/30">
+        <div className="sheet-overlay fixed inset-0 flex items-end justify-center bg-black/70 p-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] sm:items-center">
+          <Card className="max-h-[85dvh] w-full max-w-md overflow-y-auto border border-accent/30">
             <p className="text-lg font-bold">Isso gera um novo plano. Continuar?</p>
             <p className="mt-2 text-sm text-muted">
               O coach remonta o split. Cargas de exercícios que permanecerem são

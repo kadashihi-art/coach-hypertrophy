@@ -580,3 +580,12 @@ a { color: inherit; text-decoration: none; }
   .vb-fill, .vb-sweep, .vb-band, .vb-chip-go, .vb-chip-warn, .vb-ganho .vb-fill, .vb-in .vb-band { animation: none !important; }
   .vb-sweep { opacity: 0; }
 }
+
+/* Sheets/modais sempre acima da tab bar (nav z-40); ações sticky no fundo com safe-area */
+.sheet-overlay { z-index: 60; }
+.sheet-actions {
+  position: sticky; bottom: 0; z-index: 1;
+  margin: 12px -20px 0; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--color-ink-950, #050505) 80%, transparent);
+  border-top: 1px solid rgba(245, 245, 240, .08);
+}

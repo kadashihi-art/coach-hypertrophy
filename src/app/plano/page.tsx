@@ -1,5 +1,6 @@
 "use client";
 
+import { labelSplit, humanizarSplits } from "@/lib/plan/split-label";
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
@@ -88,7 +89,7 @@ export default function PlanoPage() {
       </p>
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-bold capitalize">
-          {plano.divisao.replace(/_/g, " ")}
+          {labelSplit(plano.divisao)}
         </h1>
       </div>
       <p className="mb-3 text-sm text-muted">
@@ -144,7 +145,7 @@ export default function PlanoPage() {
       </Card>
 
       <Card className="mb-4">
-        <p className="text-sm leading-relaxed text-muted">{semCodigoRegra(plano.justificativa.texto)}</p>
+        <p className="text-sm leading-relaxed text-muted">{humanizarSplits(semCodigoRegra(plano.justificativa.texto))}</p>
         <div className="mt-2">
           <EvidenciaBadge evidencia={plano.justificativa.evidencia} />
         </div>
