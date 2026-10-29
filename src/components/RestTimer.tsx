@@ -5,6 +5,7 @@
  * Fim: vibração + bip curto (WebAudio) + flash. Tela bloqueada: notificação via service worker
  * (Notification Triggers onde existir; senão o SW tenta agendar enquanto estiver vivo).
  */
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   PASSO_AJUSTE_S,
@@ -159,9 +160,11 @@ export function RestTimerPill({ rt }: { rt: ReturnType<typeof useRestTimer> }) {
   const p = progresso(timer, agora);
   const rm = semMovimento();
   const cls = ["rt-pill", fim ? "rt-fim" : "", reta ? "rt-reta" : "", rm ? "rt-rm" : ""].join(" ");
+  // portal no body: ancestrais com transform (motion-fade-up) quebram position:fixed
   return (
     <>
       <div aria-hidden className="rt-spacer" />
+      {createPortal(
       <div className={cls} role="timer" aria-live={fim || reta ? "assertive" : "off"} aria-label={fim ? "Descanso acabou" : `Descanso: faltam ${seg} segundos`}>
         {fim && !rm ? <span key={timer.endAt} aria-hidden className="rt-burst" /> : null}
         <div className="flex items-center gap-3">
@@ -200,6 +203,7 @@ export function RestTimerPill({ rt }: { rt: ReturnType<typeof useRestTimer> }) {
           </button>
         ) : null}
       </div>
+      , document.body)}
     </>
   );
 }
