@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { Markdown } from "@/components/Markdown";
+import { Composer } from "@/components/Composer";
 import type { Estrategia, PerfilColeta } from "@/lib/plan/coleta";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -74,17 +75,23 @@ export function ColetaCoach({ onPronto, onFallback, perfilInicial = {} }: {
         </div>
       ) : (
         <>
+          <Composer
+            label="Escreve do seu jeito"
+            value={texto}
+            onChange={setTexto}
+            disabled={busy}
+            onSend={(t) => { setTexto(""); void falar(t); }}
+          />
           {chips.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-2">
-              {chips.map((c) => (
-                <button key={c} disabled={busy} onClick={() => falar(c)} className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-bone-200 hover:bg-white/10">{c}</button>
-              ))}
+            <div className="mt-2.5">
+              <p className="mb-1.5 text-[10px] uppercase tracking-wide text-faint">Ou toca num atalho</p>
+              <div className="flex flex-wrap gap-2">
+                {chips.map((c) => (
+                  <button key={c} disabled={busy} onClick={() => falar(c)} className="chip-motion text-xs">{c}</button>
+                ))}
+              </div>
             </div>
           )}
-          <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); const t = texto.trim(); if (!t || busy) return; setTexto(""); void falar(t); }}>
-            <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Responda do seu jeito…" className="flex-1 rounded-xl bg-white/5 px-3 py-2 text-sm text-bone-50 outline-none" />
-            <Button className="w-auto px-4" disabled={busy || !texto.trim()}>Enviar</Button>
-          </form>
           <button className="mt-3 w-full text-xs text-muted underline" onClick={() => onFallback("usuario")}>Prefiro preencher o formulário</button>
         </>
       )}

@@ -7,6 +7,8 @@
 import { Markdown } from "@/components/Markdown";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card } from "@/components/ui";
+import { Composer } from "@/components/Composer";
+import { comAberturaSincera } from "@/lib/llm/tom";
 import { PorQueEssePlano } from "@/components/PorQueEssePlano";
 import type { Exercicio, Perfil } from "@/lib/domain";
 import { NOME_ESTILO, type EstiloSplit } from "@/lib/plan/gerar-plano";
@@ -54,7 +56,7 @@ export function NegociacaoPlano({
       if (!res.ok) throw new Error(String(res.status));
       r = await res.json();
     } catch {
-      r = mensagem ? interpretarFeedbackHeuristico(mensagem) : { resposta: "Essa é a proposta que eu montei. Pode trocar o estilo ou os dias aqui embaixo, ou me dizer o que mudar." };
+      r = mensagem ? interpretarFeedbackHeuristico(mensagem) : { resposta: comAberturaSincera("Essa é a proposta que eu montei. Pode trocar o estilo ou os dias aqui embaixo, ou me dizer o que mudar.") };
     }
     const temAjuste = r.ajustes && typeof r.ajustes === "object" && Object.keys(r.ajustes).length > 0;
     if (temAjuste || r.condicoes?.length) {
@@ -100,7 +102,7 @@ export function NegociacaoPlano({
       <div className="motion-stagger">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Minha proposta · ainda não salva</p>
         <h1 className="mb-1 mt-1 text-2xl font-bold text-bone-50">Por que esse treino</h1>
-        <p className="mb-3 text-sm text-muted">Comente, discorde ou traga condições (lesão, rotina, dias reais). O coach traduz em ajustes e o motor remonta.</p>
+        <p className="mb-3 text-sm text-muted">Pode discordar ou trazer condições (lesão, rotina, dias reais). Eu ajusto e te digo com sinceridade o que funciona e o que não.</p>
       </div>
 
       <div key={versao} className="motion-swap">
@@ -108,6 +110,36 @@ export function NegociacaoPlano({
           <p className="mb-2 rounded-lg bg-accent/10 px-3 py-2 text-[12px] text-accent">Ajustado: {mudancas.join(" · ")}</p>
         ) : null}
         <PorQueEssePlano racional={proposta.racional} animado compacto />
+      </div>
+
+
+      <div className="mb-2 max-h-72 space-y-2 overflow-y-auto">
+        {msgs.map((m, i) => (
+          <div key={i} className={`motion-swap rounded-xl px-3 py-2 text-[13px] leading-snug ${m.role === "user" ? "ml-8 bg-accent/15 text-bone-50" : "mr-4 bg-white/5 text-bone-200"}`}>
+            {m.role === "user" ? <span className="whitespace-pre-wrap">{m.content}</span> : <Markdown text={m.content} />}
+          </div>
+        ))}
+        {carregando ? <p className="text-[12px] text-muted">Coach pensando…</p> : null}
+      </div>
+
+      <Composer
+        className="mb-2.5"
+        label="Fala comigo"
+        value={texto}
+        onChange={setTexto}
+        disabled={carregando}
+        onSend={(t) => {
+          setTexto("");
+          void falar(t, perfil);
+        }}
+      />
+      <p className="mb-1.5 text-[10px] uppercase tracking-wide text-faint">Atalhos</p>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {CHIPS.map((c) => (
+          <button key={c} type="button" disabled={carregando} className="chip-motion" onClick={() => void falar(c, perfil)}>
+            {c}
+          </button>
+        ))}
       </div>
 
       <Card className="mb-3 space-y-2">
@@ -129,43 +161,6 @@ export function NegociacaoPlano({
         </div>
       </Card>
 
-      <div className="mb-2 max-h-72 space-y-2 overflow-y-auto">
-        {msgs.map((m, i) => (
-          <div key={i} className={`motion-swap rounded-xl px-3 py-2 text-[13px] leading-snug ${m.role === "user" ? "ml-8 bg-accent/15 text-bone-50" : "mr-4 bg-white/5 text-bone-200"}`}>
-            {m.role === "user" ? <span className="whitespace-pre-wrap">{m.content}</span> : <Markdown text={m.content} />}
-          </div>
-        ))}
-        {carregando ? <p className="text-[12px] text-muted">Coach pensando…</p> : null}
-      </div>
-
-      <div className="mb-2 flex flex-wrap gap-2">
-        {CHIPS.map((c) => (
-          <button key={c} type="button" disabled={carregando} className="chip-motion" onClick={() => void falar(c, perfil)}>
-            {c}
-          </button>
-        ))}
-      </div>
-      <form
-        className="mb-4 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const t = texto.trim();
-          if (!t || carregando) return;
-          setTexto("");
-          void falar(t, perfil);
-        }}
-      >
-        <input
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          placeholder='Ex.: "prefiro UL, só 4 dias, trabalho em turnos"'
-          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-bone-50 outline-none"
-          maxLength={2000}
-        />
-        <Button type="submit" className="w-auto px-4" disabled={carregando || !texto.trim()}>
-          Enviar
-        </Button>
-      </form>
 
       <div className="mt-auto flex gap-3">
         {onVoltar ? (

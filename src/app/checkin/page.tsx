@@ -166,7 +166,7 @@ export default function CheckinPage() {
 
       {r9 && (
         <p className="mt-3 rounded-xl bg-warn/10 px-3 py-2 text-xs text-warn">
-          R9: prontidão baixa ou sono &lt; 6h — a <strong>sessão do dia será
+          Prontidão baixa ou sono &lt; 6h — a <strong>sessão do dia será
           ajustada</strong>: manter carga e −1 série nos compostos.
         </p>
       )}

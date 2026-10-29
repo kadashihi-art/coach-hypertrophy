@@ -121,7 +121,7 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
   if (dias <= 2) {
     return {
       divisao: "full_body",
-      why: "2 dias → full_body (FB A/B) para frequências altas com pouco tempo de semana",
+      why: "2 dias → Full Body (A/B) para frequências altas com pouco tempo de semana",
       templates: [
         { id: "sess-fb-a", nome: "Full Body A", slots: fbSlots("a") },
         { id: "sess-fb-b", nome: "Full Body B", slots: fbSlots("b") },
@@ -131,7 +131,7 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
   if (dias === 3) {
     return {
       divisao: "full_body",
-      why: "3 dias → full_body (FB A/B/C) para ~2–3× frequência por grupo",
+      why: "3 dias → Full Body (A/B/C) para ~2–3× frequência por grupo",
       templates: [
         { id: "sess-fb-a", nome: "Full Body A", slots: fbSlots("a") },
         { id: "sess-fb-b", nome: "Full Body B", slots: fbSlots("b") },
@@ -142,7 +142,7 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
   if (dias === 4) {
     return {
       divisao: "upper_lower",
-      why: "4 dias → upper_lower (Upper A/Lower A/Upper B/Lower B) com frequência 2×",
+      why: "4 dias → Upper/Lower (Upper A/Lower A/Upper B/Lower B) com frequência 2×",
       templates: [
         { id: "sess-upper-a", nome: "Upper A", slots: upperSlots("a") },
         { id: "sess-lower-a", nome: "Lower A", slots: lowerSlots("a") },
@@ -154,7 +154,7 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
   if (dias === 5) {
     return {
       divisao: "ppl",
-      why: "5 dias → ppl (Push/Pull/Legs/Push/Pull) para volume semanal na faixa sem sessões longas",
+      why: "5 dias → Push/Pull/Legs (Push/Pull/Legs/Push/Pull) para volume semanal na faixa sem sessões longas",
       templates: [
         { id: "sess-push-a", nome: "Push A", slots: pushSlots("a") },
         { id: "sess-pull-a", nome: "Pull A", slots: pullSlots("a") },
@@ -166,7 +166,7 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
   }
   return {
     divisao: "ppl",
-    why: "6 dias → ppl ×2 (PPL PPL) para frequência alta e volume distribuído",
+    why: "6 dias → Push/Pull/Legs ×2 para frequência alta e volume distribuído",
     templates: [
       { id: "sess-push-a", nome: "Push A", slots: pushSlots("a") },
       { id: "sess-pull-a", nome: "Pull A", slots: pullSlots("a") },
@@ -182,7 +182,7 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
 export type EstiloSplit = "auto" | "full_body" | "upper_lower" | "ppl" | "hibrido_ppl_ul" | "hibrido_fb_ul";
 
 export const NOME_ESTILO: Record<EstiloSplit, string> = {
-  auto: "Motor escolhe",
+  auto: "Coach escolhe",
   full_body: "Full Body",
   upper_lower: "Upper/Lower",
   ppl: "Push/Pull/Legs",

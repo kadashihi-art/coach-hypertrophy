@@ -1,5 +1,7 @@
 "use client";
 
+import { VolumeBar } from "@/components/VolumeBar";
+import { labelGrupo } from "@/lib/labels";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
@@ -11,6 +13,7 @@ import { ColetaCoach, type ColetaResultado } from "@/components/ColetaCoach";
 import { paraPerfil, validarEstrategia } from "@/lib/plan/coleta";
 import { seedState } from "@/lib/seed";
 import { CATALOG_EXERCICIOS } from "@/lib/catalog/exercicios";
+import { emModoRefazer, patchConfirmarRefazer } from "@/lib/plan/refazer";
 
 /**
  * Motion: docs/motion-spec.md § Onboarding (rico)
@@ -131,14 +134,12 @@ function VolumeWeekPreview({
         <span className="vol-title">Volume / semana</span>
         <span className="vol-hint">faixa 10–20</span>
       </div>
-      {rows.map((r) => {
-        const w = Math.min(100, Math.round((r.sets / scaleMax) * 100));
+      {rows.map((r, ri) => {
         return (
           <div key={r.grupo} className="vol-row">
-            <span className="vol-label">{r.grupo}</span>
-            <div className="vol-track">
-              <span className="vol-band" aria-hidden />
-              <span className="bar-fill enter" style={{ width: `${w}%` }} />
+            <span className="vol-label">{labelGrupo(r.grupo)}</span>
+            <div className="flex-1">
+              <VolumeBar label={labelGrupo(r.grupo)} valor={r.sets} max={scaleMax} faixa={[10, 20]} index={ri} cabecalho={false} fina />
             </div>
             <span className="vol-num">{r.sets}</span>
           </div>
@@ -151,10 +152,54 @@ function VolumeWeekPreview({
 const LAST_STEP = 4;
 
 export default function OnboardingPage() {
-  const { state, completeOnboarding, updatePerfil } = useApp();
+  const { state, completeOnboarding, updatePerfil, updatePerfilAndRemount } = useApp();
+  const router = useRouter();
+  // Refazer (?refazer=1): nada grava até "Confirmar plano"; cancelar = estado intacto.
+  const [refazerParam] = useState(() =>
+    typeof window !== "undefined" ? window.location.search : "",
+  );
+  const refazer = emModoRefazer(refazerParam, state.perfil);
+  const [salvando, setSalvando] = useState(false);
+  const [erroRefazer, setErroRefazer] = useState<string | null>(null);
+  const [parqPendenteRegistro, setParqPendenteRegistro] = useState<Partial<Perfil> | null>(null);
+  function sairSemMudar() {
+    router.push("/perfil");
+  }
+  async function confirmarRefazer(p: Perfil) {
+    const r = patchConfirmarRefazer(p);
+    if (!r.ok) {
+      setErroRefazer("PAR-Q+ com SIM: não dá pra gerar plano novo.");
+      return;
+    }
+    setSalvando(true);
+    try {
+      // mesmo remount do Ajustar: preserva EstadoExercicio e histórico de séries
+      const res = await updatePerfilAndRemount(r.patch, { skipLlm: true });
+      if (!res.ok) {
+        setErroRefazer(res.error ?? "Não deu pra salvar agora. Seu plano atual continua igual.");
+        return;
+      }
+      router.push("/plano");
+    } finally {
+      setSalvando(false);
+    }
+  }
+  const barraRefazer = refazer ? (
+    <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent/5 px-3 py-2">
+      <p className="text-[11px] leading-snug text-bone-200">
+        Refazendo com o coach · seu plano atual só muda quando você tocar em <b>Confirmar plano</b>.
+      </p>
+      <button
+        type="button"
+        onClick={sairSemMudar}
+        className="motion-press min-h-10 shrink-0 rounded-full border border-border px-3 text-xs font-semibold text-bone-50"
+      >
+        Voltar sem mudar
+      </button>
+    </div>
+  ) : null;
   // Proposta em negociação (não salva) — só "Confirmar plano" chama completeOnboarding.
   const [rascunho, setRascunho] = useState<Perfil | null>(null);
-  const router = useRouter();
   const [step, setStep] = useState(0);
   // Coleta conversacional (LLM) → depois PAR-Q (gate explícito) → negociação. Falha → formulário.
   const [modo, setModo] = useState<"coach" | "form">(() =>
@@ -215,7 +260,7 @@ export default function OnboardingPage() {
     const agora = new Date().toISOString();
     if (!result.liberado) {
       setParqBloqueado(true);
-      updatePerfil({
+      const parqPatch: Partial<Perfil> = {
         peso_kg: peso,
         altura_cm: altura,
         experiencia: exp,
@@ -229,7 +274,10 @@ export default function OnboardingPage() {
         parq_liberado: false,
         parq_respondido_em: agora,
         onboarding_concluido: false,
-      });
+      };
+      // Refazer: não grava sozinho — a pessoa confirma o registro da triagem (gate PAR-Q continua valendo)
+      if (refazer) setParqPendenteRegistro(parqPatch);
+      else updatePerfil(parqPatch);
       return;
     }
     const base0 = state.perfil ?? seedState.perfil!;
@@ -263,6 +311,7 @@ export default function OnboardingPage() {
   if (!rascunho && modo === "coach" && !coleta) {
     return (
       <main className="flex min-h-dvh flex-col px-5 pb-8 pt-6">
+        {barraRefazer}
         <ColetaCoach
           onFallback={(m) => { setAvisoFallback(m === "usuario" ? null : "O coach não respondeu agora — segue pelo formulário rápido."); setModo("form"); }}
           onPronto={(r) => {
@@ -288,12 +337,20 @@ export default function OnboardingPage() {
   if (rascunho) {
     return (
       <main className="flex min-h-dvh flex-col px-5 pb-8 pt-6">
+        {barraRefazer}
+        {erroRefazer ? <p className="mb-3 rounded-xl bg-danger/10 px-3 py-2 text-xs text-danger">{erroRefazer}</p> : null}
         <div key="negociacao" className="motion-swap flex flex-1 flex-col">
           <NegociacaoPlano
             perfilInicial={rascunho}
             catalog={state.exercicios.length ? state.exercicios : CATALOG_EXERCICIOS}
             onVoltar={() => setRascunho(null)}
+            confirmarLabel={salvando ? "Salvando…" : "Confirmar plano"}
             onConfirmar={(p) => {
+              if (salvando) return;
+              if (refazer) {
+                void confirmarRefazer(p);
+                return;
+              }
               completeOnboarding(p);
               router.push("/plano");
             }}
@@ -318,6 +375,7 @@ export default function OnboardingPage() {
         ))}
       </div>
 
+      {barraRefazer}
       {avisoFallback && <p className="mb-3 rounded-xl bg-white/5 px-3 py-2 text-xs text-muted">{avisoFallback}</p>}
       {coleta && step === LAST_STEP && <p className="mb-3 rounded-xl bg-accent/10 px-3 py-2 text-xs text-bone-200">Já entendi seu perfil. Antes de te mostrar o plano, uma triagem rápida de saúde (PAR-Q+) — é obrigatória e eu não pulo.</p>}
       <div key={step} className="motion-swap flex flex-1 flex-col">
@@ -499,6 +557,33 @@ export default function OnboardingPage() {
                 >
                   eparmedx.com
                 </a>
+                {refazer && parqPendenteRegistro ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-muted">
+                      Nada foi salvo ainda. Se essas respostas estão certas, registre a triagem — o plano fica pausado até a liberação.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      className="min-h-11 text-sm"
+                      onClick={() => {
+                        updatePerfil(parqPendenteRegistro);
+                        router.push("/hoje");
+                      }}
+                    >
+                      Registrar triagem e pausar o plano
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="min-h-11 text-sm"
+                      onClick={() => {
+                        setParqBloqueado(false);
+                        setParqPendenteRegistro(null);
+                      }}
+                    >
+                      Revisar respostas
+                    </Button>
+                  </div>
+                ) : null}
               </Card>
             ) : (
               <div className="space-y-3">

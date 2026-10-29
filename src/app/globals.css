@@ -93,7 +93,9 @@ a { color: inherit; text-decoration: none; }
 
 .bar-track { height: 8px; background: var(--ink-700); border-radius: 999px; overflow: hidden; position: relative; }
 
-.safe-bottom { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+/* tab bar fixa: altura + safe-area + folga, pro último item sempre ficar acima da barra */
+:root { --tabbar-h: 64px; }
+.safe-bottom { padding-bottom: calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); scroll-padding-bottom: calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); }
 
 .timer-bar {
   position: sticky; top: 0; z-index: 30;
@@ -542,3 +544,49 @@ a { color: inherit; text-decoration: none; }
     transform: none;
   }
 }
+
+/* ===== VolumeBar (gamer): só transform/opacity ===== */
+.vb { --vb-ease: cubic-bezier(.34, 1.56, .64, 1); }
+.vb-track { position: relative; overflow: hidden; border-radius: 999px; background: rgba(245, 245, 240, .08); }
+.vb-band {
+  position: absolute; top: 0; bottom: 0; border-radius: 999px;
+  background: rgba(184, 255, 60, .10); box-shadow: inset 0 0 0 1px rgba(184, 255, 60, .22);
+}
+.vb-in .vb-band { animation: vbBand 900ms ease-out calc(var(--vb-d) + 600ms) both; }
+@keyframes vbBand { 0% { opacity: .6; } 40% { opacity: 1; box-shadow: inset 0 0 0 1px rgba(184,255,60,.6), 0 0 12px rgba(184,255,60,.45); } 100% { opacity: 1; } }
+.vb-ghost, .vb-fill {
+  position: absolute; inset: 0; border-radius: 999px; transform-origin: left center; will-change: transform;
+}
+.vb-ghost { background: rgba(245, 245, 240, .16); transform: scaleX(var(--vb-a)); }
+.vb-fill { transform: scaleX(var(--vb-s)); animation: vbFill 720ms var(--vb-ease) var(--vb-d) both; }
+@keyframes vbFill { from { transform: scaleX(0); } }
+.vb-accent { background: var(--accent); box-shadow: 0 0 10px rgba(184, 255, 60, .35); }
+.vb-go { background: var(--go); box-shadow: 0 0 10px rgba(61, 255, 138, .35); }
+.vb-warn { background: var(--warn); box-shadow: 0 0 10px rgba(255, 176, 32, .3); }
+.vb-sweep {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 35%; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+  animation: vbSweep 700ms ease-out calc(var(--vb-d) + 720ms) 1 both;
+}
+@keyframes vbSweep { 0% { transform: translateX(-100%); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateX(300%); opacity: 0; } }
+.vb-chip { border-radius: 999px; padding: 0 6px; font-size: 10px; font-weight: 700; line-height: 16px; display: inline-block; }
+.vb-chip-go { color: var(--go); background: rgba(61, 255, 138, .12); animation: vbPulse 700ms ease-out calc(var(--vb-d) + 700ms) both; }
+.vb-chip-warn { color: var(--warn); background: rgba(255, 176, 32, .12); animation: vbShake 420ms ease-in-out calc(var(--vb-d) + 700ms) both; }
+@keyframes vbPulse { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes vbShake { 0% { opacity: 0; transform: translateX(0); } 20% { opacity: 1; transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(1px); } 100% { opacity: 1; transform: translateX(0); } }
+.vb-ganho .vb-fill { animation: vbFill 720ms var(--vb-ease) var(--vb-d) both, vbGlow 700ms ease-out calc(var(--vb-d) + 700ms) 1; }
+@keyframes vbGlow { 50% { opacity: .75; } }
+@media (prefers-reduced-motion: reduce) {
+  .vb-fill, .vb-sweep, .vb-band, .vb-chip-go, .vb-chip-warn, .vb-ganho .vb-fill, .vb-in .vb-band { animation: none !important; }
+  .vb-sweep { opacity: 0; }
+}
+
+/* Sheets/modais sempre acima da tab bar (nav z-40); ações sticky no fundo com safe-area */
+.sheet-overlay { z-index: 60; }
+.sheet-actions {
+  position: sticky; bottom: 0; z-index: 1;
+  margin: 12px -20px 0; padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--color-ink-950, #050505) 80%, transparent);
+  border-top: 1px solid rgba(245, 245, 240, .08);
+}
+body.sheet-open nav.fixed { display: none; }

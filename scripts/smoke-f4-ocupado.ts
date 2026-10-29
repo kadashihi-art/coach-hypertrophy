@@ -10,7 +10,7 @@ const r = resolverAlternativa({ exercicio_id: prim.id, alternativa_equipamento_o
 ok(!!r && r.id !== prim.id && r.padrao === prim.padrao, `fallback alt null -> ${r?.id}`);
 const r2 = resolverAlternativa({ exercicio_id: prim.id, alternativa_equipamento_ocupado: alt!.id }, C);
 ok(r2?.id === alt!.id, "usa alt explícita");
-const est: any = [{ exercicio_id: alt!.id, carga_atual_kg: 40, alvo_proxima_sessao: { carga_kg: 42.5, faixa_reps: [8, 12] } }];
+const est = [{ exercicio_id: alt!.id, carga_atual_kg: 40, alvo_proxima_sessao: { carga_kg: 42.5, faixa_reps: [8, 12] } }] as unknown as Parameters<typeof cargaDoEstado>[0];
 ok(cargaDoEstado(est, alt!.id, 80) === 42.5, "prefill alvo da alternativa");
 ok(cargaDoEstado(est, prim.id, 80) === 80, "sem estado mantém carga");
 const cob = C.filter((e) => resolverAlternativa({ exercicio_id: e.id, alternativa_equipamento_ocupado: null }, C)).length;

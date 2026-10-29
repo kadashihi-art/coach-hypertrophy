@@ -16,7 +16,8 @@
     "smoke:racional-hibrido": "npx --yes tsx scripts/smoke-racional-hibrido.ts",
     "smoke:negociacao": "npx --yes tsx scripts/smoke-negociacao.ts",
     "smoke:coleta": "npx --yes tsx scripts/smoke-coleta.ts",
-    "smoke:tom": "npx --yes tsx scripts/smoke-tom.ts"
+    "smoke:tom": "npx --yes tsx scripts/smoke-tom.ts",
+    "smoke:refazer": "npx tsx scripts/smoke-refazer.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

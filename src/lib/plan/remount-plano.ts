@@ -5,6 +5,7 @@
  * may suggest split notes / exercise preference / justificativa within catalog.
  * LLM MUST NOT invent kg into EstadoExercicio — loads stay from motor.
  */
+import { semMotor } from "@/lib/llm/tom";
 import type {
   EstadoExercicio,
   Exercicio,
@@ -66,7 +67,7 @@ export async function sugerirPlanoLlm(args: {
   const system = buildCoachSystemWithArsenal(
     [
       "Você auxilia a MONTAGEM estrutural de um plano de hipertrofia (split/exercícios/justificativa).",
-      "O MOTOR determinístico já gerou o plano base. Você só sugere copy/justificativa e preferências de exercício DENTRO do catálogo.",
+      "O cálculo determinístico do app já gerou o plano base (nunca chame isso de \"motor\" com o usuário). Você só sugere copy/justificativa e preferências de exercício DENTRO do catálogo.",
       "NUNCA invente kg, RIR, séries numéricas novas, nem IDs fora do catálogo.",
       "NUNCA faça prescrição clínica. PAR-Q+ já foi validado no servidor.",
       "Responda JSON: { justificativa?: string, prefer_exercicio_ids?: string[], notas?: string }",
@@ -182,7 +183,7 @@ export function aplicarSugestaoLlm(
 
   let nextPlano = plano;
   if (sug.justificativa?.trim()) {
-    const extra = sug.justificativa.trim().slice(0, 1200);
+    const extra = semMotor(sug.justificativa.trim()).slice(0, 1200);
     nextPlano = {
       ...plano,
       justificativa: {
@@ -232,7 +233,7 @@ export async function remountPlano(args: {
       sessoes = applied.sessoes;
       plano = applied.plano;
       fonte = "motor+llm";
-      justificativa_llm = sug.justificativa?.trim() || sug.notas?.trim();
+      justificativa_llm = semMotor(sug.justificativa?.trim() || sug.notas?.trim() || "") || undefined;
     }
   }
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
+import { PlanoTabs } from "@/components/PlanoTabs";
 import { Badge, Button, Card, SectionTitle } from "@/components/ui";
 import {
   derivarCalendario,
@@ -80,6 +81,7 @@ export default function CalendarioPage() {
 
   return (
     <main className="motion-fade-up px-5 pb-10 pt-8">
+      <PlanoTabs />
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
         Calendário
       </p>
@@ -180,7 +182,7 @@ export default function CalendarioPage() {
             <p className="mt-2 text-xs text-muted">
               Sem sessão neste dia.{" "}
               {!dataInicio ? (
-                <Link href="/meu-treino" className="text-accent">
+                <Link href="/plano/ajustar" className="text-accent">
                   Definir início →
                 </Link>
               ) : null}
@@ -206,15 +208,6 @@ export default function CalendarioPage() {
         </Card>
       ) : null}
 
-      <p className="mt-4 text-center text-xs text-muted">
-        <Link href="/meu-treino" className="text-accent">
-          Meu treino
-        </Link>
-        {" · "}
-        <Link href="/plano" className="text-accent">
-          Plano
-        </Link>
-      </p>
     </main>
   );
 }

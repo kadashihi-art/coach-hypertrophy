@@ -75,7 +75,7 @@ export function feedbackSono(
     base = {
       nivel: "baixo",
       titulo: "Sono curto",
-      dica: "Menos de 6h — o motor pode cortar 1 série nos compostos hoje (R9). Tente antecipar a hora de dormir.",
+      dica: "Menos de 6h — o coach pode cortar 1 série nos compostos hoje (R9). Tente antecipar a hora de dormir.",
       r9_sono,
     };
   } else if (duracaoH < 7) {

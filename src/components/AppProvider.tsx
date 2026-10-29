@@ -92,6 +92,7 @@ type Ctx = {
   /** Patch perfil + remount plan (motor; LLM via API when authenticated) */
   updatePerfilAndRemount: (
     partial: Partial<Perfil>,
+    opts?: { skipLlm?: boolean },
   ) => Promise<{ fonte: "motor" | "motor+llm"; ok: boolean; error?: string }>;
   /** Set mesociclo.data_inicio and schedule session dates */
   setDataInicio: (isoDate: string) => void;
@@ -306,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         data: ck.data,
       });
 
-      let alertas = s.alertas.filter(
+      const alertas = s.alertas.filter(
         (a) =>
           !(
             a.data === ck.data &&
@@ -447,7 +448,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const prescricoes = deload.prescricoes;
 
       // Alertas de R5/R6/AGUA do dia (R9 já pode ter vindo do check-in)
-      let alertas = [...s.alertas];
+      const alertas = [...s.alertas];
       for (const a of deload.alertas) {
         const dup = alertas.some(
           (x) =>
@@ -806,7 +807,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
 
       // Resolve alertas N1 de R9 do dia (check-in); volume alerts ficam abertos
-      let alertas = s.alertas.map((a) =>
+      const alertas = s.alertas.map((a) =>
         a.nivel === "N1" &&
         a.data === sess.data &&
         !a.resolvido &&
@@ -902,7 +903,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePerfilAndRemount = useCallback(
-    async (partial: Partial<Perfil>) => {
+    async (partial: Partial<Perfil>, opts?: { skipLlm?: boolean }) => {
       // Snapshot current for merge
       let snapshot = state;
       setState((s) => {
@@ -953,7 +954,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             perfil: partial,
             perfil_base: perfil,
             estados: snapshot.estados,
-            skip_llm: false,
+            skip_llm: opts?.skipLlm ?? false,
           }),
         });
         if (res.ok) {

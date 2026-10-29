@@ -1,5 +1,8 @@
 "use client";
 
+import { VolumeBar } from "@/components/VolumeBar";
+import { labelGrupo } from "@/lib/labels";
+import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
@@ -95,7 +98,7 @@ export default function ProgressoPage() {
             Sem dados ainda — complete um treino.
           </p>
         )}
-        {vols.map((v) => {
+        {vols.map((v, vi) => {
           const faixa =
             v.series_efetivas < VOLUME_MIN
               ? "abaixo"
@@ -108,7 +111,7 @@ export default function ProgressoPage() {
           return (
             <div key={v.grupo}>
               <div className="mb-1 flex items-center justify-between gap-2 text-sm">
-                <span className="capitalize">{v.grupo}</span>
+                <span>{labelGrupo(v.grupo)}</span>
                 <div className="flex items-center gap-2">
                   <Badge tone={tone}>
                     {faixa === "abaixo"
@@ -126,17 +129,20 @@ export default function ProgressoPage() {
                   </span>
                 </div>
               </div>
-              <div className="vol-track mt-1">
-                <span className="vol-band" aria-hidden />
-                <span
-                  className={`bar-fill enter ${barTone === "go" ? "go" : "warn"}`}
-                  style={{
-                    width: barsOn
-                      ? `${Math.min(100, (v.series_efetivas / 24) * 100)}%`
-                      : "0%",
-                  }}
+              {barsOn ? (
+                <VolumeBar
+                  label={labelGrupo(v.grupo)}
+                  valor={v.series_efetivas}
+                  max={24}
+                  faixa={[VOLUME_MIN, VOLUME_MAX]}
+                  index={vi}
+                  tom={barTone}
+                  cabecalho={false}
+                  unidade="séries efetivas/semana"
                 />
-              </div>
+              ) : (
+                <div className="vb-track mt-1 h-2" aria-hidden />
+              )}
             </div>
           );
         })}
@@ -152,12 +158,12 @@ export default function ProgressoPage() {
                 <Card key={a.id}>
                   <div className="mb-1 flex flex-wrap gap-2">
                     <Badge tone={isR10 ? "warn" : "danger"}>
-                      {isR10 ? "R10" : "R11"}
+                      {isR10 ? "Abaixo da faixa" : "Acima da faixa"}
                     </Badge>
                     <Badge tone="muted">N1</Badge>
                   </div>
                   <p className="text-sm">
-                    {a.motivo.replace(/\[[^\]]+\]\s*/, "")}
+                    {semCodigoRegra(a.motivo.replace(/\[[^\]]+\]\s*/, ""))}
                   </p>
                   <p className="mt-1 text-xs text-accent">{a.recomendacao}</p>
                 </Card>
@@ -215,7 +221,7 @@ export default function ProgressoPage() {
         {state.decisoes.length === 0 && (
           <Card>
             <p className="text-sm text-muted">
-              Sem decisões ainda — o motor registra R# após cada sessão.
+              Sem decisões ainda — o coach registra a decisão de cada exercício após cada sessão.
             </p>
           </Card>
         )}
@@ -234,7 +240,7 @@ export default function ProgressoPage() {
                   {d.carga_anterior_kg}→{d.nova_carga_kg} kg
                 </span>
               </p>
-              <p className="mt-1 text-xs text-muted">{d.motivo}</p>
+              <p className="mt-1 text-xs text-muted">{semCodigoRegra(d.motivo)}</p>
             </Card>
           );
         })}

@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
+import { PlanoTabs } from "@/components/PlanoTabs";
+import { REFAZER_HREF } from "@/lib/plan/refazer";
 import { Badge, Button, Card, NumStepper, SectionTitle } from "@/components/ui";
 import type { Equipamento, Experiencia, Objetivo, Perfil } from "@/lib/domain";
 import { racionalDoPlano } from "@/lib/plan/racional";
@@ -49,7 +52,7 @@ function Chip({
   );
 }
 
-/** Editar perfil → remount plano + data início + links calendário/progresso */
+/** Plano > Ajustar: estilo, negociação com o coach, remontar, data de início */
 export default function MeuTreinoPage() {
   const { state, ready, updatePerfilAndRemount, setDataInicio } = useApp();
   const router = useRouter();
@@ -154,6 +157,12 @@ export default function MeuTreinoPage() {
     }
   }
 
+  useEffect(() => {
+    const aberto = !!(negociando || confirmOpen);
+    document.body.classList.toggle("sheet-open", aberto);
+    return () => document.body.classList.remove("sheet-open");
+  }, [negociando, confirmOpen]);
+
   async function doRemount() {
     setConfirmOpen(false);
     setBusy(true);
@@ -169,8 +178,8 @@ export default function MeuTreinoPage() {
       }
       setMsg(
         res.fonte === "motor+llm"
-          ? "Plano remontado (motor + coach LLM)."
-          : "Plano remontado (motor).",
+          ? "Plano remontado pelo coach."
+          : "Plano remontado.",
       );
       router.push("/plano");
     } finally {
@@ -197,22 +206,20 @@ export default function MeuTreinoPage() {
 
   return (
     <main className="motion-fade-up px-5 pb-10 pt-8">
+      <PlanoTabs />
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
-        Meu treino
+        Plano · Ajustar
       </p>
-      <h1 className="mb-2 text-2xl font-bold">Perfil & plano</h1>
+      <h1 className="mb-2 text-2xl font-bold">Ajustar plano</h1>
       <p className="mb-4 text-sm text-muted">
-        Edite os dados iniciais. Ao salvar, o motor remonta o plano (LLM só
-        estrutura/copy — kg continua no motor).
+        Escolha o estilo, negocie com o coach ou remonte. Nada muda sem você
+        confirmar — e as cargas que você já tem são mantidas.
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={parqLabel.tone}>{parqLabel.text}</Badge>
-        <Link href="/progresso" className="text-xs font-semibold text-accent">
-          Progresso →
-        </Link>
-        <Link href="/calendario" className="text-xs font-semibold text-accent">
-          Calendário →
+        <Link href="/perfil" className="text-xs font-semibold text-accent">
+          Mudar dias/equipamento →
         </Link>
       </div>
 
@@ -221,10 +228,10 @@ export default function MeuTreinoPage() {
           <p className="text-sm font-semibold text-danger">Remount bloqueado</p>
           <p className="mt-1 text-xs text-muted">{PARQ_BLOQUEIO_MSG}</p>
           <Link
-            href="/onboarding"
+            href="/perfil"
             className="mt-2 inline-block text-xs font-semibold text-accent"
           >
-            Re-responder PAR-Q+ no onboarding →
+            Ver PAR-Q+ no Perfil →
           </Link>
         </Card>
       ) : null}
@@ -278,12 +285,15 @@ export default function MeuTreinoPage() {
             </Button>
           ) : null}
           {state.perfil ? (
-            <Link href="/onboarding" className="mb-4 block text-center text-xs font-semibold text-accent">
-              Refazer com o coach (seu plano só muda se você confirmar) →
+            <>
+            <Link href={REFAZER_HREF} className="motion-press mb-4 flex min-h-11 items-center justify-center rounded-[14px] border border-accent/40 text-sm font-semibold text-accent">
+              Refazer onboarding com o coach →
             </Link>
+            <p className="-mt-2 mb-4 text-center text-[11px] text-muted">Seu plano só muda se você tocar em Confirmar plano. Histórico e cargas ficam.</p>
+            </>
           ) : null}
-          {negociando && state.perfil ? (
-            <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-ink-950 px-5 pb-8 pt-6">
+          {negociando && state.perfil && typeof document !== "undefined" ? createPortal(
+            <div className="sheet-overlay fixed inset-0 flex flex-col overflow-y-auto overscroll-contain bg-ink-950 px-5 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-6">
               <div className="motion-swap flex flex-1 flex-col">
                 <NegociacaoPlano
                   perfilInicial={state.perfil}
@@ -294,7 +304,7 @@ export default function MeuTreinoPage() {
                 />
               </div>
             </div>
-          ) : null}
+          , document.body) : null}
         </>
       ) : null}
 
@@ -308,7 +318,7 @@ export default function MeuTreinoPage() {
           ))}
         </div>
         {estilo === "hibrido_ppl_ul" ? (
-          <p className="text-[11px] text-muted">PPL + descanso + Upper/Lower (5 treinos; 6 dias adiciona um Full Body). O motor posiciona os descansos.</p>
+          <p className="text-[11px] text-muted">PPL + descanso + Upper/Lower (5 treinos; 6 dias adiciona um Full Body). O coach posiciona os descansos.</p>
         ) : null}
         <p className="text-[11px] text-muted">Fase 2 (opcional): trocar de estilo depois de algumas semanas.</p>
         <div className="flex flex-wrap gap-2">
@@ -393,12 +403,12 @@ export default function MeuTreinoPage() {
         {busy ? "Remontando…" : "Salvar e remontar plano"}
       </Button>
 
-      {confirmOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
-          <Card className="w-full max-w-md border border-accent/30">
+      {confirmOpen && typeof document !== "undefined" ? createPortal(
+        <div className="sheet-overlay fixed inset-0 flex items-end justify-center bg-black/70 p-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] sm:items-center">
+          <Card className="max-h-[85dvh] w-full max-w-md overflow-y-auto border border-accent/30">
             <p className="text-lg font-bold">Isso gera um novo plano. Continuar?</p>
             <p className="mt-2 text-sm text-muted">
-              O motor remonta o split. Cargas de exercícios que permanecerem são
+              O coach remonta o split. Cargas de exercícios que permanecerem são
               preservadas; exercícios removidos saem do histórico ativo.
             </p>
             <div className="mt-4 flex gap-2">
@@ -415,7 +425,7 @@ export default function MeuTreinoPage() {
             </div>
           </Card>
         </div>
-      ) : null}
+      , document.body) : null}
     </main>
   );
 }

@@ -1,9 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import { labelSplit, humanizarSplits } from "@/lib/plan/split-label";
+import { acentuar, labelGrupo } from "@/lib/labels";
+import { VolumeBar } from "@/components/VolumeBar";
+import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
+import { PlanoTabs } from "@/components/PlanoTabs";
 import {
   Badge,
   Button,
@@ -71,6 +75,7 @@ export default function PlanoPage() {
 
   return (
     <main className="motion-fade-up px-5 pb-8 pt-8">
+      <PlanoTabs />
       {banner ? (
         <div className="motion-swap mb-4 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-bone-50">
           <p className="font-bold text-accent">Plano gerado</p>
@@ -85,12 +90,8 @@ export default function PlanoPage() {
       </p>
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-bold capitalize">
-          {plano.divisao.replace(/_/g, " ")}
+          {labelSplit(plano.divisao)}
         </h1>
-        <div className="flex gap-3 text-xs font-semibold text-accent">
-          <Link href="/calendario">Calendário</Link>
-          <Link href="/meu-treino">Meu treino</Link>
-        </div>
       </div>
       <p className="mb-3 text-sm text-muted">
         {plano.dias_por_semana}×/semana · {plano.minutos_por_sessao} min ·{" "}
@@ -145,7 +146,7 @@ export default function PlanoPage() {
       </Card>
 
       <Card className="mb-4">
-        <p className="text-sm leading-relaxed text-muted">{plano.justificativa.texto}</p>
+        <p className="text-sm leading-relaxed text-muted">{acentuar(humanizarSplits(semCodigoRegra(plano.justificativa.texto)))}</p>
         <div className="mt-2">
           <EvidenciaBadge evidencia={plano.justificativa.evidencia} />
         </div>
@@ -179,17 +180,16 @@ export default function PlanoPage() {
             <span className="vol-title">Volume / semana</span>
             <span className="vol-hint">séries efetivas · alvo 10–20</span>
           </div>
-          {volumeRows.map(({ grupo, sets }) => {
-            const pct = Math.min(100, (sets / (VOLUME_MAX + 4)) * 100);
+          {volumeRows.map(({ grupo, sets }, gi) => {
             return (
               <div key={grupo} className="vol-row">
-                <span className="vol-label">{grupo}</span>
-                <div className="vol-track">
-                  <span className="vol-band" aria-hidden />
-                  <span
-                    className="bar-fill enter"
-                    style={{ width: barsOn ? `${pct}%` : "0%" }}
-                  />
+                <span className="vol-label">{labelGrupo(grupo)}</span>
+                <div className="flex-1">
+                  {barsOn ? (
+                    <VolumeBar label={labelGrupo(grupo)} valor={Math.round(sets)} max={VOLUME_MAX + 4} faixa={[10, 20]} index={gi} cabecalho={false} fina />
+                  ) : (
+                    <div className="vb-track mt-1 h-1.5" aria-hidden />
+                  )}
                 </div>
                 <span className="vol-num">{Math.round(sets)}</span>
               </div>
