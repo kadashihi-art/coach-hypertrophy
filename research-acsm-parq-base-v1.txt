@@ -1,0 +1,30 @@
+STATUS: PARTIAL — o meio do paste foi truncado no chat (reticências em torno do ACSM 2009).
+Fonte: t543u. Pedir reenvio do arquivo completo ao iury se for virar regra.
+
+Esta segunda busca retornou principalmente fontes de posicionamento e triagem, e nÃ£o o texto completo dos estudos. Por isso, as bases abaixo sÃ£o confiÃ¡veis como direÃ§Ã£o, mas precisam ser verificadas nos documentos originais antes de virarem regra de software.
+
+Base de evidÃªncia para o app
+
+1. Triagem antes de qualquer prescriÃ§Ã£o
+
+- O PAR-Q+ Ã© o padrÃ£o mÃ­nimo de triagem prÃ©-participaÃ§Ã£o. Ele identifica quem precisa de orientaÃ§Ã£o mÃ©dica antes de comeÃ§ar ou intensificar a atividade. PAR-Q+ e ePARmed-X+ ( (https://eparmedx.com/)eparmedx.com) (https://eparmedx.com/) e APTA (https://www.apta.org/patient-care/evidence-based-practice-resources/test-measures/physical-activity-readiness-questionnaire-par-q-par-q) descrevem o fluxo: se a pessoa responde "nÃ£o" a tudo, pode seguir com um programa progressivo; se responde "sim", precisa de avaliaÃ§Ã£o adicional.
+- ImplicaÃ§Ã£o para o app: o onboarding precisa ter um gate obrigatÃ³rio com PAR-Q+. Respostas "sim" devem bloquear a prescriÃ§Ã£o e direcionar para avaliaÃ§Ã£o profissional, nÃ£o para um ajuste de treino.
+
+2. Posicionamento mais recente do ACSM (2026)
+
+- O ACSM publicou em 2026 uma posiÃ§Ã£o atualizada sobre prescriÃ§Ã£o de treino resistido, que sintetiza 137 revisÃµes sistemÃ¡ticas e mais de 30 mil participantes. Ela atualiza a posiÃ§Ã£o de 2009 sobre modelos de progressÃ£o. ACSM â Science Spotlight (https://acsm.org/science-spotlight-acsm-releases-new-position-stand-on-resistance-training/) e ACSM â Guidelines 2026 (https://www.acsm.org/resistance-training-guidelines-update-2026)
+- RecomendaÃ§Ãµes de nÃ­vel geral citadas no material oficial:
+  - Treinar todos os grandes grupos musculares pelo menos 2 dias por semana, com cargas moderadas a altas. ACSM â apresentaÃ§Ã£o oficial (https://acsm.org/wp-content/uploads/2026/03/Pronouncement-ppt-deck_resistance-training-ps.pdf)
+  - Para forÃ§a: cargas em torno...ults" (2009). Vale usar a posiÃ§Ã£o nova como referÃªncia principal e a antiga apenas para entender a evoluÃ§Ã£o do modelo. PubMed â ACSM 2026 (http://pubmed.ncbi.nlm.nih.gov/41843416)
+- A estrutura usada pelo ACSM para prescriÃ§Ã£o segue os fatores FITT-VP: frequÃªncia, intensidade, tempo, tipo, volume, padrÃ£o e progressÃ£o. Essa Ã© a espinha dorsal natural para o motor de decisÃ£o do app.
+
+ImplicaÃ§Ãµes para o produto
+
+MÃ³dulo do appDecisÃ£o que ele precisa tomarBaseTriagemLiberar ou bloquear a prescriÃ§Ã£oPAR-Q+ObjetivoForÃ§a, hipertrofia ou potÃªncia, com metas diferentes de carga e volumeACSM 2026Volume semanalComeÃ§ar em torno de 10 sÃ©ries por grupo e ajustar pela resposta individualACSM 2026FrequÃªnciaMÃ­nimo de 2 dias por semana por grupo muscularACSM 2026EsforÃ§oNÃ£o exigir falha; usar proximidade ao esforÃ§o (por exemplo, repetiÃ§Ãµes em reserva) como critÃ©rioACSM 2026ProgressÃ£oAumentar carga ou repetiÃ§Ãµes quando a execuÃ§Ã£o permanecer consistenteModelo FITT-VP / progressÃ£oRegistroGuardar carga, repetiÃ§Ãµes, esforÃ§o, amplitude e sintomas para ajustar ao longo do tempoPrincÃ­pio de individualizaÃ§Ã£o
+
+Limites que precisam estar no produto
+
+- NÃ£o tenho o texto completo do ACSM 2026. Os nÃºmeros acima vÃªm de materiais de divulgaÃ§Ã£o e resumos. Antes de programar as regras, leia a posiÃ§Ã£o original em Medicine & Science in Sports & Exercise (abril de 2026).
+- O app nÃ£o substitui avaliaÃ§Ã£o profissional. A ferramenta deve deixar claro que Ã© educativa e que sintomas, condiÃ§Ãµes clÃ­nicas ou dÃºvidas tÃ©cnicas exigem um profissional.
+- Os cues de execuÃ§Ã£o da primeira pesquisa nÃ£o foram validados por esta busca. Eles continuam sendo sÃ­nteses e nÃ£o devem ser tratados como regras sem revisÃ£o de um especialista em biomecÃ¢nica.
+- Falta uma fonte de referÃªncia de progressÃ£o por padrÃ£o de movimento. A busca nÃ£o trouxe dados suficientes para definir incrementos de carga por exercÃ­cio, e isso precisarÃ¡ de um tratamento especÃ­fico.

@@ -1,0 +1,18 @@
+import { findAlt, resolverAlternativa, cargaDoEstado } from "../src/lib/plan/alternativa";
+import { CATALOG_EXERCICIOS as C } from "../src/lib/catalog/exercicios";
+let fail = 0;
+const ok = (c: boolean, m: string) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fail++; };
+const prim = C.find((e) => C.some((x) => x.padrao === e.padrao && x.id !== e.id))!;
+const id = findAlt(C, prim.padrao, null, prim.id);
+const alt = C.find((e) => e.id === id);
+ok(!!alt && alt.id !== prim.id && alt.padrao === prim.padrao, `findAlt ${prim.id} -> ${id} (${prim.padrao})`);
+const r = resolverAlternativa({ exercicio_id: prim.id, alternativa_equipamento_ocupado: null }, C);
+ok(!!r && r.id !== prim.id && r.padrao === prim.padrao, `fallback alt null -> ${r?.id}`);
+const r2 = resolverAlternativa({ exercicio_id: prim.id, alternativa_equipamento_ocupado: alt!.id }, C);
+ok(r2?.id === alt!.id, "usa alt explícita");
+const est: any = [{ exercicio_id: alt!.id, carga_atual_kg: 40, alvo_proxima_sessao: { carga_kg: 42.5, faixa_reps: [8, 12] } }];
+ok(cargaDoEstado(est, alt!.id, 80) === 42.5, "prefill alvo da alternativa");
+ok(cargaDoEstado(est, prim.id, 80) === 80, "sem estado mantém carga");
+const cob = C.filter((e) => resolverAlternativa({ exercicio_id: e.id, alternativa_equipamento_ocupado: null }, C)).length;
+console.log(`cobertura fallback: ${cob}/${C.length}`);
+process.exit(fail ? 1 : 0);

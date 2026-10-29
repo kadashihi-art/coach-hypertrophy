@@ -1,0 +1,41 @@
+O que a posição do ACSM 2026 diz de forma concreta
+
+Esta busca trouxe o resumo de dose-resposta do próprio documento, o que permite transformar a posição em parâmetros de software. Ainda assim, os números vêm de resumos e de uma apresentação oficial, não do texto integral.
+
+Parâmetros prescritivos (resumo oficial)
+
+ObjetivoFrequênciaIntensidadeVolumeOutrosForça≥2 sessões/semana≥80% 1RM (dose-resposta)2–3 séries por sessãoAmplitude completa; exercício no início da sessãoHipertrofiaNão há frequência específica destacadaNão há faixa de carga específica destacada≥10 séries/semana por grupo (dose-resposta)Contração excêntrica/sobrecargaPotênciaNão há frequência específica destacada30–70% 1RMBaixo a moderado (≤24 repetições·séries)Execução rápida na fase concêntrica; levantamentos olímpicos
+
+Fontes: apresentação oficial do ACSM (https://acsm.org/wp-content/uploads/2026/03/Pronouncement-ppt-deck_resistance-training-ps.pdf), texto publicado no Medicine & Science in Sports & Exercise (https://journals.lww.com/acsm-msse/fulltext/2026/04000/american_college_of_sports_medicine_position.21.aspx) e resumo no PubMed (http://pubmed.ncbi.nlm.nih.gov/41843416).
+
+O que NÃO muda o resultado (fator decisivo para o app)
+
+O resumo do PubMed e a cobertura do MDSpire indicam que estes fatores não impactaram consistentemente os resultados:
+
+- Treinar até a fadiga ou falha muscular
+- Tipo de equipamento (máquina versus peso livre)
+- Complexidade do exercício e estrutura de séries
+- Tempo sob tensão
+- Restrição de fluxo sanguíneo
+- Periodização
+- Velocidade de contração e intervalos de descanso (para força)
+
+Isso contradiz parte da lógica comum de academia e deve orientar o app: não deve impor falha, nem exigir máquinas ou periodização complexa como regra.
+
+Ressalva importante
+
+Os resultados de hipertrofia com "≥10 séries por semana" são dose-resposta, ou seja, mais volume associou-se a mais hipertrofia até certo ponto. Não é um mínimo universal, e o próprio resumo não define um teto. O app deve tratar 10 séries como ponto de partida e ajustar pela resposta individual.
+
+Lacunas que ainda restam
+
+- Incrementos de carga por progressão: a posição não traz regras de incremento; isso precisa de outra fonte ou de definição própria, explicitamente marcada como heurística.
+- Proximidade do esforço (RIR): a busca não trouxe um valor oficial. Não recomendo afirmar um alvo de repetições em reserva como norma do ACSM.
+- Descanso entre séries: a posição indica que intervalos não alteraram força de forma consistente, mas não traz um número para hipertrofia nessa busca.
+- Pedido de "nível extremo": a posição só cobre adultos saudáveis. Atletas, idosos, gestantes e pessoas com condições clínicas exigem regras separadas.
+
+Como usar isso no app
+
+1. Motor de volume: iniciar em torno de 10 séries semanais por grupo muscular, com registro de resposta para ajuste.
+2. Motor de força: separar um bloco de baixas repetições e alta carga (≥80% 1RM) apenas se o objetivo for força.
+3. Motor de potência: cargas de 30 a 70% 1RM com intenção de velocidade, se o objetivo for potência.
+4. Regras de segurança: nenhum bloqueio por falha; prioridade para amplitude controlada e técnica; triagem PAR-Q+ antes de tudo.

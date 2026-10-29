@@ -1,0 +1,39 @@
+{
+  "name": "coach-hypertrophy",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "smoke:engine": "npx --yes tsx scripts/smoke-engine.ts",
+    "smoke:plano": "npx --yes tsx scripts/smoke-gerar-plano.ts",
+    "smoke:coach": "npx --yes tsx scripts/smoke-coach.ts",
+    "smoke:coach-chat": "npx --yes tsx scripts/smoke-coach-chat.ts",
+    "smoke:t5-arsenal": "npx --yes tsx scripts/smoke-t5-arsenal.ts",
+    "smoke:perfil-calendario": "npx --yes tsx scripts/smoke-perfil-calendario.ts",
+    "smoke:racional-hibrido": "npx --yes tsx scripts/smoke-racional-hibrido.ts",
+    "smoke:negociacao": "npx --yes tsx scripts/smoke-negociacao.ts",
+    "smoke:coleta": "npx --yes tsx scripts/smoke-coleta.ts",
+    "smoke:tom": "npx --yes tsx scripts/smoke-tom.ts"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2",
+    "next": "16.4.3",
+    "next-auth": "^5.0.0-beta.32",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

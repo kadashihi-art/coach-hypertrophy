@@ -1,0 +1,544 @@
+@import "tailwindcss";
+
+/* Tokens gamer (TOKENS-GAMER.md) — espelho de /workspace/hypertrophy-prototype/index.html */
+:root {
+  --ink-950: #050505;
+  --ink-900: #0a0a0a;
+  --ink-800: #121212;
+  --ink-700: #1f1f1f;
+  --ink-600: #2a2a2a;
+  --bone-50: #f5f5f0;
+  --bone-200: #c8c8be;
+  --bone-300: #9a9a90;
+  --bone-500: #9a9a90;
+  --accent: #B8FF3C;
+  --accent-dim: #6a9420;
+  --go: #3DFF8A;
+  --go-dim: #1a7a46;
+  --warn: #FFB020;
+  --warn-dim: #7a5210;
+  --danger: #FF3B4E;
+  --danger-dim: #7f1d1d;
+  --faint: #5c5c56;
+  --bg: #050505; --surface: #0a0a0a; --surface-2: #121212; --border: #1f1f1f; --text: #f5f5f0; --muted: #9a9a90;
+  --shadow-accent: 0 0 0 2px #B8FF3C;
+  --shadow-glow: 0 0 24px rgba(184,255,60,.25);
+  --radius-card: 16px;
+  --radius-btn: 14px;
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+
+@theme inline {
+  --color-ink-950: var(--ink-950);
+  --color-ink-900: var(--ink-900);
+  --color-ink-800: var(--ink-800);
+  --color-ink-700: var(--ink-700);
+  --color-ink-600: var(--ink-600);
+  --color-bone-50: var(--bone-50);
+  --color-bone-200: var(--bone-200);
+  --color-bone-300: var(--bone-300);
+  --color-bone-500: var(--bone-500);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-go: var(--go);
+  --color-go-dim: var(--go-dim);
+  --color-warn: var(--warn);
+  --color-warn-dim: var(--warn-dim);
+  --color-danger: var(--danger);
+  --color-danger-dim: var(--danger-dim);
+  /* aliases semânticos */
+  --color-bg: var(--ink-950);
+  --color-card: var(--ink-900);
+  --color-line: var(--border);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-faint: var(--faint);
+  --color-muted: var(--muted);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-card: var(--radius-card);
+  --radius-btn: var(--radius-btn);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0; min-height: 100%;
+  background: var(--ink-950); color: var(--bone-50);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased; color-scheme: dark;
+}
+body { max-width: 480px; margin-inline: auto; }
+a { color: inherit; text-decoration: none; }
+
+.num, .load-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.big-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 44px; line-height: 1; font-weight: 800; letter-spacing: -0.02em; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.btn { border-radius: var(--radius-btn); font-weight: 600; transition: transform .08s, opacity .15s; }
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--accent); color: #050505; box-shadow: var(--shadow-glow); }
+
+.ev { display: inline-flex; align-items: center; gap: 4px; border: 1px solid; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+.ev-forte { color: var(--go); border-color: var(--go-dim); background: rgba(61,255,138,.08); }
+.ev-moderado { color: var(--accent); border-color: var(--accent-dim); background: rgba(184,255,60,.12); }
+.ev-contextual { color: var(--warn); border-color: var(--warn-dim); background: rgba(255,176,32,.08); }
+.ev-pratica { color: var(--bone-300); border-color: var(--ink-600); background: rgba(154,154,144,.06); }
+
+.alert-n0 { border-left: 3px solid var(--go); }
+.alert-n1 { border-left: 3px solid var(--warn); background: rgba(255,176,32,.06); color: var(--warn); }
+.alert-n2 { border-left: 3px solid var(--danger); background: rgba(255,59,78,.1); color: var(--danger); }
+
+.bar-track { height: 8px; background: var(--ink-700); border-radius: 999px; overflow: hidden; position: relative; }
+
+.safe-bottom { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+
+.timer-bar {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--ink-600);
+}
+.timer-bar .timer-display { animation: timerPulse 1s ease-in-out infinite; }
+@keyframes timerPulse { 0%,100% { opacity: 1; } 50% { opacity: .72; text-shadow: 0 0 12px rgba(184,255,60,.4); } }
+.chip-rir {
+  border-radius: 999px; border: 1px solid var(--ink-600);
+  padding: 8px 0; font-size: 13px; font-weight: 700;
+  background: transparent; color: var(--text);
+  transition: transform .12s, background .15s, border-color .15s;
+}
+.chip-rir.on {
+  background: var(--go); color: #050505; border-color: var(--go);
+  transform: scale(1.04);
+}
+.set-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; transition: border-color .25s, box-shadow .25s;
+}
+.set-card.expanded {
+  border-color: rgba(184,255,60,.25);
+  box-shadow: 0 0 0 1px rgba(184,255,60,.08);
+}
+.thumb-zone {
+  position: sticky; bottom: 0; z-index: 20;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+}
+.pill-offline {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--go); border: 1px solid rgba(61,255,138,.35); padding: 2px 8px; border-radius: 999px;
+  background: rgba(61,255,138,.06);
+}
+
+
+/* === MOTION SYSTEM (WD) === */
+/* Spec: docs/motion-spec.md · 150–300ms · lime glow · prefers-reduced-motion */
+:root {
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 300ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.2, 0.9, 0.2, 1.35);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes motionFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motionFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes motionScaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motionPop {
+  0% { transform: scale(0.92); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+@keyframes motionGlowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(184, 255, 60, 0); }
+  50% { box-shadow: 0 0 20px rgba(184, 255, 60, 0.28); }
+}
+@keyframes motionMarkIn {
+  from { opacity: 0; transform: scale(0.85) rotate(-4deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motionSlideSwap {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motionCollapse {
+  from { opacity: 0.55; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes motionExpand {
+  from { opacity: 0.6; transform: scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.motion-fade-up { animation: motionFadeUp var(--motion-base) var(--ease-out) both; }
+.motion-fade-in { animation: motionFadeIn var(--motion-fast) var(--ease-out) both; }
+.motion-scale-in { animation: motionScaleIn var(--motion-base) var(--ease-out) both; }
+.motion-pop { animation: motionPop var(--motion-base) var(--ease-spring) both; }
+.motion-mark-in { animation: motionMarkIn var(--motion-slow) var(--ease-spring) both; }
+.motion-swap { animation: motionSlideSwap var(--motion-base) var(--ease-out) both; }
+.motion-collapse { animation: motionCollapse var(--motion-base) var(--ease-out) both; }
+.motion-expand { animation: motionExpand var(--motion-base) var(--ease-out) both; }
+
+.motion-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.motion-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.motion-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.motion-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.motion-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.motion-stagger > *:nth-child(6) { animation-delay: 200ms; }
+.motion-stagger > * { animation: motionFadeUp var(--motion-base) var(--ease-out) both; }
+
+.motion-press {
+  transition: transform var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out),
+    opacity var(--motion-fast) linear;
+}
+.motion-press:active:not(:disabled) { transform: scale(0.97); }
+.motion-cta-glow:not(:disabled) { animation: motionGlowPulse 2.4s var(--ease-in-out) infinite; }
+.motion-cta-glow:active:not(:disabled),
+.motion-cta-glow:disabled { animation: none; }
+
+.motion-field {
+  transition: border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
+}
+
+.tab-motion {
+  transition: color var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
+}
+.tab-motion:active { transform: scale(0.94); }
+.tab-motion.is-active .tab-ico {
+  filter: drop-shadow(0 0 6px rgba(184, 255, 60, 0.45));
+  transition: filter var(--motion-base) var(--ease-out);
+}
+
+.card-motion {
+  transition: border-color var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-fade-up, .motion-fade-in, .motion-scale-in, .motion-pop,
+  .motion-mark-in, .motion-swap, .motion-collapse, .motion-expand,
+  .motion-stagger > *, .motion-cta-glow,
+  .timer-bar .timer-display {
+    animation: none !important;
+  }
+  .motion-press:active:not(:disabled),
+  .tab-motion:active { transform: none; }
+}
+/* Logger: chip RIR pop on select */
+.chip-rir.on { animation: chipPop 220ms var(--ease-out, ease-out); }
+@keyframes chipPop { 0% { transform: scale(1); } 50% { transform: scale(1.12); } 100% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .chip-rir.on { animation: none; } }
+
+/* === ONBOARDING MOTION (WD) === */
+/* Spec: docs/motion-spec.md § Onboarding (rico) · CSS only */
+
+.chip-motion {
+  border-radius: 999px;
+  border: 1px solid var(--ink-600);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--bone-50);
+  transition:
+    transform var(--motion-fast) var(--ease-spring),
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
+}
+.chip-motion:active { transform: scale(0.96); }
+.chip-motion.on {
+  background: var(--accent);
+  color: #050505;
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(184, 255, 60, 0.22);
+  animation: chipPop var(--motion-base) var(--ease-spring) both;
+}
+
+/* bar-track já existe (linha ~94); reforço + fill */
+.bar-track {
+  height: 8px;
+  background: var(--ink-700);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(184, 255, 60, 0.35);
+  transition: width var(--motion-slow) var(--ease-out);
+  will-change: width;
+}
+.bar-fill.enter {
+  animation: barGrow var(--motion-slow) var(--ease-out) both;
+}
+@keyframes barGrow {
+  from { transform: scaleX(0); transform-origin: left center; }
+  to { transform: scaleX(1); transform-origin: left center; }
+}
+
+.bar-fill.warn { background: var(--warn); box-shadow: 0 0 10px rgba(255, 176, 32, 0.3); }
+.bar-fill.go { background: var(--go); box-shadow: 0 0 10px rgba(61, 255, 138, 0.3); }
+
+/* Volume / semana preview (onboarding TEMPO + OBJETIVO) */
+.vol-chart {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 14px 14px 12px;
+}
+.vol-chart .vol-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.vol-chart .vol-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.vol-chart .vol-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+.vol-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.vol-row:last-child { margin-bottom: 0; }
+.vol-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vol-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--bone-50);
+}
+.vol-track {
+  position: relative;
+  height: 10px;
+  background: var(--ink-700);
+  border-radius: 999px;
+  overflow: hidden;
+}
+/* banda alvo 10–20 (escala 0–24 → ~42%–83%) */
+.vol-band {
+  position: absolute;
+  inset: 0 auto 0;
+  left: calc(10 / 24 * 100%);
+  width: calc(10 / 24 * 100%);
+  background: rgba(184, 255, 60, 0.08);
+  border-left: 1px solid rgba(184, 255, 60, 0.25);
+  border-right: 1px solid rgba(184, 255, 60, 0.25);
+  pointer-events: none;
+  z-index: 0;
+}
+.vol-track .bar-fill {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+}
+
+/* Cards OBJETIVO */
+.obj-card {
+  transition:
+    border-color var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+.obj-card.on {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(184, 255, 60, 0.18);
+  transform: scale(1.01);
+  animation: motionPop var(--motion-base) var(--ease-spring) both;
+}
+.obj-card:active { transform: scale(0.99); }
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-motion.on,
+  .bar-fill.enter,
+  .obj-card.on {
+    animation: none !important;
+  }
+  .chip-motion,
+  .bar-fill,
+  .obj-card {
+    transition: none !important;
+  }
+  .chip-motion:active,
+  .obj-card:active,
+  .obj-card.on {
+    transform: none;
+  }
+}
+
+/* === LOGGER + APP-WIDE MOTION (WD) === */
+/* Spec: docs/motion-spec.md § Logger (T4) + telas · CSS only */
+
+/* NumStepper tick — remount via key={value} dispara animação */
+@keyframes numTick {
+  0% { transform: scale(1); text-shadow: none; }
+  40% { transform: scale(1.06); text-shadow: 0 0 14px rgba(184, 255, 60, 0.45); }
+  100% { transform: scale(1); text-shadow: none; }
+}
+.num-tick {
+  display: inline-block;
+  animation: numTick var(--motion-base) var(--ease-spring) both;
+}
+
+/* Carga flash — mais forte que num-tick (mesmo key remount) */
+@keyframes loadFlash {
+  0% { transform: scale(1); color: inherit; text-shadow: none; }
+  35% {
+    transform: scale(1.08);
+    color: var(--accent);
+    text-shadow: 0 0 18px rgba(184, 255, 60, 0.55);
+  }
+  100% { transform: scale(1); color: inherit; text-shadow: none; }
+}
+.load-flash {
+  display: inline-block;
+  animation: loadFlash 200ms var(--ease-spring) both;
+}
+.load-flash.down {
+  animation-name: loadFlashDim;
+}
+@keyframes loadFlashDim {
+  0% { transform: scale(1); opacity: 1; }
+  40% { transform: scale(0.97); opacity: 0.72; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Âncora de carga de trabalho (working load) */
+.is-anchor {
+  position: relative;
+}
+.is-anchor::after {
+  content: "âncora";
+  position: absolute;
+  top: -2px;
+  right: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+/* Aquecimento rows — flash de borda quando âncora muda */
+@keyframes setAnchorPulse {
+  0% { border-color: var(--border); box-shadow: none; }
+  35% {
+    border-color: rgba(184, 255, 60, 0.65);
+    box-shadow: 0 0 0 1px rgba(184, 255, 60, 0.35), 0 0 14px rgba(184, 255, 60, 0.2);
+  }
+  100% { border-color: var(--border); box-shadow: none; }
+}
+.set-anchor-pulse {
+  animation: setAnchorPulse 300ms var(--ease-out) both;
+}
+
+/* RIR chip — spring + go tint reforçado */
+.chip-rir {
+  transition:
+    transform var(--motion-fast) var(--ease-spring),
+    background var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
+}
+.chip-rir:active { transform: scale(0.94); }
+.chip-rir.on {
+  background: var(--go);
+  color: #050505;
+  border-color: var(--go);
+  box-shadow: 0 0 14px rgba(61, 255, 138, 0.35);
+  transform: scale(1.04);
+  animation: chipPop var(--motion-base) var(--ease-spring) both;
+}
+
+/* Hit no alvo (série boa) — check pop, sem confetti */
+@keyframes hitPop {
+  0% { opacity: 0; transform: scale(0.7); }
+  55% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.hit-flash {
+  animation: hitPop var(--motion-slow) var(--ease-spring) both;
+}
+.hit-flash .ev-forte {
+  box-shadow: 0 0 12px rgba(61, 255, 138, 0.35);
+}
+
+/* PR badge / meso bar helpers */
+.pr-pop { animation: motionPop var(--motion-base) var(--ease-spring) both; }
+.meso-fill {
+  transition: width var(--motion-slow) var(--ease-out);
+}
+.meso-fill.enter {
+  animation: barGrow var(--motion-slow) var(--ease-out) both;
+}
+
+/* Sheet / check-in enter */
+.sheet-enter {
+  animation: motionFadeUp var(--motion-base) var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .num-tick,
+  .load-flash,
+  .load-flash.down,
+  .set-anchor-pulse,
+  .chip-rir.on,
+  .hit-flash,
+  .pr-pop,
+  .meso-fill.enter,
+  .sheet-enter {
+    animation: none !important;
+  }
+  .num-tick,
+  .load-flash,
+  .chip-rir,
+  .meso-fill {
+    transition: none !important;
+  }
+  .chip-rir:active,
+  .chip-rir.on,
+  .is-anchor::after {
+    transform: none;
+  }
+}

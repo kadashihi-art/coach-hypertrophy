@@ -1,0 +1,799 @@
+Briefing Completo — App de Treinamento de Força com Coach de IA
+
+Documento de especificação para desenho de protótipo · Versão 1.0 · Outubro 2026
+
+0. Como usar este documento
+
+Este documento é a fonte única de verdade para o desenho do protótipo. Contém contexto do produto, princípios não negociáveis, arquitetura de dados, contrato de resposta da IA, catálogo de regras de progressão, inventário de telas, fluxos, especificação do logger, sistema visual, gamificação, escopo e critérios de aceite.
+
+O objetivo desta etapa é DESENHO DE PROTÓTIPO — telas, fluxos e hierarquia de informação. Não é implementação de produção. O entregável esperado são telas navegáveis (Figma, HTML estático ou equivalente) cobrindo os fluxos da seção 8.
+
+1. Contexto do produto
+
+1.1 O que é
+
+Um app pessoal de treinamento de força com um coach de IA que monta planos, prescreve sessões, acompanha execução e decide progressão de carga com base no histórico real do usuário.
+
+1.2 Para quem
+
+Uso próprio, single-user. Não é produto comercial. Não há onboarding de terceiros, billing, multiusuário ou retenção de clientes.
+
+1.3 O problema que resolve
+
+Apps de treino existentes falham em três pontos: (a) não lembram o histórico de forma estruturada, então a progressão é genérica; (b) exigem registro manual lento, o que mata a adesão em poucas semanas; (c) explicam pouco — não dizem por que, quando e onde fazer.
+
+1.4 A tese do produto
+
+O valor não está no conhecimento — um bom modelo já sabe fisiologia do treinamento. Está em duas coisas: MEMÓRIA estruturada do histórico e DECISÃO automática de progressão. O app existe para eliminar a decisão mental de "quanto eu ponho na barra hoje".
+
+1.5 Métrica de sucesso pessoal
+
+"Usei em 90% dos treinos por 8 semanas e meu e1RM subiu." Se não bater isso, o produto falhou.
+
+2. Princípios não negociáveis
+
+P1 — Motor determinístico calcula, IA explica. Números de progressão (carga, séries, deload) vêm de código com regras fixas. A IA nunca inventa números. Ela lê o resultado do motor e comunica o porquê.
+
+P2 — O LLM nunca escreve direto no banco. A IA devolve um contrato de resposta. O código valida contra schema, traduz e grava. Dois schemas, uma camada de tradução no meio.
+
+P3 — Registro de série em menos de 15 segundos. Com uma mão, dedo suado, entre séries. Se passar disso, o app morre em 3 semanas. Este é o requisito de UX mais importante do projeto.
+
+P4 — Pré-preenchimento sempre. A última carga do exercício vem preenchida. O usuário ajusta, não digita.
+
+P5 — Gamificação baseada em dados reais. PRs, e1RM, volume semanal versus faixa alvo, consistência em janelas de 4 semanas. Nunca XP vazio, nunca streak punitivo.
+
+P6 — Honestidade epistêmica visível. Toda prescrição e justificativa carrega um nível de evidência: forte, moderado, contextual ou prática. Isso aparece na interface.
+
+P7 — Segurança antes de performance. Sinais de alerta clínico travam o plano. Dor não é progresso.
+
+3. Arquitetura em duas camadas
+
+Duas camadas com ciclos de vida incompatíveis. Misturá-las faz o banco herdar a fragilidade do prompt.
+
+CAMADA A — Modelo de Dados (persistido). Sobrevive meses. Validado por schema rígido. Versionado. É o que o banco guarda. Entidades: Perfil, Exercicio, GuiaExecucao, Plano, Sessao, Prescricao, RegistroSerie, EstadoExercicio, Checkin, AlertaSeguranca, DecisaoProgressao.
+
+CAMADA B — Contrato de Resposta do LLM (por turno). Válido por segundos. Devolvido pela IA, validado, traduzido e descartado. Nunca é fonte de verdade. Campos: contrato_versao, tipo_resposta, alerta_seguranca, plano, decisoes_progressao, analise_pos_treino, mensagem_usuario.
+
+4. Modelo de dados — resumo legível
+
+Entidade
+
+Campos principais
+
+Observação
+
+Perfil
+
+id, peso_kg, altura_cm, experiencia, dias_por_semana, minutos_por_sessao, cardio_min_semana, equipamentos, restricoes, criado_em
+
+Define a geração do plano
+
+Exercicio
+
+id, nome, padrao, grupo_primario, grupos_secundarios, equipamento, composto, unilateral, guia_id
+
+Catálogo estático
+
+GuiaExecucao
+
+id, exercicio_id, setup, execucao, erros_comuns, cues, amplitude, respiracao, contraindicacoes
+
+Camada de execução
+
+Plano
+
+id, perfil_id, objetivo, divisao, dias_por_semana, minutos_por_sessao, mesociclo, justificativa, sessoes, bloqueado, criado_em, schema_version
+
+Mesociclo de 3 a 12 semanas
+
+Sessao
+
+id, plano_id, nome, ordem, data, status, grupos, prescricoes, volume_por_grupo, duracao_estimada_min, duracao_real_min
+
+status: planejada, em_andamento, concluida, parcial, abandonada
+
+Prescricao
+
+id, sessao_id, exercicio_id, padrao, ordem, series, faixa_reps, rir_alvo, descanso_seg, cadencia, tecnica, carga, alternativa_equipamento_ocupado, guia_id, evidencia
+
+carga é objeto: trabalho_kg, top_set_kg, origem
+
+RegistroSerie
+
+id, sessao_id, prescricao_id, exercicio_id, numero, tipo_serie, carga_kg, reps, rir_percebido, dor, observacao, executado_em
+
+tipo_serie: trabalho, top_set, back_off, drop, aquecimento
+
+EstadoExercicio
+
+exercicio_id, carga_atual_kg, faixa_reps, rir_alvo, alvo_proxima_sessao, sessoes_sem_progresso, ultima_progressao_em, e1rm_estimado_kg, atualizado_em
+
+A MEMÓRIA do app. Entidade mais importante
+
+Checkin
+
+id, data, sono_h, prontidao, estresse, peso_kg, agua_ml, proteina_g, dor, observacao
+
+Diário, alimenta autoregulação
+
+AlertaSeguranca
+
+id, data, nivel, motivo, recomendacao, origem_sessao_id, resolvido
+
+nivel: N0, N1, N2
+
+DecisaoProgressao
+
+id, data, exercicio_id, sessao_id, regra, acao, carga_anterior_kg, nova_carga_kg, faixa_reps_reiniciada, motivo, evidencia
+
+Registro auditável de cada decisão
+
+Enums fechados
+
+objetivo:           hipertrofia, forca, recomposicao, saude
+
+divisao:            full_body, upper_lower, ppl, ppl_upper_lower, push_pull, bro_split, hibrido
+
+foco_mesociclo:     acumulo, intensificacao, realizacao, deload
+
+padrao:             empurrar_horizontal, empurrar_inclinado, empurrar_vertical, puxar_horizontal, puxar_vertical,
+
+agachamento, dobradica_quadril, extensao_joelho, flexao_joelho, flexao_plantar, abducao_ombro,
+
+flexao_cotovelo, extensao_cotovelo, flexao_ombro, rotacao_externa, core_antiextensao, core_antirotacao
+
+evidencia:          forte, moderado, contextual, pratica
+
+acao_progressao:    subir_carga, manter_carga, manter_e_checar, reduzir_carga, suspender, deload
+
+nivel_alerta:       N0, N1, N2
+
+origem_carga:       historico, estimativa_conservadora, usuario, calibracao
+
+status_sessao:      planejada, em_andamento, concluida, parcial, abandonada
+
+experiencia:        iniciante, intermediario, avancado
+
+5. Contrato de resposta do LLM
+
+A IA devolve sempre este envelope. tipo_resposta define quais blocos são obrigatórios.
+
+Campo
+
+Descrição
+
+contrato_versao
+
+fixo "2.0.0"
+
+tipo_resposta
+
+plano_gerado, sessao_do_dia, ajuste_progressao, analise_pos_treino, resposta_conversacional
+
+alerta_seguranca
+
+nivel (N0/N1/N2), motivo, recomendacao
+
+plano
+
+objetivo, divisao, dias_por_semana, minutos_por_sessao, mesociclo, justificativa (texto + evidencia), sessoes (com prescricoes aninhadas)
+
+decisoes_progressao
+
+lista com exercicio_id, regra, acao, carga_anterior_kg, nova_carga_kg, faixa_reps_reiniciada, motivo, evidencia
+
+analise_pos_treino
+
+volume_realizado_vs_planejado (planejado, realizado, delta por grupo), pontos_fortes, pontos_fracos, ajustes, alertas_programacao
+
+mensagem_usuario
+
+texto curto para o usuário
+
+Exemplo de resposta — tipo_resposta = sessao_do_dia
+
+{
+
+"contrato_versao": "2.0.0",
+
+"tipo_resposta": "sessao_do_dia",
+
+"alerta_seguranca": {
+
+"nivel": "N0",
+
+"motivo": "Sem sinais de alerta clinico no check-in ou no historico recente.",
+
+"recomendacao": "Executar a sessao conforme prescrito."
+
+},
+
+"plano": {
+
+"objetivo": "hipertrofia",
+
+"divisao": "upper_lower",
+
+"dias_por_semana": 4,
+
+"minutos_por_sessao": 60,
+
+"mesociclo": {
+
+"total_semanas": 6,
+
+"semana_atual": 3,
+
+"foco": "acumulo"
+
+},
+
+"justificativa": {
+
+"texto": "Upper/Lower em 4 dias equilibra frequencia two vezes por grupo e volume semanal dentro da faixa de 10 a 20 series efetivas, considerando disponibilidade de 60 minutos por sessao.",
+
+"evidencia": "moderado"
+
+},
+
+"sessoes": [
+
+{
+
+"nome": "Upper A",
+
+"ordem": 1,
+
+"prescricoes": [
+
+{
+
+"exercicio_id": "supino_reto_convencional",
+
+"padrao": "empurrar_horizontal",
+
+"ordem": 1,
+
+"series": 3,
+
+"faixa_reps": [6, 10],
+
+"rir_alvo": 2,
+
+"descanso_seg": 150,
+
+"cadencia": "2-0-1-0",
+
+"tecnica": "padrao",
+
+"carga": { "trabalho_kg": 62.5, "top_set_kg": null, "origem": "historico" },
+
+"alternativa_equipamento_ocupado": "supino_halteres",
+
+"guia_id": "guia_supino_reto",
+
+"evidencia": "forte"
+
+},
+
+{
+
+"exercicio_id": "remada_curvada",
+
+"padrao": "puxar_horizontal",
+
+"ordem": 2,
+
+"series": 4,
+
+"faixa_reps": [8, 12],
+
+"rir_alvo": 2,
+
+"descanso_seg": 120,
+
+"cadencia": "2-0-1-0",
+
+"tecnica": "top_set_backoff",
+
+"carga": { "trabalho_kg": 60.0, "top_set_kg": 70.0, "origem": "historico" },
+
+"alternativa_equipamento_ocupado": "remada_maquina",
+
+"guia_id": "guia_remada_curvada",
+
+"evidencia": "forte"
+
+}
+
+]
+
+}
+
+]
+
+},
+
+"estado_exercicio": {
+
+"exercicio_id": "supino_reto_convencional",
+
+"carga_atual_kg": 60.0,
+
+"faixa_reps": [6, 10],
+
+"rir_alvo": 2,
+
+"alvo_proxima_sessao": { "carga_kg": 62.5, "faixa_reps": [6, 10], "rir_alvo": 2 },
+
+"sessoes_sem_progresso": 0,
+
+"ultima_progressao_em": "2026-10-18",
+
+"e1rm_estimado_kg": 78.4,
+
+"atualizado_em": "2026-10-20"
+
+},
+
+"checkin": {
+
+"data": "2026-10-21",
+
+"sono_h": 7.5,
+
+"prontidao": 4,
+
+"peso_kg": 82.1,
+
+"dor": []
+
+},
+
+"decisoes_progressao": [
+
+{
+
+"exercicio_id": "supino_reto_convencional",
+
+"regra": "R1",
+
+"acao": "subir_carga",
+
+"carga_anterior_kg": 60.0,
+
+"nova_carga_kg": 62.5,
+
+"faixa_reps_reiniciada": true,
+
+"motivo": "Todas as series dentro da faixa, reps no topo e RIR da ultima serie maior ou igual ao alvo (2).",
+
+"evidencia": "forte"
+
+}
+
+],
+
+"analise_pos_treino": {
+
+"volume_realizado_vs_planejado": [
+
+{ "grupo": "peito",    "planejado": 6, "realizado": 6, "delta": 0 },
+
+{ "grupo": "costas",   "planejado": 4, "realizado": 4, "delta": 0 },
+
+{ "grupo": "biceps",   "planejado": 4, "realizado": 2, "delta": -2 }
+
+],
+
+"pontos_fortes": ["Volume de peito completo com RIR dentro do alvo em todas as series."],
+
+"pontos_fracos": ["Volume efetivo de biceps abaixo do minimo semanal de 10 series na semana atual."],
+
+"ajustes": ["Adicionar 1 a 2 series de flexao de cotovelo na proxima sessao (regra R10)."],
+
+"alertas_programacao": []
+
+},
+
+"mensagem_usuario": "Sessao Upper A pronta. Supino sobe para 62,5 kg pela regra R1. Hoje o foco e completar o volume de biceps."
+
+}
+
+6. Catálogo de regras de progressão R1 a R12
+
+O motor é determinístico. Cada decisão cita uma regra deste catálogo. Convenção de volume: efetivas = diretas + 0,5 × indiretas. Faixa de volume semanal efetivo por grupo: mínimo 10, máximo 20.
+
+Regra
+
+Nome
+
+Condição
+
+Ação
+
+Parâmetros
+
+Evidência
+
+R1
+
+Progressão por dupla progressão
+
+Todas as séries dentro da faixa e reps no topo da faixa em todas as séries e RIR da última série ≥ alvo
+
+subir_carga
+
+incremento 2,5 kg superior / 5,0 kg inferior; reiniciar faixa
+
+forte
+
+R2
+
+Progressão por repetições
+
+Todas as séries com RIR ≥ alvo e reps abaixo do topo da faixa
+
+manter_carga
+
+alvo +1 rep na próxima sessão
+
+forte
+
+R3
+
+Manter e checar fadiga
+
+RIR percebido abaixo do alvo em 1+ séries e reps dentro da faixa
+
+manter_e_checar
+
+sinalizar fadiga acumulada
+
+moderado
+
+R4
+
+Reduzir por falha prematura
+
+Reps abaixo do piso da faixa em 2+ séries
+
+reduzir_carga
+
+redução de 5 a 10%
+
+moderado
+
+R5
+
+Deload por platô
+
+3 sessões consecutivas sem progressão no mesmo exercício
+
+deload
+
+redução de 10% na carga, menos 1 série, 1 semana
+
+moderado
+
+R6
+
+Deload programado
+
+Semana atual ≥ total − 1 e foco em acúmulo ou intensificação
+
+deload
+
+redução de 10% na carga, menos 2 séries
+
+contextual
+
+R7
+
+Suspender por dor
+
+Dor em 2+ séries ou dor persistente em 2 sessões no mesmo exercício
+
+suspender
+
+substituir por alternativa de mesmo padrão, reavaliar em 2 sessões
+
+forte
+
+R8
+
+Top set e back-off
+
+Técnica igual a top_set_backoff
+
+manter_carga
+
+top set RIR 1–2; back-off a 85–90% do top set, RIR 2–3
+
+moderado
+
+R9
+
+Autoregulação por prontidão
+
+Prontidão ≤ 2 ou sono < 6 horas
+
+manter_carga
+
+reduzir 1 série nos exercícios principais
+
+contextual
+
+R10
+
+Volume abaixo do mínimo
+
+Volume semanal efetivo do grupo < 10 por 2 semanas consecutivas
+
+manter_carga
+
+adicionar 1–2 séries no grupo alvo
+
+moderado
+
+R11
+
+Volume acima do máximo
+
+Volume semanal efetivo > 20 e RIR médio em queda
+
+reduzir_carga
+
+remover 2 séries
+
+contextual
+
+R12
+
+Calibração inicial
+
+Carga de origem estimativa_conservadora e primeira sessão do exercício
+
+manter_carga
+
+ajustar pelo RIR percebido na primeira sessão; próxima origem calibracao
+
+pratica
+
+7. Inventário de telas
+
+Código
+
+Nome
+
+Objetivo
+
+Elementos principais
+
+Saída
+
+T1
+
+Onboarding / Perfil
+
+Coletar dados para gerar o plano
+
+peso, altura, experiência (iniciante/intermediário/avançado), dias por semana (2 a 6), minutos por sessão, equipamentos disponíveis, restrições e lesões, cardio semanal
+
+Geração do plano
+
+T2
+
+Check-in diário
+
+Autoregular a sessão do dia
+
+sono em horas, prontidão de 1 a 5, peso (opcional), dor por região (opcional). Deve levar 30 segundos e no máximo 4 toques. Impacto: prontidão ≤ 2 ou sono < 6 h aciona R9
+
+Check-in gravado, sessão do dia ajustada
+
+T3
+
+Home / Hoje
+
+Ponto de partida do dia
+
+nome da sessão, duração estimada, grupos trabalhados, botão primário grande "Iniciar treino", card do mesociclo (semana X de Y, foco), card de alerta quando existir
+
+Início da sessão ativa
+
+T4
+
+Sessão ativa / Logger
+
+Registrar séries
+
+Ver especificação completa na seção 9. É a tela mais importante do app
+
+Séries registradas
+
+T5
+
+Guia de execução
+
+Ensinar como fazer o exercício
+
+Acessível de dentro do logger. setup, execução passo a passo, erros comuns, cues, amplitude, respiração, contraindicações. Formato: lista curta com apoio visual
+
+Execução corrigida
+
+T6
+
+Análise pós-treino
+
+Fechar a sessão com leitura do que aconteceu
+
+volume realizado versus planejado por grupo (barras), pontos fortes, pontos fracos, ajustes, alertas de programação
+
+Sessão concluída, ajustes registrados
+
+T7
+
+Progresso
+
+Mostrar evolução real
+
+volume semanal por grupo versus faixa de 10 a 20 efetivas, e1RM por exercício em linha temporal, recordes pessoais, consistência em janelas de 4 semanas
+
+Visão de evolução
+
+T8
+
+Plano / Mesociclo
+
+Dar visão da estrutura
+
+split visual (Upper A, Lower A, Upper B, Lower B), semanas do mesociclo com foco, volume por grupo por semana
+
+Visão do plano
+
+T9
+
+Coach (chat)
+
+Conversar com contexto
+
+chat com contexto injetado — últimas 4 a 8 semanas do grupo em questão, estado de progressão atual, check-in de hoje. Deve deixar claro que a IA tem o histórico
+
+Resposta contextualizada
+
+T10
+
+Alerta de segurança
+
+Comunicar risco
+
+N1: aviso inline, permite continuar com ajuste. N2: bloqueia o plano e exige revisão. Devem ser visualmente distinguíveis
+
+Aviso exibido ou plano bloqueado
+
+8. Fluxos principais
+
+F1 — Primeiro uso. Onboarding, geração de plano, revisão do plano, primeira sessão.
+
+F2 — Sessão típica. Check-in de 30 segundos, Home, Iniciar treino, Logger série a série, Finalizar, Análise pós-treino, decisões de progressão aplicadas, próxima sessão já pré-preenchida.
+
+F3 — Progressão. Fim de sessão, motor aplica R1 a R12, decisão exibida com motivo e nível de evidência, EstadoExercicio atualizado.
+
+F4 — Equipamento ocupado. No logger, botão "ocupado" sugere a alternativa de mesmo padrão de movimento definida na prescrição.
+
+F5 — Dor. Registro de série com dor marcada; se 2 ou mais séries ou 2 sessões no mesmo exercício, R7 suspende e sugere substituição.
+
+9. Especificação do logger (tela crítica)
+
+Layout
+
+Uma tela por exercício, com cards de série empilhados verticalmente.
+
+Elementos por série
+
+Número da série e tipo (trabalho, top set, back-off, drop).
+
+Carga em valor grande com botões de menos e mais (2,5 kg em superior, 5 kg em inferior).
+
+Repetições em valor grande com botões de menos e mais.
+
+RIR como seletor de 0 a 4 em chips.
+
+Botão "Concluir série" grande, ocupando a largura total.
+
+Observação e marcação de dor em menu secundário.
+
+Comportamento
+
+A série 1 vem pré-preenchida com a carga do EstadoExercicio e as reps do alvo.
+
+Ao concluir, a série colapsa em uma linha compacta mostrando carga, repetições e RIR, e a próxima expande.
+
+O timer de descanso inicia automaticamente com o descanso prescrito.
+
+O timer fica visível em barra fixa no topo, com opções de adicionar 30 segundos e pular.
+
+O alvo da sessão fica visível, por exemplo: "Alvo: 3 séries de 6 a 10 reps, RIR 2".
+
+Restrições de design
+
+Nenhum campo de texto obrigatório.
+
+Nenhum modal bloqueante.
+
+Ação primária sempre no terço inferior da tela, ao alcance do polegar.
+
+Funciona offline.
+
+10. Sistema visual
+
+Direção: dark mode por padrão, porque o uso é em academia com luz baixa e o celular fica no chão. Alto contraste. Tipografia grande nos números.
+
+Regras
+
+Números de carga e repetições com no mínimo 40 px e peso bold.
+
+Contraste mínimo AA e alvo AAA nos números.
+
+Uma única cor de destaque para ação primária.
+
+Verde para progressão, âmbar para atenção, vermelho apenas para alerta N2.
+
+Sem gradientes decorativos e sem sombras pesadas.
+
+Ícones de linha, não preenchidos.
+
+Densidade baixa: uma decisão por tela.
+
+11. Gamificação
+
+O que funciona e deve existir
+
+Recorde pessoal por exercício (carga e repetições, e1RM estimado).
+
+Volume semanal versus faixa de 10 a 20 efetivas por grupo.
+
+Consistência em janelas de 4 semanas, não streak diário.
+
+Progresso do mesociclo (semana X de Y).
+
+O que é proibido
+
+Streak diário punitivo.
+
+XP sem significado.
+
+Badge por badge.
+
+Meta de água e proteína como tarefa diária obrigatória, porque gera atrito e morre na semana 3 — pode existir como registro opcional, nunca como requisito de pontuação.
+
+12. Fora de escopo da versão 1
+
+Biblioteca de vídeos própria
+
+Integração com wearables
+
+Nutrição completa
+
+Social e compartilhamento
+
+Cardio detalhado
+
+Multiusuário
+
+Billing
+
+13. Critérios de aceite do protótipo
+
+1. Fluxo F2 completo e navegável, do check-in à análise pós-treino.
+
+2. Logger com pré-preenchimento de carga e timer de descanso funcional.
+
+3. Tela de progresso mostrando volume semanal por grupo com a faixa alvo visível.
+
+4. Estados de alerta N0, N1 e N2 visíveis e visualmente distinguíveis.
+
+5. Nenhuma tela exigindo digitação de texto para registrar uma série.
+
+6. Nível de evidência visível em toda prescrição e justificativa.
