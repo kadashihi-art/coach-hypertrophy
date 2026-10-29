@@ -17,7 +17,7 @@ import { incrementoCargaKg } from "@/lib/domain";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
-import { estruturaSeries, proximaFase, temPreparatorias } from "@/lib/treino/estrutura-series";
+import { cargaAquecimento, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
 
 const FASE_META: Record<
   TipoSerie,
@@ -52,9 +52,9 @@ const FASE_META: Record<
 const FASE_ORDEM: TipoSerie[] = [
   "aquecimento",
   "feeder",
+  "trabalho",
   "top_set",
   "back_off",
-  "trabalho",
 ];
 
 /**
@@ -88,10 +88,7 @@ export default function TreinoPage() {
   const estado = state.estados.find(
     (e) => e.exercicio_id === presc?.exercicio_id,
   );
-  const altEx = useMemo(
-    () => (presc ? resolverAlternativa(presc, state.exercicios) : null),
-    [presc, state.exercicios],
-  );
+  const altEx = presc ? resolverAlternativa(presc, state.exercicios) : null;
   const guiaSeed = state.guias.find((g) => g.id === presc?.guia_id);
   const guia =
     guiaSeed ??
@@ -112,13 +109,25 @@ export default function TreinoPage() {
   const prefillReps =
     estado?.alvo_proxima_sessao.faixa_reps[0] ?? presc?.faixa_reps[0] ?? 8;
 
+  // Aquecimento por grupo muscular (primeiro exercício de cada músculo ainda não aquecido).
+  const prepFlags = preparatoriasDaSessao(prescricoes, state.exercicios);
+  const prep = prepFlags[prescIdx] ?? prescIdx === 0;
+  const cargaTop = presc?.carga.top_set_kg ?? prefillCarga;
+  /** kg pré-preenchido por fase (motor/âncora define top/trabalho; aquecimento = 60% arredondado ao step). */
+  const cargaDaFase = (f: TipoSerie | null): number =>
+    f === "aquecimento"
+      ? cargaAquecimento(prefillCarga, stepKg)
+      : f === "top_set"
+        ? cargaTop
+        : prefillCarga;
+
   const [carga, setCarga] = useState(prefillCarga);
   const [reps, setReps] = useState(prefillReps);
   const [rir, setRir] = useState(presc?.rir_alvo ?? 2);
   // Fase automática pela estrutura (1º exercício: aquece → aproximação → trabalho; demais: só trabalho).
   const [tipoManual, setTipoManual] = useState<TipoSerie | null>(null);
-  const faseAuto = presc ? proximaFase(presc, prescIdx, seriesDone) : null;
-  const fasesDoExercicio = presc ? new Set(estruturaSeries(presc, prescIdx)) : new Set<TipoSerie>();
+  const faseAuto = presc ? proximaFase(presc, prep, seriesDone) : null;
+  const fasesDoExercicio = presc ? new Set(estruturaSeries(presc, prep)) : new Set<TipoSerie>();
   const tipo: TipoSerie =
     tipoManual && fasesDoExercicio.has(tipoManual) ? tipoManual : (faseAuto ?? "trabalho");
   const setTipo = (t: TipoSerie | null) => setTipoManual(t);
@@ -133,8 +142,15 @@ export default function TreinoPage() {
   const anchorTimer = useRef<number | null>(null);
   const hitTimer = useRef<number | null>(null);
 
+  const faseInicial = presc ? proximaFase(presc, prep, seriesDone) : null;
+  const cargaInicial =
+    faseInicial === "aquecimento"
+      ? cargaAquecimento(prefillCarga, stepKg)
+      : faseInicial === "top_set"
+        ? cargaTop
+        : prefillCarga;
   useEffect(() => {
-    setCarga(prefillCarga);
+    setCarga(cargaInicial);
     setReps(prefillReps);
     setRir(presc?.rir_alvo ?? 2);
     setTipoManual(null);
@@ -142,7 +158,7 @@ export default function TreinoPage() {
     setOcupado(false);
     setAnchorPulse(false);
     setHitFlash(false);
-  }, [presc?.id, prefillCarga, prefillReps, presc?.rir_alvo, presc?.tecnica]);
+  }, [presc?.id, cargaInicial, prefillReps, presc?.rir_alvo, presc?.tecnica]);
 
   useEffect(() => {
     return () => {
@@ -153,11 +169,9 @@ export default function TreinoPage() {
 
   const rt = useRestTimer();
 
-  const alvoLabel = useMemo(() => {
-    if (!presc) return "";
-    const prep = temPreparatorias(prescIdx) ? " · antes: aquecimento + aproximação" : "";
-    return `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}${prep}`;
-  }, [presc, prescIdx]);
+  const alvoLabel = presc
+    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}${prep ? " · antes: aquecimento + aproximação" : ""}`
+    : "";
 
   if (!sess) {
     return (
@@ -255,7 +269,8 @@ export default function TreinoPage() {
       reps,
       rir_percebido: rir,
       dor,
-    });
+    }, { ancorar: false });
+    const proxima = proximaFase(presc, prep, [...seriesDone, { tipo_serie: tipo }]);
     if (inReps && inRir && tipo !== "aquecimento" && tipo !== "feeder") {
       setHitFlash(true);
       if (hitTimer.current) window.clearTimeout(hitTimer.current);
@@ -283,7 +298,10 @@ export default function TreinoPage() {
       }
     } else {
       setTipo(null);
+      // Avanço automático: aquecimento → aproximação → top/trabalho já com o kg sugerido da fase.
+      if (tipo === "aquecimento" || tipo === "feeder" || proxima === "top_set") setCarga(cargaDaFase(proxima));
     }
+    setReps(prefillReps);
 
     // Adaptação ao vivo: toast + prefill carga (presc.series já atualizado no state)
     const adapt = result.adaptacao;
@@ -514,7 +532,7 @@ export default function TreinoPage() {
           ))}
 
           {/* Preview aquecimento — pulsa quando âncora muda; % math fica pro motor */}
-          {exercicioPendente && temPreparatorias(prescIdx) && tipo !== "aquecimento" && (
+          {exercicioPendente && prep && tipo !== "aquecimento" && !seriesDone.some((r) => r.tipo_serie === "aquecimento") && (
             <div
               className={`set-card flex items-center justify-between px-3 py-2 text-sm opacity-70 ${
                 anchorPulse ? "set-anchor-pulse" : ""
@@ -522,13 +540,8 @@ export default function TreinoPage() {
             >
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-faint">Aq.</span>
-                <span className="text-[10px] uppercase text-faint">
-                  aquecimento sugerido
-                </span>
+                <span className="text-sm text-muted">{textoAquecimento(carga, stepKg)}</span>
               </div>
-              <span className="num text-sm text-muted">
-                ~{Math.round(carga * 0.6 * 2) / 2} kg · recalc da âncora
-              </span>
             </div>
           )}
 
@@ -539,7 +552,10 @@ export default function TreinoPage() {
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setTipo(t)}
+                    onClick={() => {
+                      setTipo(t);
+                      if (t !== tipo && (t === "aquecimento" || tipo === "aquecimento")) setCarga(cargaDaFase(t));
+                    }}
                     title={FASE_META[t].hint}
                     className={`chip-motion text-xs ${tipo === t ? "on" : ""}`}
                   >
@@ -649,6 +665,8 @@ export default function TreinoPage() {
       </div>
 
       {/* CTA thumb-zone — terço inferior, sem tabbar no logger */}
+      {/* reserva espaço pro cronômetro: nada fica embaixo da pílula */}
+      {rt.timer ? <div aria-hidden className="rt-spacer-logger" /> : null}
       {exercicioPendente && (
         <div className="thumb-zone mt-auto">
           <Button onClick={concluirSerie} className="motion-press motion-cta-glow min-h-14 text-base">
