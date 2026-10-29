@@ -153,6 +153,7 @@ const LAST_STEP = 4;
 
 export default function OnboardingPage() {
   const { state, completeOnboarding, updatePerfil, updatePerfilAndRemount } = useApp();
+  const router = useRouter();
   // Refazer (?refazer=1): nada grava até "Confirmar plano"; cancelar = estado intacto.
   const [refazerParam] = useState(() =>
     typeof window !== "undefined" ? window.location.search : "",
@@ -199,7 +200,6 @@ export default function OnboardingPage() {
   ) : null;
   // Proposta em negociação (não salva) — só "Confirmar plano" chama completeOnboarding.
   const [rascunho, setRascunho] = useState<Perfil | null>(null);
-  const router = useRouter();
   const [step, setStep] = useState(0);
   // Coleta conversacional (LLM) → depois PAR-Q (gate explícito) → negociação. Falha → formulário.
   const [modo, setModo] = useState<"coach" | "form">(() =>
