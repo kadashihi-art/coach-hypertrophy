@@ -92,6 +92,7 @@ type Ctx = {
   /** Patch perfil + remount plan (motor; LLM via API when authenticated) */
   updatePerfilAndRemount: (
     partial: Partial<Perfil>,
+    opts?: { skipLlm?: boolean },
   ) => Promise<{ fonte: "motor" | "motor+llm"; ok: boolean; error?: string }>;
   /** Set mesociclo.data_inicio and schedule session dates */
   setDataInicio: (isoDate: string) => void;
@@ -902,7 +903,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePerfilAndRemount = useCallback(
-    async (partial: Partial<Perfil>) => {
+    async (partial: Partial<Perfil>, opts?: { skipLlm?: boolean }) => {
       // Snapshot current for merge
       let snapshot = state;
       setState((s) => {
@@ -953,7 +954,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             perfil: partial,
             perfil_base: perfil,
             estados: snapshot.estados,
-            skip_llm: false,
+            skip_llm: opts?.skipLlm ?? false,
           }),
         });
         if (res.ok) {
