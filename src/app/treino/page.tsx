@@ -169,6 +169,26 @@ export default function TreinoPage() {
 
   const rt = useRestTimer();
 
+  // Pílula do cronômetro ancorada no topo real do "Concluir série" (qualquer altura de tela).
+  useEffect(() => {
+    const sync = () => {
+      const tz = document.querySelector(".thumb-zone");
+      const gap = tz ? Math.max(0, window.innerHeight - tz.getBoundingClientRect().top) : 0;
+      document.body.style.setProperty("--thumb-gap", `${Math.round(gap)}px`);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(document.body);
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      document.body.style.removeProperty("--thumb-gap");
+    };
+  }, []);
+
   const alvoLabel = presc
     ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}${prep ? " · antes: aquecimento + aproximação" : ""}`
     : "";

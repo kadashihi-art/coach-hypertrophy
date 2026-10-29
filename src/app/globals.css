@@ -605,7 +605,7 @@ body.sheet-open nav.fixed { display: none; }
 /* no logger o CTA "Concluir série" fica no rodapé: o pill sobe acima dele */
 body:has(.thumb-zone) .rt-spacer { display: none; }
 .rt-spacer-logger { flex: none; height: calc(150px + env(safe-area-inset-bottom, 0px)); }
-body:has(.thumb-zone) .rt-pill { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+body:has(.thumb-zone) .rt-pill { bottom: calc(var(--thumb-gap, 96px) + 8px); }
 body:has(nav.fixed) .rt-pill { bottom: calc(var(--tabbar-h) + 10px + env(safe-area-inset-bottom, 0px)); }
 .rt-tempo { font-size: 34px; line-height: 1; font-weight: 800; color: var(--accent); letter-spacing: -.02em; text-shadow: 0 0 14px rgba(184,255,60,.45); }
 .rt-btn { border-radius: 14px; border: 1px solid var(--ink-600); padding: 9px 10px; font-size: 13px; font-weight: 700; color: var(--text); background: rgba(245,245,240,.04); transition: transform .12s; }
