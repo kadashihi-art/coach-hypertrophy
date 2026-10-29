@@ -1,6 +1,6 @@
 /** smoke:estrutura-series — 1º exercício com preparatórias; demais direto; volume igual; timer com fases certas. */
 import assert from "node:assert/strict";
-import { arredondarStep, cargasDaEstrutura, rotuloOrdemSeries, cargaAquecimento, estruturaSeries, fasesDeTrabalho, preparatoriasDaSessao, proximaFase, seriesTrabalhoFeitas, textoAquecimento } from "../src/lib/treino/estrutura-series";
+import { cargaAproximacao as ap, cargaPrimeiraTrabalho as pt, arredondarStep, cargasDaEstrutura, rotuloOrdemSeries, cargaAquecimento, estruturaSeries, fasesDeTrabalho, preparatoriasDaSessao, proximaFase, seriesTrabalhoFeitas, textoAquecimento } from "../src/lib/treino/estrutura-series";
 import { descansoSugerido, rotuloFase } from "../src/lib/treino/rest-timer";
 import { volumeSessaoPorGrupo } from "../src/lib/engine/volume";
 import { decidirProgressao, pickTopSetAnchor } from "../src/lib/engine/progression";
@@ -152,4 +152,44 @@ for (const [k, st] of [[30, 5], [47.5, 2.5], [82, 5], [12, 2.5]] as const) {
 const t = textoAquecimento(30, 2.5);
 assert.equal(t, "Aquecimento: 17,5 kg (cerca de 60% da carga de hoje)");
 assert.ok(!/[~]|recalc|âncora/.test(t));
+
+// 8) aproximação = 85% da 1ª série de trabalho efetiva, pra baixo no step; aquec ≤ aprox < trabalho
+{
+  const ce = cargasDaEstrutura;
+  const tabela = (topKg: number, st: number, n: number) => {
+    const c = ce(topKg, st); const aq = cargaAquecimento(topKg, st);
+    const prim = pt({ series: n, tecnica: "top_set_backoff" } as never, topKg, c.trabalho, st);
+    return { aquec: aq, aprox: ap(prim, st, aq), trabalho: c.trabalho, top: topKg, back_off: c.back_off };
+  };
+  // agachamento (step 5, top 90, 4 séries): antes aprox 80 > trabalho 70
+  assert.deepEqual(tabela(90, 5, 4), { aquec: 50, aprox: 55, trabalho: 70, top: 90, back_off: 80 });
+  // remada (step 2,5, top 70, 4 séries): antes aprox 60 > trabalho 55
+  assert.deepEqual(tabela(70, 2.5, 4), { aquec: 40, aprox: 45, trabalho: 55, top: 70, back_off: 62.5 });
+  // N=2 (top → back-off): 1ª efetiva é o próprio top
+  assert.equal(pt({ series: 2, tecnica: "reta" } as never, 100, 80, 5), 100);
+  // N=1 / drop_set / rest_pause: a própria série
+  assert.equal(pt({ series: 1, tecnica: "reta" } as never, 60, 60, 2.5), 60);
+  assert.equal(pt({ series: 3, tecnica: "drop_set" } as never, 60, 50, 2.5), 50);
+  assert.equal(pt({ series: 3, tecnica: "rest_pause" } as never, 60, 50, 2.5), 50);
+  assert.equal(ap(60, 2.5, cargaAquecimento(60, 2.5)), 50); // 51 → 50
+  // steps 1 / 2,5 / 5
+  assert.equal(ap(40, 1), 34);
+  assert.equal(ap(13, 1), 11); // 11,05 → 11
+  assert.equal(ap(55, 2.5), 45); // 46,75 → 45
+  assert.equal(ap(70, 5), 55); // 59,5 → 55
+  // step grosso: 85% arredonda pro próprio trabalho → trabalho − 1 step
+  assert.equal(ap(5, 2.5), 2.5); // 4,25 → 2,5
+  assert.equal(ap(10, 5, 5), 5); // 8,5 → 5 = aquecimento (colisão documentada: igual, nunca acima do trabalho)
+  assert.equal(ap(5, 5), 5); // trabalho = 1 step: mínimo 1 step
+  assert.equal(ap(0, 5), 0);
+  // propriedade: aquec ≤ aprox < trabalho (trabalho ≥ 2 steps)
+  for (const st of [1, 2.5, 5]) for (let top = 4 * st; top <= 200; top += st) for (const n of [1, 2, 3, 4, 5]) {
+    const c = ce(top, st); const aq = cargaAquecimento(top, st);
+    const prim = pt({ series: n, tecnica: "top_set_backoff" } as never, top, c.trabalho, st);
+    const a = ap(prim, st, aq);
+    if (prim >= 2 * st) assert.ok(a < prim, `aprox ${a} < trabalho ${prim} (top ${top}, step ${st}, N ${n})`);
+    if (aq < prim) assert.ok(a >= aq, `aprox ${a} ≥ aquec ${aq} (top ${top}, step ${st})`);
+    assert.ok(Math.abs(a / st - Math.round(a / st)) < 1e-9);
+  }
+}
 console.log("smoke:estrutura-series OK");
