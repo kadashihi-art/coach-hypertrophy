@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -291,7 +292,7 @@ export default function MeuTreinoPage() {
             <p className="-mt-2 mb-4 text-center text-[11px] text-muted">Seu plano só muda se você tocar em Confirmar plano. Histórico e cargas ficam.</p>
             </>
           ) : null}
-          {negociando && state.perfil ? (
+          {negociando && state.perfil && typeof document !== "undefined" ? createPortal(
             <div className="sheet-overlay fixed inset-0 flex flex-col overflow-y-auto overscroll-contain bg-ink-950 px-5 pb-[calc(32px+env(safe-area-inset-bottom,0px))] pt-6">
               <div className="motion-swap flex flex-1 flex-col">
                 <NegociacaoPlano
@@ -303,7 +304,7 @@ export default function MeuTreinoPage() {
                 />
               </div>
             </div>
-          ) : null}
+          , document.body) : null}
         </>
       ) : null}
 
@@ -402,7 +403,7 @@ export default function MeuTreinoPage() {
         {busy ? "Remontando…" : "Salvar e remontar plano"}
       </Button>
 
-      {confirmOpen ? (
+      {confirmOpen && typeof document !== "undefined" ? createPortal(
         <div className="sheet-overlay fixed inset-0 flex items-end justify-center bg-black/70 p-4 pb-[calc(16px+env(safe-area-inset-bottom,0px))] sm:items-center">
           <Card className="max-h-[85dvh] w-full max-w-md overflow-y-auto border border-accent/30">
             <p className="text-lg font-bold">Isso gera um novo plano. Continuar?</p>
@@ -424,7 +425,7 @@ export default function MeuTreinoPage() {
             </div>
           </Card>
         </div>
-      ) : null}
+      , document.body) : null}
     </main>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { VolumeBar, hapticUmaVez } from "@/components/VolumeBar";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -477,7 +478,7 @@ export default function PerfilPage() {
         </div>
       ) : null}
 
-      {campo && draft ? (
+      {campo && draft && typeof document !== "undefined" ? createPortal(
         <div className="sheet-overlay fixed inset-0 flex items-end justify-center bg-black/60" onClick={fechar}>
           <div
             role="dialog"
@@ -567,7 +568,7 @@ export default function PerfilPage() {
             )}
           </div>
         </div>
-      ) : null}
+      , document.body) : null}
     </main>
   );
 }
