@@ -1,10 +1,11 @@
 "use client";
 
 import { humanizarSplits } from "@/lib/plan/split-label";
+import { acentuar, labelGrupo } from "@/lib/labels";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { Card } from "@/components/ui";
 import type { PlanoRacional } from "@/lib/domain";
-const h = (t: string) => humanizarSplits(semCodigoRegra(t));
+const h = (t: string) => acentuar(humanizarSplits(semCodigoRegra(t)));
 
 /** Card "Por que esse plano/treino": mesmo racional determinístico do motor. animado = entrada escalonada (onboarding). */
 export function PorQueEssePlano({ racional, animado = false, compacto = false }: { racional: PlanoRacional; animado?: boolean; compacto?: boolean }) {
@@ -18,7 +19,7 @@ export function PorQueEssePlano({ racional, animado = false, compacto = false }:
     racional.frequencia_por_musculo.length ? (
       <p key="freq">
         <span className="text-muted">Frequência/sem: </span>
-        {racional.frequencia_por_musculo.map((f) => `${f.grupo} ${f.vezes_semana}×`).join(" · ")}
+        {racional.frequencia_por_musculo.map((f) => `${labelGrupo(f.grupo)} ${f.vezes_semana}×`).join(" · ")}
       </p>
     ) : null,
     ...racional.fases.map((f) => (
@@ -42,7 +43,7 @@ export function PorQueEssePlano({ racional, animado = false, compacto = false }:
     racional.volume_semanal.length ? (
       <p key="vol">
         <span className="text-muted">Séries diretas/sem (fase 1): </span>
-        {racional.volume_semanal.map((v) => `${v.grupo} ${v.series_diretas} (${v.faixa_alvo[0]}–${v.faixa_alvo[1]})`).join(" · ")}
+        {racional.volume_semanal.map((v) => `${labelGrupo(v.grupo)} ${v.series_diretas} (${v.faixa_alvo[0]}–${v.faixa_alvo[1]})`).join(" · ")}
       </p>
     ) : null,
     ...(compacto ? [] : racional.alternativas.slice(0, 3).map((a) => (

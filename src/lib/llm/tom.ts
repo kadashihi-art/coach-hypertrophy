@@ -1,5 +1,6 @@
 /** Tom do Coach (WhatsApp de treinador experiente) + limpeza de saída. */
 import { AJUSTAR_PLANO_NOME } from "@/lib/nav";
+import { acentuar } from "@/lib/labels";
 
 import { humanizarSplits } from "@/lib/plan/split-label";
 export const TOM_COACH = [
@@ -70,6 +71,6 @@ export function limparSaidaCoach(texto: string): { texto: string; sugestao: stri
     .replace(/\/plano\/ajustar/gi, `"${AJUSTAR_PLANO_NOME}"`)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  t = humanizarSplits(semCodigoRegra(semMotor(t)));
+  t = acentuar(humanizarSplits(semCodigoRegra(semMotor(t))));
   return { texto: t, sugestao };
 }

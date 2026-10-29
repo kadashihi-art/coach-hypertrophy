@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { labelGrupo } from "@/lib/labels";
 import { VISAO_UI } from "@/lib/flags";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
@@ -236,7 +237,7 @@ export default function CoachPage() {
         </div>
         <p className="mt-1 text-[11px] leading-snug text-muted">
           Contexto: 4–8 sem + estado + check-in
-          {grupo ? ` · foco ${grupo}` : ""}.{" "}
+          {grupo ? ` · foco ${labelGrupo(grupo).toLowerCase()}` : ""}.{" "}
           <span className="text-faint">
             {nEst} estado(s) · {nVol} vol · check-in{" "}
             {hasCk ? "hoje" : "—"}

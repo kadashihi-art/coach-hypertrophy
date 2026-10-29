@@ -1,6 +1,7 @@
 "use client";
 
 import { labelSplit, humanizarSplits } from "@/lib/plan/split-label";
+import { acentuar, labelGrupo } from "@/lib/labels";
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
@@ -145,7 +146,7 @@ export default function PlanoPage() {
       </Card>
 
       <Card className="mb-4">
-        <p className="text-sm leading-relaxed text-muted">{humanizarSplits(semCodigoRegra(plano.justificativa.texto))}</p>
+        <p className="text-sm leading-relaxed text-muted">{acentuar(humanizarSplits(semCodigoRegra(plano.justificativa.texto)))}</p>
         <div className="mt-2">
           <EvidenciaBadge evidencia={plano.justificativa.evidencia} />
         </div>
@@ -182,10 +183,10 @@ export default function PlanoPage() {
           {volumeRows.map(({ grupo, sets }, gi) => {
             return (
               <div key={grupo} className="vol-row">
-                <span className="vol-label">{grupo}</span>
+                <span className="vol-label">{labelGrupo(grupo)}</span>
                 <div className="flex-1">
                   {barsOn ? (
-                    <VolumeBar label={grupo} valor={Math.round(sets)} max={VOLUME_MAX + 4} faixa={[10, 20]} index={gi} cabecalho={false} fina />
+                    <VolumeBar label={labelGrupo(grupo)} valor={Math.round(sets)} max={VOLUME_MAX + 4} faixa={[10, 20]} index={gi} cabecalho={false} fina />
                   ) : (
                     <div className="vb-track mt-1 h-1.5" aria-hidden />
                   )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { semCodigoRegra } from "@/lib/llm/tom";
+import { labelGrupo } from "@/lib/labels";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -148,7 +149,7 @@ export default function FeedbackPage() {
         {volumeVs.map((v) => (
           <div key={v.grupo}>
             <div className="mb-1 flex justify-between text-sm">
-              <span className="capitalize">{v.grupo}</span>
+              <span>{labelGrupo(v.grupo)}</span>
               <span className="load-num text-muted">
                 {v.realizado}/{v.planejado}
               </span>

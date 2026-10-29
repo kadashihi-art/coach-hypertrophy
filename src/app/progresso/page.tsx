@@ -1,6 +1,7 @@
 "use client";
 
 import { VolumeBar } from "@/components/VolumeBar";
+import { labelGrupo } from "@/lib/labels";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -110,7 +111,7 @@ export default function ProgressoPage() {
           return (
             <div key={v.grupo}>
               <div className="mb-1 flex items-center justify-between gap-2 text-sm">
-                <span className="capitalize">{v.grupo}</span>
+                <span>{labelGrupo(v.grupo)}</span>
                 <div className="flex items-center gap-2">
                   <Badge tone={tone}>
                     {faixa === "abaixo"
@@ -130,7 +131,7 @@ export default function ProgressoPage() {
               </div>
               {barsOn ? (
                 <VolumeBar
-                  label={v.grupo}
+                  label={labelGrupo(v.grupo)}
                   valor={v.series_efetivas}
                   max={24}
                   faixa={[VOLUME_MIN, VOLUME_MAX]}

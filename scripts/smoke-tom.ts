@@ -1,3 +1,4 @@
+import { acentuar, labelGrupo, labelExp } from "../src/lib/labels";
 import { interpretarFeedbackHeuristico as h } from "../src/lib/plan/negociacao";
 import { limparSaidaCoach } from "../src/lib/llm/tom";
 const r = h("PPL + descanso + UL");
@@ -52,3 +53,9 @@ for (const d of [2, 3, 4, 5, 6]) {
   if (temIdSplit(vis)) throw new Error(`racional ${d}d com id de split: ` + vis);
 }
 console.log("sem-motor+abertura+guard+sem-RNN+sem-split-id OK", JSON.stringify(m));
+{
+  const a = acentuar("nivel intermediario, 12 series de quadriceps; id hibrido_ppl_ul");
+  if (a !== "nível intermediário, 12 séries de quadríceps; id hibrido_ppl_ul") throw new Error("acentuar: " + a);
+  if (labelGrupo("gluteos") !== "Glúteos" || labelExp("avancado") !== "avançado") throw new Error("labels sem acento");
+  console.log("acentos OK");
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { VolumeBar, hapticUmaVez } from "@/components/VolumeBar";
+import { acentuar, labelGrupo } from "@/lib/labels";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -535,7 +536,7 @@ export default function PerfilPage() {
                 </p>
                 <ul className="mb-3 space-y-1 text-sm text-bone-300">
                   {ajuste.depois.split.porque.slice(0, 3).map((x) => (
-                    <li key={x}>• {humanizarSplits(x)}</li>
+                    <li key={x}>• {acentuar(humanizarSplits(x))}</li>
                   ))}
                 </ul>
                 <p className="mb-2 text-xs uppercase text-muted">Séries por semana · antes → depois</p>
@@ -546,7 +547,7 @@ export default function PerfilPage() {
                     return linhas.map((v, i) => (
                       <VolumeBar
                         key={v.grupo}
-                        label={v.grupo.replace(/_/g, " ")}
+                        label={labelGrupo(v.grupo)}
                         antes={volAntes.get(v.grupo) ?? 0}
                         valor={v.series_diretas}
                         max={max}

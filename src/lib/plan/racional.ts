@@ -3,6 +3,7 @@
  * Usado na montagem/remount e como fallback on-the-fly para planos antigos.
  */
 import type { Exercicio, GrupoMuscular, Perfil, Plano, PlanoRacional, Sessao, TipoDia } from "@/lib/domain";
+import { labelExp, labelObjetivo } from "@/lib/labels";
 import { SPLIT_LABEL, humanizarSplits } from "./split-label";
 import { MUSCULOS_POR_TIPO, microcicloTexto, posicionarDescanso } from "./estrutura";
 
@@ -85,7 +86,7 @@ export function derivarRacional(args: {
   const why1 = humanizarSplits(args.whyPorFase?.[0] ?? (plano.justificativa?.texto?.split(".")[0] ?? ""));
   const porque = [
     why1,
-    `${dias} dias/semana, ${plano.minutos_por_sessao} min/sessão${perfil ? `, nível ${perfil.experiencia}` : ""}, objetivo ${objetivo}.`,
+    `${dias} dias/semana, ${plano.minutos_por_sessao} min/sessão${perfil ? `, nível ${labelExp(perfil.experiencia)}` : ""}, objetivo ${labelObjetivo(objetivo)}.`,
     perfil && (perfil.cardio_min_semana ?? 0) > 120 ? `Cardio ${perfil.cardio_min_semana} min/sem: volume de força levemente reduzido.` : "",
     "Minha prioridade: cada grande grupo ≥2×/semana e 10–20 séries/semana, que é a faixa que mais rende pra hipertrofia, em sessões que cabem no seu tempo.",
   ].filter(Boolean);
