@@ -576,6 +576,11 @@ export const COACH_CHAT_SYSTEM = [
 ].join("\n");
 
 /** Modelos Tokia com visão, em ordem de preferência, se o principal recusar imagem. */
+export const VISION_GATEWAY_DEFAULT = ["anthropic/claude-opus-5", "google/gemini-2.5-pro", "openai/gpt-5"];
+export function visionGatewayModels(): string[] {
+  const env = process.env.COACH_VISION_GATEWAY_MODELS?.split(",").map((x) => x.trim()).filter(Boolean);
+  return env?.length ? env : VISION_GATEWAY_DEFAULT;
+}
 export const VISION_FALLBACKS = [
   "gpt-4o",
   "openrouter/openai/gpt-4o",
@@ -684,12 +689,14 @@ export class HttpCoachProvider implements CoachProvider {
     messages: Array<{ role: "user" | "assistant"; content: unknown }>;
     model: string;
     timeoutMs: number;
+    baseUrl?: string;
+    apiKey?: string;
   }): Promise<{ text: string | null; status: number; erro?: string }> {
     try {
-      const url = this.cfg.baseUrl.replace(/\/$/, "");
+      const url = (args.baseUrl ?? this.cfg.baseUrl).replace(/\/$/, "");
       const res = await fetch(`${url}/chat/completions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.cfg.apiKey}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${args.apiKey ?? this.cfg.apiKey}` },
         body: JSON.stringify({
           model: args.model,
           temperature: 0.3,
@@ -745,11 +752,18 @@ export class HttpCoachProvider implements CoachProvider {
       userContent = parts;
     }
     const modelText = this.cfg.model || "openrouter/anthropic/claude-opus-5";
-    const model = vision ? this.cfg.visionModel || modelText : modelText;
-    // Visão: tenta COACH_LLM_VISION_MODEL e cai para modelos Tokia com visão se o atual recusar imagem (4xx).
-    const candidatos = vision
-      ? [...new Set([model, ...VISION_FALLBACKS])]
-      : [model];
+    // Visão: só ela vai pelo Vercel AI Gateway (OIDC do projeto), em cadeia configurável.
+    let gw: { baseUrl: string; apiKey: string } | null = null;
+    if (vision) {
+      try {
+        const { getVercelOidcToken } = await import("@vercel/oidc");
+        const tok = await getVercelOidcToken();
+        if (tok) gw = { baseUrl: "https://ai-gateway.vercel.sh/v1", apiKey: tok };
+      } catch (e) {
+        this.lastVision = { modelo: "gateway", ok: false, status: 0, erro: `oidc_indisponivel:${e instanceof Error ? e.message.slice(0, 120) : ""}` };
+      }
+    }
+    const candidatos = vision ? (gw ? visionGatewayModels() : []) : [modelText];
     let r: { text: string | null; status: number; erro?: string } = { text: null, status: 0 };
     const t0 = Date.now();
     const tentativas: string[] = [];
@@ -761,6 +775,7 @@ export class HttpCoachProvider implements CoachProvider {
         messages: [...hist, { role: "user", content: userContent }],
         model: m,
         timeoutMs: vision ? Math.min(85_000, restante) : 55_000,
+        ...(vision && gw ? gw : {}),
       });
       tentativas.push(`${m}:${r.status}${r.text ? "" : `:${(r.erro ?? "").replace(/\s+/g, " ").slice(0, 160)}`}`);
       if (vision) this.lastVision = { modelo: m, ok: !!r.text, status: r.status, ...(r.erro ? { erro: r.erro } : {}), ...(tentativas.length > 1 ? { tentativas } : {}) } as typeof this.lastVision;
