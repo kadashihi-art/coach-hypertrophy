@@ -10,6 +10,7 @@ import type { Equipamento, Experiencia, Objetivo, Perfil, PlanoRacional } from "
 import { CATALOG_EXERCICIOS } from "@/lib/catalog/exercicios";
 import { gerarProposta } from "@/lib/plan/negociacao";
 import { racionalDoPlano } from "@/lib/plan/racional";
+import { REFAZER_HREF } from "@/lib/plan/refazer";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao, precisaResponderParq } from "@/lib/plan/parq";
 
 /** Campos editáveis. `plano: true` → passa por "Ver ajuste" → "Confirmar e salvar". */
@@ -390,6 +391,16 @@ export default function PerfilPage() {
         <Linha label="Nível" valor={EXP_LABEL[perfil.experiencia]} onClick={() => abrir("experiencia")} flash={flash === "experiencia"} />
         <Linha label="Cardio / semana" valor={`${perfil.cardio_min_semana ?? 0} min`} onClick={() => abrir("cardio")} flash={flash === "cardio"} />
       </Card>
+      <Link
+        href={REFAZER_HREF}
+        className="motion-press -mt-2 mb-4 flex min-h-11 items-center justify-between rounded-2xl border border-border px-4 text-sm"
+      >
+        <span>
+          <span className="font-semibold text-accent">Refazer onboarding</span>
+          <span className="block text-[11px] text-muted">Conversa nova com o coach · só muda se você confirmar</span>
+        </span>
+        <span className="text-accent">→</span>
+      </Link>
 
       <SectionTitle title="Contexto" />
       <Card className="mb-4 !py-1">

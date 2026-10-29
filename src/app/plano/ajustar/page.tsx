@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import { PlanoTabs } from "@/components/PlanoTabs";
+import { REFAZER_HREF } from "@/lib/plan/refazer";
 import { Badge, Button, Card, NumStepper, SectionTitle } from "@/components/ui";
 import type { Equipamento, Experiencia, Objetivo, Perfil } from "@/lib/domain";
 import { racionalDoPlano } from "@/lib/plan/racional";
@@ -277,9 +278,12 @@ export default function MeuTreinoPage() {
             </Button>
           ) : null}
           {state.perfil ? (
-            <Link href="/onboarding" className="mb-4 block text-center text-xs font-semibold text-accent">
-              Refazer com o coach (seu plano só muda se você confirmar) →
+            <>
+            <Link href={REFAZER_HREF} className="motion-press mb-4 flex min-h-11 items-center justify-center rounded-[14px] border border-accent/40 text-sm font-semibold text-accent">
+              Refazer onboarding com o coach →
             </Link>
+            <p className="-mt-2 mb-4 text-center text-[11px] text-muted">Seu plano só muda se você tocar em Confirmar plano. Histórico e cargas ficam.</p>
+            </>
           ) : null}
           {negociando && state.perfil ? (
             <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-ink-950 px-5 pb-8 pt-6">

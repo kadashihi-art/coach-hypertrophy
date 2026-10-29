@@ -126,3 +126,14 @@ Motor, regras de progressão, cálculo de volume/RIR/aquecimento, schema de dado
 - BottomNav oculta nos fluxos listados.
 - Gamificação só com dados reais; sem streak punitivo.
 - reduced-motion respeitado; log de série continua <15s (logger intocado; chips: aquecimento → top set → back off → trabalho).
+
+## Decisão do iury (29/10/2026 · 11:02 BRT) — "Refazer onboarding" fica
+
+Sobrepõe a recomendação acima de remover links de onboarding.
+
+- Opção visível **"Refazer onboarding"** em /perfil (grupo Treino) e em Plano › Ajustar → `/onboarding?refazer=1`.
+- Abre a conversa nova com o coach. **Nada é gravado até "Confirmar plano"**: cancelar, sair ou fechar no meio não muda perfil nem estado (sem perfil parcial, sem reset).
+- Botão **"Voltar sem mudar"** visível em todas as etapas do modo refazer (coleta, formulário, PAR-Q, proposta).
+- Na confirmação usa o mesmo remount do Ajustar (`updatePerfilAndRemount`): histórico de treinos e EstadoExercicio preservados (não usa `completeOnboarding`, que zera).
+- PAR-Q+ continua valendo: SIM bloqueia o plano novo; a triagem só é registrada se a pessoa tocar em "Registrar triagem e pausar o plano".
+- Prova: `npm run smoke:refazer`.
