@@ -1,5 +1,6 @@
 "use client";
 
+import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -118,11 +119,6 @@ export default function HojePage() {
     );
   }
 
-  const mesoPct = plano
-    ? Math.round(
-        (plano.mesociclo.semana_atual / plano.mesociclo.total_semanas) * 100,
-      )
-    : 0;
 
   const ultimaDecisao = state.decisoes
     .filter((d) => sess && d.exercicio_id && sess.prescricoes.some((p) => p.exercicio_id === d.exercicio_id))
@@ -200,8 +196,16 @@ export default function HojePage() {
               <span className="text-xs text-muted">
                 Meso · sem <span className="num text-go">{plano.mesociclo.semana_atual}</span>/{plano.mesociclo.total_semanas}
               </span>
-              <div className="bar-track w-20">
-                <div className="meso-fill enter h-full rounded-full bg-accent" style={{ width: `${mesoPct}%`, height: "100%" }} />
+              <div className="w-20">
+                <VolumeBar
+                  label="Mesociclo"
+                  valor={plano.mesociclo.semana_atual}
+                  max={plano.mesociclo.total_semanas}
+                  faixa={null}
+                  cabecalho={false}
+                  unidade={`de ${plano.mesociclo.total_semanas} semanas`}
+                  fina
+                />
               </div>
             </div>
           ) : null}

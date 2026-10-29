@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { VolumeBar, hapticUmaVez } from "@/components/VolumeBar";
+import { useEffect, useRef, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -160,6 +161,14 @@ export default function PerfilPage() {
     const t = setTimeout(() => setToast(null), 2600);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Haptic curto uma vez por abertura do Ver ajuste (só se algo muda; nunca em loop)
+  const aberturaAjuste = useRef(0);
+  useEffect(() => {
+    if (!ajuste || !("depois" in ajuste) || !ajuste.depois) return;
+    aberturaAjuste.current += 1;
+    hapticUmaVez(`ver-ajuste-${aberturaAjuste.current}`);
+  }, [ajuste]);
 
   const catalog = state.exercicios.length ? state.exercicios : CATALOG_EXERCICIOS;
   const racionalAtual = useMemo(() => {
@@ -518,24 +527,21 @@ export default function PerfilPage() {
                 </ul>
                 <p className="mb-2 text-xs uppercase text-muted">Séries por semana · antes → depois</p>
                 <div className="mb-4 space-y-2">
-                  {ajuste.depois.volume_semanal.slice(0, 8).map((v) => {
-                    const a = volAntes.get(v.grupo) ?? 0;
-                    const max = Math.max(20, v.series_diretas, a);
-                    return (
-                      <div key={v.grupo}>
-                        <div className="flex justify-between text-xs">
-                          <span className="capitalize text-muted">{v.grupo.replace(/_/g, " ")}</span>
-                          <span className="num">
-                            {a} → <span className="text-accent">{v.series_diretas}</span>
-                          </span>
-                        </div>
-                        <div className="bar-track relative mt-1 h-1.5">
-                          <div className="absolute inset-y-0 left-0 rounded-full bg-white/15" style={{ width: `${(a / max) * 100}%` }} />
-                          <div className="bar-fill enter relative" style={{ width: `${(v.series_diretas / max) * 100}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {(() => {
+                    const linhas = ajuste.depois.volume_semanal.slice(0, 8);
+                    const max = Math.max(22, ...linhas.map((v) => Math.max(v.series_diretas, volAntes.get(v.grupo) ?? 0)));
+                    return linhas.map((v, i) => (
+                      <VolumeBar
+                        key={v.grupo}
+                        label={v.grupo.replace(/_/g, " ")}
+                        antes={volAntes.get(v.grupo) ?? 0}
+                        valor={v.series_diretas}
+                        max={max}
+                        faixa={[10, 20]}
+                        index={i}
+                      />
+                    ));
+                  })()}
                 </div>
                 <Button className="motion-cta-glow min-h-12" disabled={busy} onClick={() => void confirmarESalvar()}>
                   {busy ? "Salvando…" : "Confirmar e salvar"}

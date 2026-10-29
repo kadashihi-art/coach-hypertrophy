@@ -1,5 +1,6 @@
 "use client";
 
+import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -177,17 +178,16 @@ export default function PlanoPage() {
             <span className="vol-title">Volume / semana</span>
             <span className="vol-hint">séries efetivas · alvo 10–20</span>
           </div>
-          {volumeRows.map(({ grupo, sets }) => {
-            const pct = Math.min(100, (sets / (VOLUME_MAX + 4)) * 100);
+          {volumeRows.map(({ grupo, sets }, gi) => {
             return (
               <div key={grupo} className="vol-row">
                 <span className="vol-label">{grupo}</span>
-                <div className="vol-track">
-                  <span className="vol-band" aria-hidden />
-                  <span
-                    className="bar-fill enter"
-                    style={{ width: barsOn ? `${pct}%` : "0%" }}
-                  />
+                <div className="flex-1">
+                  {barsOn ? (
+                    <VolumeBar label={grupo} valor={Math.round(sets)} max={VOLUME_MAX + 4} faixa={[10, 20]} index={gi} cabecalho={false} fina />
+                  ) : (
+                    <div className="vb-track mt-1 h-1.5" aria-hidden />
+                  )}
                 </div>
                 <span className="vol-num">{Math.round(sets)}</span>
               </div>

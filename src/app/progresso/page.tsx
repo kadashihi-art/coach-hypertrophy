@@ -1,5 +1,6 @@
 "use client";
 
+import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -96,7 +97,7 @@ export default function ProgressoPage() {
             Sem dados ainda — complete um treino.
           </p>
         )}
-        {vols.map((v) => {
+        {vols.map((v, vi) => {
           const faixa =
             v.series_efetivas < VOLUME_MIN
               ? "abaixo"
@@ -127,17 +128,20 @@ export default function ProgressoPage() {
                   </span>
                 </div>
               </div>
-              <div className="vol-track mt-1">
-                <span className="vol-band" aria-hidden />
-                <span
-                  className={`bar-fill enter ${barTone === "go" ? "go" : "warn"}`}
-                  style={{
-                    width: barsOn
-                      ? `${Math.min(100, (v.series_efetivas / 24) * 100)}%`
-                      : "0%",
-                  }}
+              {barsOn ? (
+                <VolumeBar
+                  label={v.grupo}
+                  valor={v.series_efetivas}
+                  max={24}
+                  faixa={[VOLUME_MIN, VOLUME_MAX]}
+                  index={vi}
+                  tom={barTone}
+                  cabecalho={false}
+                  unidade="séries efetivas/semana"
                 />
-              </div>
+              ) : (
+                <div className="vb-track mt-1 h-2" aria-hidden />
+              )}
             </div>
           );
         })}

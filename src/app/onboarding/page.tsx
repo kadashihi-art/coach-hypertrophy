@@ -1,5 +1,6 @@
 "use client";
 
+import { VolumeBar } from "@/components/VolumeBar";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
@@ -132,14 +133,12 @@ function VolumeWeekPreview({
         <span className="vol-title">Volume / semana</span>
         <span className="vol-hint">faixa 10–20</span>
       </div>
-      {rows.map((r) => {
-        const w = Math.min(100, Math.round((r.sets / scaleMax) * 100));
+      {rows.map((r, ri) => {
         return (
           <div key={r.grupo} className="vol-row">
             <span className="vol-label">{r.grupo}</span>
-            <div className="vol-track">
-              <span className="vol-band" aria-hidden />
-              <span className="bar-fill enter" style={{ width: `${w}%` }} />
+            <div className="flex-1">
+              <VolumeBar label={r.grupo} valor={r.sets} max={scaleMax} faixa={[10, 20]} index={ri} cabecalho={false} fina />
             </div>
             <span className="vol-num">{r.sets}</span>
           </div>
