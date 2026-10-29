@@ -62,6 +62,7 @@ import {
   aplicarAdaptacaoNaPrescricao,
   type AdaptacaoAoVivo,
 } from "@/lib/engine/adaptacao-ao-vivo";
+import { aplicarTroca } from "@/lib/plan/trocar-exercicio";
 import { avaliarCheckinDeload } from "@/lib/engine/checkin-deload";
 import { incrementoCargaKg } from "@/lib/domain";
 
@@ -101,6 +102,8 @@ type Ctx = {
     sessaoId: string,
     action: "pular" | "planejar" | "feito",
   ) => void;
+  /** Troca permanente de exercício no plano (só após "Confirmar troca"). */
+  trocarExercicio: (deId: string, paraId: string) => boolean;
 };
 
 const AppCtx = createContext<Ctx | null>(null);
@@ -1079,6 +1082,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const trocarExercicio = useCallback((deId: string, paraId: string) => {
+    const next = aplicarTroca(state, deId, paraId);
+    if (!next) return false;
+    setState(next);
+    return true;
+  }, [state]);
+
   const resetApp = useCallback(() => {
     setState(resetState());
   }, []);
@@ -1103,6 +1113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
+      trocarExercicio,
     }),
     [
       state,
@@ -1123,6 +1134,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
+      trocarExercicio,
     ],
   );
 
