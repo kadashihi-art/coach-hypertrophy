@@ -1,3 +1,4 @@
+import { mensagemApiValida } from "@/lib/chat-input";
 /**
  * POST /api/onboarding/coleta — coleta inteligente (read-only, nunca grava).
  * LLM (COACH_LLM_PLAN_MODEL) conduz a conversa e devolve perfil parcial + estratégia (schema);
@@ -5,13 +6,14 @@
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { limparSaidaCoach } from "@/lib/llm/tom";
+import { comAberturaSincera, limparSaidaCoach } from "@/lib/llm/tom";
 import { COLETA_SYSTEM, PerfilColetaSchema, RespostaColetaSchema, faltando, mesclarPerfil, perguntaFaltante, validarEstrategia } from "@/lib/plan/coleta";
 
 export const maxDuration = 90;
 
 const BodySchema = z.object({
-  mensagem: z.string().max(2000).default(""),
+  // vazio = abertura; 1 caractere (ex.: "C" acidental) é rejeitado
+  mensagem: z.string().max(2000).default("").refine((t) => mensagemApiValida(t, true), "mensagem muito curta"),
   perfil: z.unknown().optional(),
   historico: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).max(40).default([]),
 });
@@ -20,6 +22,8 @@ export async function POST(req: Request) {
   const parsed = BodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ erro: "payload inválido" }, { status: 400 });
   const { mensagem, historico } = parsed.data;
+  // 1ª mensagem do coach: convida a discordar e promete sinceridade
+  const abertura = !mensagem.trim() && historico.length === 0;
   const base = PerfilColetaSchema.safeParse(parsed.data.perfil ?? {});
   const perfilAtual = base.success ? base.data : {};
   const apiKey = process.env.COACH_LLM_API_KEY?.trim();
@@ -69,7 +73,8 @@ export async function POST(req: Request) {
       // LLM respondeu em texto puro: usa como fala do turno, sem mexer no perfil
       const txt = String(out.erro).slice("json_invalido:".length);
       const pf = perguntaFaltante(perfilAtual);
-      return NextResponse.json({ resposta: limparSaidaCoach(txt).texto || pf?.q || "Me conta mais um pouco?", chips: pf?.chips ?? [], perfil: perfilAtual, faltando: faltando(perfilAtual), pronto: false, fonte: "llm_texto", modelo: model });
+      const fala = limparSaidaCoach(txt).texto || pf?.q || "Me conta mais um pouco?";
+      return NextResponse.json({ resposta: abertura ? comAberturaSincera(fala) : fala, chips: pf?.chips ?? [], perfil: perfilAtual, faltando: faltando(perfilAtual), pronto: false, fonte: "llm_texto", modelo: model });
     }
     if ("erro" in out) return NextResponse.json({ fallback: true, motivo: out.erro });
     const v = RespostaColetaSchema.safeParse(out.json);
@@ -77,6 +82,7 @@ export async function POST(req: Request) {
     const perfil = mesclarPerfil(perfilAtual, v.data.perfil);
     const falta = faltando(perfil);
     let resposta = limparSaidaCoach(v.data.resposta).texto;
+    if (abertura) resposta = comAberturaSincera(resposta);
     let chips = v.data.chips;
     let pronto = v.data.pronto && falta.length === 0;
     if (v.data.pronto && falta.length) {

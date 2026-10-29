@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { VISAO_UI } from "@/lib/flags";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
-import { Badge, Button } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { buildCoachContext } from "@/lib/llm/coach-context";
 import type { GrupoMuscular } from "@/lib/domain";
 import Link from "next/link";
 import { Markdown } from "@/components/Markdown";
 import { AJUSTAR_PLANO_HREF } from "@/lib/nav";
+import { Composer } from "@/components/Composer";
+import { mensagemEnviavel } from "@/lib/chat-input";
 import {
   MIDIA_LIMITES,
   comprimirImagem,
@@ -128,6 +130,7 @@ export default function CoachPage() {
       text.trim() ||
       (midia ? (midia.tipo === "video" ? "Analisa a técnica desse vídeo da minha execução." : "Analisa a técnica nessa foto.") : "");
     if (!mensagem || busy || prep) return;
+    if (!midia && !mensagemEnviavel(mensagem)) return; // evita "C" acidental
     setError(null);
     setInput("");
     setAnexo(null);
@@ -365,14 +368,17 @@ export default function CoachPage() {
         onChange={(e) => void onFile(e.target.files?.[0])}
       />
       </>) : null}
-      <form
-        className="sticky bottom-0 mt-3 flex gap-2 rounded-2xl border border-border bg-[rgba(5,5,5,.96)] p-2 backdrop-blur-xl"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send(input);
-        }}
-      >
-        {VISAO_UI ? (<>
+      <Composer
+        className="sticky bottom-0 mt-3 rounded-2xl bg-[rgba(5,5,5,.96)] pt-1 backdrop-blur-xl"
+        value={input}
+        onChange={setInput}
+        onSend={(t) => void send(t)}
+        disabled={busy || !!prep}
+        podeEnviarSemTexto={VISAO_UI && !!anexo}
+        placeholder={VISAO_UI && anexo ? "O que quer que eu olhe? (opcional)" : "Pergunta qualquer coisa: treino, carga, dor, rotina. Eu te digo a real"}
+        leading={
+          VISAO_UI ? (
+            <>
         <button
           type="button"
           aria-label="Anexar foto ou vídeo"
@@ -391,24 +397,10 @@ export default function CoachPage() {
         >
           📷
         </button>
-        </>) : null}
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={VISAO_UI && anexo ? "O que quer que eu olhe? (opcional)" : "Pergunte qualquer coisa ao coach…"}
-          disabled={busy}
-          className="min-h-11 flex-1 rounded-xl bg-ink-800 px-3 text-sm text-bone-50 outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/60"
-          maxLength={2000}
-          autoComplete="off"
-        />
-        <Button
-          type="submit"
-          disabled={busy || !!prep || (!input.trim() && !anexo)}
-          className="!min-h-11 !w-auto shrink-0 px-4"
-        >
-          Enviar
-        </Button>
-      </form>
+            </>
+          ) : null
+        }
+      />
     </main>
   );
 }

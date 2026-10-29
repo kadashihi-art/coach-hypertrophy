@@ -1,3 +1,4 @@
+import { MIN_MSG_CHARS } from "@/lib/chat-input";
 /**
  * POST /api/coach/chat — T9 Coach conversacional read-only.
  * Prefere `contexto` do cliente (AppState local). Nunca writeUserState/saveState.
@@ -34,7 +35,7 @@ const MidiaSchema = z.object({
 
 const BodySchema = z.object({
   midia: MidiaSchema.optional(),
-  mensagem: z.string().min(1).max(4000),
+  mensagem: z.string().max(4000).refine((t) => t.trim().length >= MIN_MSG_CHARS, "mensagem muito curta"),
   grupo: GrupoMuscularSchema.optional(),
   exercicio_id: z.string().optional(),
   historico: z.array(HistoricoSchema).max(20).optional().default([]),

@@ -1,16 +1,18 @@
+import { mensagemApiValida } from "@/lib/chat-input";
 /**
  * POST /api/plan/negociar — negociação da proposta (read-only, nunca grava).
  * LLM (COACH_LLM_PLAN_MODEL) → JSON validado por schema; falha → heurística determinística.
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { limparSaidaCoach } from "@/lib/llm/tom";
+import { comAberturaSincera, limparSaidaCoach } from "@/lib/llm/tom";
 import { NEGOCIAR_SYSTEM, RespostaNegociacaoSchema, interpretarFeedbackHeuristico } from "@/lib/plan/negociacao";
 
 export const maxDuration = 90;
 
 const BodySchema = z.object({
-  mensagem: z.string().max(2000).default(""),
+  // vazio = abertura; 1 caractere (ex.: "C" acidental) é rejeitado
+  mensagem: z.string().max(2000).default("").refine((t) => mensagemApiValida(t, true), "mensagem muito curta"),
   proposta: z.unknown().optional(),
   parq_bloqueado: z.boolean().optional(),
   historico: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).max(16).default([]),
@@ -33,7 +35,7 @@ export async function POST(req: Request) {
   const { mensagem, proposta, historico } = parsed.data;
   if (parsed.data.parq_bloqueado) return NextResponse.json({ erro: "PAR-Q bloqueia prescrição" }, { status: 403 });
 
-  const heur = mensagem.trim() ? interpretarFeedbackHeuristico(mensagem) : { resposta: apresentarStub(proposta), ajustes: {}, condicoes: [] };
+  const heur = mensagem.trim() ? interpretarFeedbackHeuristico(mensagem) : { resposta: comAberturaSincera(apresentarStub(proposta)), ajustes: {}, condicoes: [] };
   const apiKey = process.env.COACH_LLM_API_KEY?.trim();
   const baseUrl = process.env.COACH_LLM_BASE_URL?.trim();
   const model = process.env.COACH_LLM_PLAN_MODEL?.trim() || process.env.COACH_LLM_MODEL?.trim() || "openrouter/anthropic/claude-opus-5";
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
     const m = raw.match(/\{[\s\S]*\}/);
     const v = RespostaNegociacaoSchema.safeParse(m ? JSON.parse(m[0]) : null);
     if (!v.success) return NextResponse.json({ ...heur, fonte: "heuristica", erro_llm: "schema" });
-    return NextResponse.json({ ...v.data, resposta: limparSaidaCoach(v.data.resposta).texto, fonte: "llm", modelo: model });
+    return NextResponse.json({ ...v.data, resposta: mensagem.trim() ? limparSaidaCoach(v.data.resposta).texto : comAberturaSincera(limparSaidaCoach(v.data.resposta).texto), fonte: "llm", modelo: model });
   } catch {
     return NextResponse.json({ ...heur, fonte: "heuristica", erro_llm: "timeout" });
   }
