@@ -39,7 +39,7 @@ function alternativas(divisao: string, dias: number, minutos: number, exp?: stri
     dias < 5 ? `com ${dias} dias, PPL deixa grupos só 1×/semana (evidência favorece ≥2× para volume moderado/alto — Schoenfeld 2016/2019)` : "—",
     `5–6 dias/semana e sessões ${minutos <= 50 ? "curtas" : "médias"}; PPL×2 com 6 dias = 2× por grupo`);
   add("ppl_upper_lower",
-    dias < 5 ? `precisa de 5 treinos/semana; você tem ${dias}` : "opção equivalente; o motor só usa híbrido quando você escolhe",
+    dias < 5 ? `precisa de 5 treinos/semana; você tem ${dias}` : "opção equivalente; eu só uso híbrido quando você escolhe",
     "5 dias: PPL + descanso + Upper/Lower dá ~2× por grupo e um dia off estratégico");
   add("hibrido",
     "variação de FB+UL; útil para quem quer frequência 2× com mais variação",
@@ -90,7 +90,7 @@ export function derivarRacional(args: {
     why1,
     `${dias} dias/semana, ${plano.minutos_por_sessao} min/sessão${perfil ? `, nível ${perfil.experiencia}` : ""}, objetivo ${objetivo}.`,
     perfil && (perfil.cardio_min_semana ?? 0) > 120 ? `Cardio ${perfil.cardio_min_semana} min/sem: volume de força levemente reduzido.` : "",
-    "Prioridade do motor: cada grande grupo ≥2×/semana e 10–20 séries/semana (R10/R11), sessões que cabem no tempo.",
+    "Minha prioridade: cada grande grupo ≥2×/semana e 10–20 séries/semana (R10/R11), sessões que cabem no tempo.",
   ].filter(Boolean);
 
   // Fases (planos antigos → 1 fase derivada)
@@ -104,7 +104,7 @@ export function derivarRacional(args: {
       porque: [args.whyPorFase?.[i] ?? ""].filter(Boolean),
       descanso: f.descanso_porque,
       microciclo: microcicloTexto(f.microciclo.map((d) => d.tipo)),
-      ...(i > 0 ? { troca: `Troca para ${f.nome} na semana ${f.semana_inicio} (variação de estímulo/frequência; volume reavaliado pelo motor).` } : {}),
+      ...(i > 0 ? { troca: `Troca para ${f.nome} na semana ${f.semana_inicio} (variação de estímulo/frequência; volume reavaliado pelo coach).` } : {}),
     }));
   } else {
     const ord = [...sess1].sort((a, b) => a.ordem - b.ordem);
@@ -113,7 +113,7 @@ export function derivarRacional(args: {
   }
 
   const recuperacao = [
-    `Mesociclo de ${plano.mesociclo.total_semanas} semanas (foco ${plano.mesociclo.foco}); deload quando check-in/sono/RIR indicam fadiga (regras do motor) ou ao fim do bloco.`,
+    `Mesociclo de ${plano.mesociclo.total_semanas} semanas (foco ${plano.mesociclo.foco}); deload quando check-in/sono/RIR indicam fadiga (regras do coach) ou ao fim do bloco.`,
     `RIR alvo ${sess1[0]?.prescricoes[0]?.rir_alvo ?? "—"}: perto da falha sem ir à falha em compostos.`,
     ...(fasesR[0]?.descanso ?? []).slice(0, 3),
   ];

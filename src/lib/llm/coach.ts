@@ -144,12 +144,12 @@ export function buildAnalisePosTreinoStub(
 
   if (subidas.length) {
     fortes.push(
-      `Progressão objetiva em ${subidas.length} exercício(s) — motor aplicou R# com evidência das séries.`,
+      `Progressão objetiva em ${subidas.length} exercício(s) — apliquei as regras de progressão com base nas séries.`,
     );
     for (const d of subidas) fortes.push(narrarAcao(d));
   } else if (decisoes.length) {
     fortes.push(
-      "Sessão registrada com decisão por exercício. Números vêm só do motor R1–R12.",
+      "Sessão registrada com decisão por exercício. Os números vêm só das regras de progressão.",
     );
   } else {
     fortes.push(
@@ -187,11 +187,11 @@ export function buildAnalisePosTreinoStub(
   }
 
   if (!fracos.length) {
-    fracos.push("Nenhum alerta de fadiga ou dor nesta leitura do motor.");
+    fracos.push("Nenhum alerta de fadiga ou dor nesta leitura.");
   }
   if (!ajustes.length) {
     ajustes.push(
-      "Manter a prescrição pré-preenchida do EstadoExercicio; só o motor altera kg/RIR.",
+      "Manter a prescrição pré-preenchida do EstadoExercicio; kg/RIR só mudam pelas regras de progressão.",
     );
   }
 
@@ -213,10 +213,10 @@ export function buildAnalisePosTreinoStub(
   const mensagem_usuario = [
     `${nome} fechada.`,
     decisoes.length
-      ? `Motor: ${resumoRegras}.`
+      ? `Análise: ${resumoRegras}.`
       : "Sem decisão de progressão nesta sessão.",
     volumeLines ? `Volume: ${volumeLines}.` : null,
-    "Eu só explico o que o motor calculou — não invento carga.",
+    "Eu só explico o que foi calculado das suas séries — não invento carga.",
   ]
     .filter(Boolean)
     .join(" ");
@@ -274,14 +274,14 @@ export function buildPrescricaoStub(
       "Carga vem do EstadoExercicio (último top/trabalho + regra R#).",
     );
   } else if (origem === "usuario") {
-    porques.push("Carga ajustada por você; motor só reavalia após séries.");
+    porques.push("Carga ajustada por você; eu só reavalio após as séries.");
   } else {
     porques.push(`Origem da carga: ${origem}.`);
   }
 
   if (p.tecnica === "top_set_backoff" && top != null) {
     porques.push(
-      `Top set ~${top} kg; back-off ~85–90% do top (motor sugere ~87,5%).`,
+      `Top set ~${top} kg; back-off ~85–90% do top (sugiro ~87,5%).`,
     );
   }
 
@@ -291,7 +291,7 @@ export function buildPrescricaoStub(
 
   if (e?.ultimo_rir != null) {
     porques.push(
-      `Último RIR registrado: ${e.ultimo_rir}. RIR≤1 na faixa alta → motor sobe; reps baixas → mantém/reduz.`,
+      `Último RIR registrado: ${e.ultimo_rir}. RIR≤1 na faixa alta → sobe; reps baixas → mantém/reduz.`,
     );
   }
 
@@ -362,7 +362,7 @@ export function buildConversarStub(
 
   if (pedeCargaNova) {
     partes.push(
-      "Eu não invento carga. O motor decide kg no fim da sessão (EstadoExercicio).",
+      "Eu não invento carga. A carga é recalculada no fim da sessão, a partir das suas séries.",
     );
     if (alvo != null) {
       partes.push(
@@ -380,7 +380,7 @@ export function buildConversarStub(
       );
       if (ck.sono_h < 6 || ck.prontidao <= 2) {
         partes.push(
-          "Sono baixo ou prontidão ≤2 → motor tende a cortar 1 série nos compostos (deload/check-in).",
+          "Sono baixo ou prontidão ≤2 → eu tendo a cortar 1 série nos compostos (deload/check-in).",
         );
       } else {
         partes.push(
@@ -389,7 +389,7 @@ export function buildConversarStub(
       }
     } else {
       partes.push(
-        "Sem check-in de hoje no contexto. Registre sono/prontidão pra o motor avaliar deload.",
+        "Sem check-in de hoje no contexto. Registre sono/prontidão pra eu avaliar deload.",
       );
     }
     if (meso) {
@@ -411,7 +411,7 @@ export function buildConversarStub(
           `. Origem: ${e0.origem_carga}.`,
       );
       if (alvo != null) {
-        partes.push(`Alvo próxima sessão ~${alvo} kg (motor/EstadoExercicio).`);
+        partes.push(`Alvo próxima sessão ~${alvo} kg (calculado das suas séries).`);
       }
       partes.push(
         "RIR≤1 na faixa alta → sobe; reps baixas → mantém/reduz. Eu só explico — não gravo kg.",
@@ -431,7 +431,7 @@ export function buildConversarStub(
         "Base ACSM/PAR-Q no arsenal (pode estar PARTIAL). Números ACSM vêm de divulgação até ler MSSE completo — não invento kg nem Rx clínica.",
       );
     }
-    partes.push("Eu só explico o arsenal + motor; não libero treino se o gate estiver fechado.");
+    partes.push("Eu só explico a evidência e as regras do plano; não libero treino se o gate estiver fechado.");
   } else if (/acsm|s[eé]ries\s*por\s*semana|10\s*s[eé]ries|falha\s*obrigat|dose-?resposta/i.test(lower)) {
     const a = getResearchArsenal();
     if (a.acsm_params) {
@@ -439,11 +439,11 @@ export function buildConversarStub(
         "ACSM 2026 (resumo oficial/divulgação): hipertrofia dose-resposta ≥10 séries/grupo/semana como ponto de partida; força ≥80% 1RM, ≥2×/semana; falha NÃO muda resultado de forma consistente — app não exige falha.",
       );
     } else {
-      partes.push("Arsenal ACSM params indisponível neste runtime; use volume do motor (~10) sem inventar kg.");
+      partes.push("Arsenal ACSM params indisponível neste runtime; use o volume do plano (~10) sem inventar kg.");
     }
     if (vol) {
       partes.push(
-        `No seu histórico: ${vol.grupo} ${vol.semana_iso} = ${vol.series_efetivas} séries efetivas (motor).`,
+        `No seu histórico: ${vol.grupo} ${vol.semana_iso} = ${vol.series_efetivas} séries efetivas.`,
       );
     }
     partes.push("Limite: sem MSSE integral; RIR não é norma ACSM; eu não invento números.");
@@ -465,7 +465,7 @@ export function buildConversarStub(
         `Volume ${grupoLabel} (últimas semanas no histórico): ${linhas || `${vol.semana_iso} ${vol.series_efetivas} efetivas`}.`,
       );
       partes.push(
-        "Alvo típico 10–20 séries efetivas/semana; under/over dispara alerta do motor.",
+        "Alvo típico 10–20 séries efetivas/semana; abaixo/acima disso eu te aviso.",
       );
     } else {
       partes.push(
@@ -506,11 +506,11 @@ export function buildConversarStub(
     }
     if (!partes.length) {
       partes.push(
-        "Contexto ainda magro (sem estado/volume/check-in). Eu só explico números do motor — não invento kg.",
+        "Contexto ainda magro (sem estado/volume/check-in). Eu só explico os números do seu plano — não invento kg.",
       );
     } else {
       partes.push(
-        "Números acima vêm do seu histórico/EstadoExercicio. Qualquer kg novo só o motor grava.",
+        "Números acima vêm do seu histórico/EstadoExercicio. Qualquer kg novo só entra pelas regras de progressão.",
       );
     }
   }
@@ -728,7 +728,7 @@ export class HttpCoachProvider implements CoachProvider {
     const system = buildCoachSystemWithArsenal([
       COACH_CHAT_SYSTEM,
       input.midia ? COACH_VISION_SYSTEM : "Você não recebe foto nem vídeo neste app: nunca peça ou ofereça analisar foto/vídeo; peça descrição em palavras se precisar.",
-      "CONTEXTO DO USUÁRIO (JSON do motor; use quando relevante, cite números exatamente):",
+      "CONTEXTO DO USUÁRIO (JSON do cálculo do app — nunca diga \"motor\"; use quando relevante, cite números exatamente):",
       JSON.stringify(input.contexto).slice(0, 14000),
     ].filter(Boolean));
     const hist = (input.historico ?? [])

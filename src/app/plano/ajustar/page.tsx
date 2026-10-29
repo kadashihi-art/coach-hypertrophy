@@ -170,8 +170,8 @@ export default function MeuTreinoPage() {
       }
       setMsg(
         res.fonte === "motor+llm"
-          ? "Plano remontado (motor + coach LLM)."
-          : "Plano remontado (motor).",
+          ? "Plano remontado pelo coach."
+          : "Plano remontado.",
       );
       router.push("/plano");
     } finally {
@@ -204,8 +204,8 @@ export default function MeuTreinoPage() {
       </p>
       <h1 className="mb-2 text-2xl font-bold">Ajustar plano</h1>
       <p className="mb-4 text-sm text-muted">
-        Edite os dados iniciais. Ao salvar, o motor remonta o plano (LLM só
-        estrutura/copy — kg continua no motor).
+        Escolha o estilo, negocie com o coach ou remonte. Nada muda sem você
+        confirmar — e as cargas que você já tem são mantidas.
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -307,7 +307,7 @@ export default function MeuTreinoPage() {
           ))}
         </div>
         {estilo === "hibrido_ppl_ul" ? (
-          <p className="text-[11px] text-muted">PPL + descanso + Upper/Lower (5 treinos; 6 dias adiciona um Full Body). O motor posiciona os descansos.</p>
+          <p className="text-[11px] text-muted">PPL + descanso + Upper/Lower (5 treinos; 6 dias adiciona um Full Body). O coach posiciona os descansos.</p>
         ) : null}
         <p className="text-[11px] text-muted">Fase 2 (opcional): trocar de estilo depois de algumas semanas.</p>
         <div className="flex flex-wrap gap-2">
@@ -397,7 +397,7 @@ export default function MeuTreinoPage() {
           <Card className="w-full max-w-md border border-accent/30">
             <p className="text-lg font-bold">Isso gera um novo plano. Continuar?</p>
             <p className="mt-2 text-sm text-muted">
-              O motor remonta o split. Cargas de exercícios que permanecerem são
+              O coach remonta o split. Cargas de exercícios que permanecerem são
               preservadas; exercícios removidos saem do histórico ativo.
             </p>
             <div className="mt-4 flex gap-2">

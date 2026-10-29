@@ -182,7 +182,7 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
 export type EstiloSplit = "auto" | "full_body" | "upper_lower" | "ppl" | "hibrido_ppl_ul" | "hibrido_fb_ul";
 
 export const NOME_ESTILO: Record<EstiloSplit, string> = {
-  auto: "Motor escolhe",
+  auto: "Coach escolhe",
   full_body: "Full Body",
   upper_lower: "Upper/Lower",
   ppl: "Push/Pull/Legs",

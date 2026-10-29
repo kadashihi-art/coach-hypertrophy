@@ -110,7 +110,7 @@ export default function FeedbackPage() {
         {lastSess?.nome ?? "Sessão"} concluída
       </h1>
       <p className="mb-4 text-sm text-muted">
-        {seriesCount} séries de trabalho · motor R1–R12 aplicado
+        {seriesCount} séries de trabalho · regras de progressão aplicadas
       </p>
 
       {(() => {
@@ -205,7 +205,7 @@ export default function FeedbackPage() {
       <SectionTitle title="Pontos (coach)" />
       <Card className="mb-4">
         {coachStatus === "loading" && (
-          <p className="mb-3 text-sm text-muted">Coach lendo o motor…</p>
+          <p className="mb-3 text-sm text-muted">Coach analisando a sessão…</p>
         )}
         {useApiCoach && coach?.mensagem_usuario ? (
           <p className="mb-3 text-sm leading-relaxed text-bone-50">
@@ -220,10 +220,10 @@ export default function FeedbackPage() {
           ) : (
             <>
               {decisoes.some((d) => d.acao === "subir_carga") ? (
-                <li>Progressão aplicada — carga sobe com evidência do motor.</li>
+                <li>Progressão aplicada — carga sobe com base nas suas séries.</li>
               ) : (
                 <li>
-                  Sessão registrada. Motor avaliou cada exercício com séries.
+                  Sessão registrada. O coach avaliou cada exercício com séries.
                 </li>
               )}
               {decisoes
@@ -282,8 +282,8 @@ export default function FeedbackPage() {
         </ul>
         {coachStatus === "err" && (
           <p className="mt-3 text-xs text-muted">
-            Coach API indisponível — bullets locais (motor permanece fonte dos
-            kg).
+            Coach indisponível agora — resumo local (as cargas continuam
+            calculadas pelo app).
           </p>
         )}
       </Card>

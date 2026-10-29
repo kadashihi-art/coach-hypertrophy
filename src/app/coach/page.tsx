@@ -67,7 +67,7 @@ export default function CoachPage() {
       id: "welcome",
       role: "assistant",
       content:
-        "Olá — sou seu coach. Pergunte qualquer coisa de treino, técnica, recuperação ou objetivos; uso seu histórico e o racional do seu plano quando ajuda. Kg quem decide é o motor.",
+        "Olá — sou seu coach. Pergunte qualquer coisa de treino, técnica, recuperação ou objetivos; uso seu histórico e o racional do seu plano quando ajuda. As cargas saem das suas séries — eu não chuto kg.",
     },
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);

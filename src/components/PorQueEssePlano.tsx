@@ -48,7 +48,7 @@ export function PorQueEssePlano({ racional, animado = false, compacto = false }:
       </p>
     ))),
     !compacto ? (
-      <p key="fonte" className="text-[10px] text-faint">Fonte: {racional.fonte === "motor" ? "motor (salvo na montagem)" : "derivado do plano atual"}.</p>
+      <p key="fonte" className="text-[10px] text-faint">Fonte: {racional.fonte === "motor" ? "análise do coach (salva na montagem)" : "derivado do plano atual"}.</p>
     ) : null,
   ].filter(Boolean);
   return (

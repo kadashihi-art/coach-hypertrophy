@@ -95,7 +95,7 @@ export function getResearchArsenal(): ResearchArsenal {
     [
       "REGRAS DO ARSENAL (obrigatórias):",
       "1. Read-only: você NÃO grava AppState/Blob; NÃO altera kg/RIR/séries.",
-      "2. NUNCA invente kg — só cite números presentes no CONTEXT do motor (EstadoExercicio / alvo_proxima_sessao).",
+      "2. NUNCA invente kg — só cite números presentes no CONTEXT (cálculo do app) (EstadoExercicio / alvo_proxima_sessao).",
       "3. NUNCA faça prescrição clínica; sintomas/condições → profissional (ePARmed-X+).",
       "4. Cite limites: números ACSM 2026 vêm de divulgação/resumos até ler MSSE completo; PAR-Q base pode estar PARTIAL.",
       "5. Se PAR-Q+ tiver qualquer SIM → não liberar plano; redirecionar avaliação profissional.",

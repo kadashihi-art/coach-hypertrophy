@@ -215,7 +215,7 @@ export default function ProgressoPage() {
         {state.decisoes.length === 0 && (
           <Card>
             <p className="text-sm text-muted">
-              Sem decisões ainda — o motor registra R# após cada sessão.
+              Sem decisões ainda — o coach registra a decisão de cada exercício após cada sessão.
             </p>
           </Card>
         )}
