@@ -12,6 +12,8 @@ import Link from "next/link";
 import { Markdown } from "@/components/Markdown";
 import { AJUSTAR_PLANO_HREF } from "@/lib/nav";
 import { Composer } from "@/components/Composer";
+import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
+import { detectarPedidoTroca } from "@/lib/plan/trocar-exercicio";
 import { mensagemEnviavel } from "@/lib/chat-input";
 import {
   MIDIA_LIMITES,
@@ -76,6 +78,8 @@ export default function CoachPage() {
   const camRef = useRef<HTMLInputElement>(null);
   const [anexo, setAnexo] = useState<Anexo | null>(null);
   const [prep, setPrep] = useState<string | null>(null);
+  /** undefined = fechado; null = escolher exercício; string = exercício a trocar */
+  const [troca, setTroca] = useState<string | null | undefined>(undefined);
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -142,6 +146,24 @@ export default function CoachPage() {
       ...(midia ? { thumbs: midia.frames.slice(0, 4).map((f) => f.data_url) } : {}),
     };
     setMsgs((m) => [...m, userMsg]);
+
+    // Pedido de troca de exercício: abre a troca direto (funciona sem IA).
+    const pedido = !midia ? detectarPedidoTroca(mensagem, state) : null;
+    if (pedido) {
+      const nome = pedido === "generico" ? null : pedido.nome;
+      setMsgs((m) => [
+        ...m,
+        {
+          id: `a-troca-${Date.now()}`,
+          role: "assistant",
+          content: nome
+            ? `Bora trocar o ${nome}. Separei opções com o mesmo movimento e o mesmo músculo, dentro do que você tem. Escolhe uma e confirma; só mudo o plano depois disso.`
+            : "Beleza. Escolhe qual exercício você quer trocar e eu te mostro as opções.",
+        },
+      ]);
+      setTroca(pedido === "generico" ? null : pedido.id);
+      return;
+    }
     setBusy(true);
 
     const historico = [...msgs, userMsg]
@@ -313,7 +335,26 @@ export default function CoachPage() {
         </p>
       )}
 
+      {troca !== undefined ? (
+        <TrocarExercicioSheet
+          deId={troca}
+          onClose={() => setTroca(undefined)}
+          onTrocado={(msg) =>
+            setMsgs((m) => [...m, { id: `a-trocado-${Date.now()}`, role: "assistant", content: `${msg} As próximas sessões já vêm com ele.`, cta: { label: "Ver plano", href: "/plano" } }])
+          }
+        />
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-1.5">
+        {state.plano ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setTroca(null)}
+            className="rounded-full border border-accent/50 bg-accent/10 px-3 py-1.5 text-[11px] font-semibold text-accent disabled:opacity-50"
+          >
+            Trocar exercício
+          </button>
+        ) : null}
         {SUGGESTS.map((s) => (
           <button
             key={s}

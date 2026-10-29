@@ -32,7 +32,7 @@ export type PlanoGerado = {
   volumes_semanais: VolumeSemanal[];
 };
 
-type RestricaoKey = "ombro" | "lombar" | "joelho" | "punho";
+export type RestricaoKey = "ombro" | "lombar" | "joelho" | "punho";
 
 type Slot = {
   padrao: Padrao;
@@ -59,7 +59,7 @@ type ObjetivoParams = {
   descansoIso: number;
 };
 
-function parseRestricoes(restricoes: string[]): Set<RestricaoKey> {
+export function parseRestricoes(restricoes: string[]): Set<RestricaoKey> {
   const out = new Set<RestricaoKey>();
   const keys: RestricaoKey[] = ["ombro", "lombar", "joelho", "punho"];
   for (const raw of restricoes) {
@@ -408,14 +408,14 @@ const BAN_IDS: Record<RestricaoKey, string[]> = {
 };
 
 /** Patterns skipped / demoted under restriction */
-function patternBlocked(padrao: Padrao, r: Set<RestricaoKey>): boolean {
+export function patternBlocked(padrao: Padrao, r: Set<RestricaoKey>): boolean {
   if (r.has("ombro") && (padrao === "empurrar_vertical" || padrao === "flexao_ombro")) {
     return true; // skip vertical press for shoulder injury
   }
   return false;
 }
 
-function exerciseAllowed(
+export function exerciseAllowed(
   ex: Exercicio,
   equips: Set<string>,
   restr: Set<RestricaoKey>,
@@ -541,7 +541,7 @@ function setsPerExercise(
 }
 
 /** R12-ish conservative load from bodyweight × pattern × experience */
-function estimarCargaKg(
+export function estimarCargaKg(
   peso_kg: number,
   experiencia: Perfil["experiencia"],
   padrao: Padrao,

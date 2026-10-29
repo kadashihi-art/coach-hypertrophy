@@ -19,7 +19,8 @@
     "smoke:tom": "npx --yes tsx scripts/smoke-tom.ts",
     "smoke:refazer": "npx tsx scripts/smoke-refazer.ts",
     "smoke:rest-timer": "npx --yes tsx scripts/smoke-rest-timer.ts",
-    "smoke:estrutura-series": "npx --yes tsx scripts/smoke-estrutura-series.ts"
+    "smoke:estrutura-series": "npx --yes tsx scripts/smoke-estrutura-series.ts",
+    "smoke:trocar-exercicio": "npx --yes tsx scripts/smoke-trocar-exercicio.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
