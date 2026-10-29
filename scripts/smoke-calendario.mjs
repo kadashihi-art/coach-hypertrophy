@@ -19,7 +19,7 @@ const SHARE = process.env.SMOKE_SHARE ?? "";
 const SHOTS = process.env.SMOKE_SHOTS ?? "";
 const KEY = "coach-hypertrophy:v5";
 const seed = readFileSync(new URL("./fixtures/calendario-state.json", import.meta.url), "utf8");
-const HOJE = "2026-10-29"; // fixture: Lower A concluída nesse dia, sem data_inicio
+// fixture: Lower A concluída em 2026-10-29, sem data_inicio
 
 const b = await chromium.launch();
 const fails = [];
@@ -38,6 +38,7 @@ async function rodar(W, H) {
   page.on("response", (r) => { if (r.url().includes("/api/state") && r.request().method() !== "GET") saves.push(r.status()); });
   const fail = (m) => { fails.push(`[${tag}] ${m}`); console.log(`  ✗ ${m}`); };
   const ok = (m) => console.log(`  ✓ ${m}`);
+  const check = (cond, bom, ruim) => (cond ? ok(bom) : fail(ruim));
 
   await page.goto(`${U}/${SHARE ? `?_vercel_share=${SHARE}` : ""}`);
   const reg = await page.request.post(`${U}/api/auth/register`, { data: { email, password, passwordConfirm: password } });
@@ -72,13 +73,13 @@ async function rodar(W, H) {
   const t0 = await titulo();
   await tap(page.getByRole("button", { name: "Próximo mês" }), "próximo mês");
   const t1 = await titulo();
-  t1 !== t0 ? ok(`próximo mês (${t1})`) : fail("próximo mês não mudou");
+  check(t1 !== t0, `próximo mês (${t1})`, "próximo mês não mudou");
   await tap(page.getByRole("button", { name: "Mês anterior" }), "mês anterior");
-  (await titulo()) === t0 ? ok("mês anterior") : fail("mês anterior não voltou");
+  check((await titulo()) === t0, "mês anterior", "mês anterior não voltou");
 
   await tap(dia(29), "dia 29");
   const cab = (await card.locator("p").first().innerText()).trim();
-  /^Qui, 29 out · Lower A$/.test(cab) ? ok(`card: ${cab}`) : fail(`cabeçalho do card: "${cab}"`);
+  check(/^Qui, 29 out · Lower A$/.test(cab), `card: ${cab}`, `cabeçalho do card: "${cab}"`);
   if (/proximaSessao|\d{4}-\d{2}-\d{2}/.test(await page.locator("main").innerText())) fail("texto interno/ISO vazando no calendário");
 
   const pressed = async (name) => (await card.getByRole("button", { name }).getAttribute("aria-pressed")) === "true";
@@ -95,9 +96,7 @@ async function rodar(W, H) {
     await tap(card.getByRole("button", { name: re }), `${ant} → ${cel}`);
     const s = await sessao("sess-lower-a");
     const st = await dia(29).getAttribute("data-status");
-    s?.status === want && st === cel && (await pressed(re))
-      ? ok(`${ant} → ${cel}`)
-      : fail(`${ant} → ${cel}: storage=${s?.status} célula=${st}`);
+    check(s?.status === want && st === cel && (await pressed(re)), `${ant} → ${cel}`, `${ant} → ${cel}: storage=${s?.status} célula=${st}`);
     ant = cel;
   }
   await tap(card.getByRole("button", { name: /Feito/ }), "volta pra feito");
@@ -109,25 +108,25 @@ async function rodar(W, H) {
   else {
     await tap(comecar, "começar hoje");
     const di = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)).plano.mesociclo.data_inicio, KEY);
-    /^\d{4}-\d{2}-\d{2}$/.test(di ?? "") ? ok(`começar hoje → data_inicio ${di}`) : fail(`começar hoje: data_inicio=${di}`);
+    check(/^\d{4}-\d{2}-\d{2}$/.test(di ?? ""), `começar hoje → data_inicio ${di}`, `começar hoje: data_inicio=${di}`);
     await page.waitForTimeout(1500);
     await page.reload({ waitUntil: "networkidle" });
     await page.waitForTimeout(1500);
     const di2 = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)).plano.mesociclo.data_inicio, KEY);
-    di2 === di ? ok("persistiu após reload") : fail(`não persistiu: ${di2}`);
+    check(di2 === di, "persistiu após reload", `não persistiu: ${di2}`);
     const planejados = await page.locator('main .grid button[data-status="planejado"]').count();
-    planejados > 0 ? ok(`${planejados} dias planejados`) : fail("nenhum dia agendado");
+    check(planejados > 0, `${planejados} dias planejados`, "nenhum dia agendado");
     // dia futuro planejado: pular e voltar
     const fut = page.locator('main .grid button[data-status="planejado"]').first();
     await tap(fut, "dia planejado");
     await tap(card.getByRole("button", { name: /Pular/ }), "planejado → pulado");
-    (await pressed(/Pular/)) ? ok("dia futuro pulado") : fail("dia futuro não pulou");
+    check((await pressed(/Pular/)), "dia futuro pulado", "dia futuro não pulou");
     await tap(card.getByRole("button", { name: /Planejado/ }), "pulado → planejado");
-    (await pressed(/Planejado/)) ? ok("dia futuro replanejado") : fail("dia futuro não voltou");
+    check((await pressed(/Planejado/)), "dia futuro replanejado", "dia futuro não voltou");
     if (SHOTS) await page.screenshot({ path: `${SHOTS}-${W}-planejado.png` });
   }
   const ruins = saves.filter((s) => s >= 400);
-  ruins.length ? fail(`save /api/state com erro: ${ruins}`) : ok(`saves /api/state: ${saves.join(",") || "nenhum"}`);
+  check(!ruins.length, `saves /api/state: ${saves.join(",") || "nenhum"}`, `save /api/state com erro: ${ruins}`);
   if (erros.length) fail(`erros JS: ${erros.slice(0, 3)}`);
   await ctx.close();
 }
