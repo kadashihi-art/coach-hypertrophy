@@ -48,3 +48,4 @@ agent-tools/
 *.log
 .turbo/
 dist/
+scripts/.tmp-*

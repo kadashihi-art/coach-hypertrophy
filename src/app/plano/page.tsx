@@ -21,11 +21,12 @@ import { narrarCargaPrescricao } from "@/lib/llm/coach";
 import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 import { edicaoDa, podeDesfazer, podeVoltarAoCoach, sessaoEditavel } from "@/lib/plan/editar-treino";
+import { podeDesfazerCorrecao, sessaoCorrigivel } from "@/lib/plan/corrigir-concluida";
 import { preparatoriasDaSessao, rotuloOrdemSeries } from "@/lib/treino/estrutura-series";
 
 /** T8 — Split visual + mesociclo · plano gerado do perfil */
 export default function PlanoPage() {
-  const { state, startSession, desfazerEdicaoSessao, voltarSessaoAoCoach } = useApp();
+  const { state, startSession, desfazerEdicaoSessao, voltarSessaoAoCoach, desfazerCorrecaoSessao } = useApp();
   const [editar, setEditar] = useState<string | null>(null);
   const [confirmaCoach, setConfirmaCoach] = useState<string | null>(null);
   const router = useRouter();
@@ -314,6 +315,28 @@ export default function PlanoPage() {
               >
                 Editar treino
               </button>
+            ) : null}
+            {sessaoCorrigivel(state, s!.id) ? (
+              <div className="mt-3 flex flex-col gap-2">
+                <button
+                  type="button"
+                  data-testid="corrigir-registro"
+                  onClick={() => setEditar(s!.id)}
+                  className="motion-press min-h-11 w-full rounded-2xl border border-accent/40 text-sm font-semibold text-accent"
+                >
+                  Corrigir registro
+                </button>
+                {podeDesfazerCorrecao(state, s!.id) ? (
+                  <button
+                    type="button"
+                    data-testid="desfazer-correcao"
+                    className="min-h-9 rounded-full border border-border px-3 text-xs font-semibold text-bone-50"
+                    onClick={() => { const r = desfazerCorrecaoSessao(s!.id); setAviso(r.ok ? "Desfeito: o registro voltou como era antes da correção." : (r.erro ?? "Não deu agora.")); }}
+                  >
+                    Desfazer correção
+                  </button>
+                ) : null}
+              </div>
             ) : null}
             <Button
               className="motion-press mt-3 min-h-11 text-sm"
