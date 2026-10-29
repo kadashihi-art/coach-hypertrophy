@@ -1,5 +1,6 @@
 "use client";
 
+import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import {
   createContext,
   useCallback,
@@ -825,7 +826,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const rirMedio: Partial<Record<string, number>> = {};
       const rirCount: Partial<Record<string, number>> = {};
       for (const r of seriesSessao) {
-        if (r.tipo_serie === "aquecimento") continue;
+        if (ehSeriePreparatoria(r.tipo_serie)) continue;
         const ex = s.exercicios.find((e) => e.id === r.exercicio_id);
         if (!ex) continue;
         const g = ex.grupo_primario;

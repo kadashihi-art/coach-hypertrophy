@@ -17,6 +17,7 @@ import { incrementoCargaKg } from "@/lib/domain";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
+import { estruturaSeries, proximaFase, temPreparatorias } from "@/lib/treino/estrutura-series";
 
 const FASE_META: Record<
   TipoSerie,
@@ -25,6 +26,10 @@ const FASE_META: Record<
   aquecimento: {
     label: "Aquece",
     hint: "Carga leve pra preparar",
+  },
+  feeder: {
+    label: "Aproximação",
+    hint: "Poucas reps perto da carga de trabalho, sem cansar",
   },
   top_set: {
     label: "Top",
@@ -46,6 +51,7 @@ const FASE_META: Record<
 
 const FASE_ORDEM: TipoSerie[] = [
   "aquecimento",
+  "feeder",
   "top_set",
   "back_off",
   "trabalho",
@@ -109,9 +115,14 @@ export default function TreinoPage() {
   const [carga, setCarga] = useState(prefillCarga);
   const [reps, setReps] = useState(prefillReps);
   const [rir, setRir] = useState(presc?.rir_alvo ?? 2);
-  const [tipo, setTipo] = useState<TipoSerie>(
-    "aquecimento",
-  );
+  // Fase automática pela estrutura (1º exercício: aquece → aproximação → trabalho; demais: só trabalho).
+  const [tipoManual, setTipoManual] = useState<TipoSerie | null>(null);
+  const faseAuto = presc ? proximaFase(presc, prescIdx, seriesDone) : null;
+  const fasesDoExercicio = presc ? new Set(estruturaSeries(presc, prescIdx)) : new Set<TipoSerie>();
+  const tipo: TipoSerie =
+    tipoManual && fasesDoExercicio.has(tipoManual) ? tipoManual : (faseAuto ?? "trabalho");
+  const setTipo = (t: TipoSerie | null) => setTipoManual(t);
+  const exercicioPendente = faseAuto !== null;
   const [showMenu, setShowMenu] = useState(false);
   const [dor, setDor] = useState(false);
   const [showGuia, setShowGuia] = useState(false);
@@ -126,7 +137,7 @@ export default function TreinoPage() {
     setCarga(prefillCarga);
     setReps(prefillReps);
     setRir(presc?.rir_alvo ?? 2);
-    setTipo("aquecimento");
+    setTipoManual(null);
     setDor(false);
     setOcupado(false);
     setAnchorPulse(false);
@@ -144,8 +155,9 @@ export default function TreinoPage() {
 
   const alvoLabel = useMemo(() => {
     if (!presc) return "";
-    return `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}`;
-  }, [presc]);
+    const prep = temPreparatorias(prescIdx) ? " · antes: aquecimento + aproximação" : "";
+    return `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}${prep}`;
+  }, [presc, prescIdx]);
 
   if (!sess) {
     return (
@@ -244,7 +256,7 @@ export default function TreinoPage() {
       rir_percebido: rir,
       dor,
     });
-    if (inReps && inRir && tipo !== "aquecimento") {
+    if (inReps && inRir && tipo !== "aquecimento" && tipo !== "feeder") {
       setHitFlash(true);
       if (hitTimer.current) window.clearTimeout(hitTimer.current);
       hitTimer.current = window.setTimeout(() => setHitFlash(false), 300);
@@ -253,11 +265,11 @@ export default function TreinoPage() {
     if (tipo === "aquecimento" && result.cargas_atualizadas) {
       const nextKg = result.trabalho_kg ?? carga;
       setCarga(nextKg);
-      setTipo(presc.tecnica === "top_set_backoff" ? "top_set" : "trabalho");
+      setTipo(null);
       setCargasToast("Cargas atualizadas a partir do aquecimento");
       window.setTimeout(() => setCargasToast(null), 2200);
     } else if (tipo === "top_set") {
-      setTipo("back_off");
+      setTipo(null);
       const back =
         result.back_off_kg ??
         (presc.carga.top_set_kg
@@ -269,8 +281,8 @@ export default function TreinoPage() {
       } else if (typeof back === "number") {
         setCarga(back);
       }
-    } else if (tipo === "back_off") {
-      setTipo("trabalho");
+    } else {
+      setTipo(null);
     }
 
     // Adaptação ao vivo: toast + prefill carga (presc.series já atualizado no state)
@@ -502,7 +514,7 @@ export default function TreinoPage() {
           ))}
 
           {/* Preview aquecimento — pulsa quando âncora muda; % math fica pro motor */}
-          {seriesDone.length < presc.series && tipo !== "aquecimento" && (
+          {exercicioPendente && temPreparatorias(prescIdx) && tipo !== "aquecimento" && (
             <div
               className={`set-card flex items-center justify-between px-3 py-2 text-sm opacity-70 ${
                 anchorPulse ? "set-anchor-pulse" : ""
@@ -520,10 +532,10 @@ export default function TreinoPage() {
             </div>
           )}
 
-          {seriesDone.length < presc.series && (
+          {exercicioPendente && (
             <div key={`active-${presc.id}-${seriesDone.length}`} className="set-card expanded motion-expand p-4">
               <div className="mb-1 flex flex-wrap gap-2">
-                {FASE_ORDEM.map((t) => (
+                {FASE_ORDEM.filter((t) => fasesDoExercicio.has(t)).map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -595,7 +607,7 @@ export default function TreinoPage() {
           )}
         </div>
 
-        {seriesDone.length >= presc.series && (
+        {!exercicioPendente && (
           <Card className="mt-4 text-center">
             <p className="font-semibold text-go">Séries concluídas</p>
             <div className="mt-3 flex gap-2">
@@ -637,7 +649,7 @@ export default function TreinoPage() {
       </div>
 
       {/* CTA thumb-zone — terço inferior, sem tabbar no logger */}
-      {seriesDone.length < presc.series && (
+      {exercicioPendente && (
         <div className="thumb-zone mt-auto">
           <Button onClick={concluirSerie} className="motion-press motion-cta-glow min-h-14 text-base">
             Concluir série

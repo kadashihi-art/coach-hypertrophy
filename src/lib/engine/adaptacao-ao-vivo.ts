@@ -72,7 +72,7 @@ export function adaptarAposSerie(args: {
   };
 
   // 1) Aquecimento: âncora já cuida — ignora falha ao vivo
-  if (registro.tipo_serie === "aquecimento") {
+  if (registro.tipo_serie === "aquecimento" || registro.tipo_serie === "feeder") {
     return {
       ...nenhuma,
       motivo: "Aquecimento ignorado pela adaptação ao vivo (âncora).",
@@ -88,7 +88,7 @@ export function adaptarAposSerie(args: {
   const trabalho = todas.filter((s) => TIPOS_TRABALHO.has(s.tipo_serie));
   const abaixoPiso = trabalho.filter((s) => s.reps < piso);
   const comDor = todas.filter((s) => s.dor === true);
-  const loggedCount = todas.length;
+  const loggedCount = todas.filter((s) => s.tipo_serie !== "aquecimento" && s.tipo_serie !== "feeder").length;
   const cargaBase =
     registro.carga_kg > 0
       ? registro.carga_kg
