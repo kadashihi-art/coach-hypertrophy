@@ -52,7 +52,8 @@ async function rodar(W, H) {
 
   const sessao = (id) => page.evaluate(([k, id]) => JSON.parse(localStorage.getItem(k)).sessoes.find((s) => s.id === id), [KEY, id]);
   const tap = async (loc, label) => {
-    await loc.scrollIntoViewIfNeeded();
+    // como o dedo: rola até o botão ficar no meio da tela (fora da BottomNav)
+    await loc.evaluate((el) => el.scrollIntoView({ block: "center" }));
     await page.waitForTimeout(350);
     const bb = await loc.boundingBox();
     const cx = bb.x + bb.width / 2, cy = bb.y + bb.height / 2;
@@ -62,6 +63,7 @@ async function rodar(W, H) {
       return alvo ? null : (e ? `${e.tagName}.${e.className}` : "nada");
     }, [cx, cy]);
     const mesmo = await loc.evaluate((el, [x, y]) => el.contains(document.elementFromPoint(x, y)), [cx, cy]);
+    if ((coberto || !mesmo) && process.env.SMOKE_DEBUG) { await page.screenshot({ path: `/tmp/cal-dbg-${W}.png` }); console.log(await page.evaluate(([x,y])=>document.elementFromPoint(x,y)?.outerHTML.slice(0,300),[cx,cy]), page.url()); }
     if (coberto || !mesmo) fail(`${label}: algo por cima do botão (${coberto ?? "outro botão"})`);
     await page.touchscreen.tap(cx, cy);
     await page.waitForTimeout(600);
@@ -114,6 +116,9 @@ async function rodar(W, H) {
     await page.waitForTimeout(1500);
     const di2 = await page.evaluate((k) => JSON.parse(localStorage.getItem(k)).plano.mesociclo.data_inicio, KEY);
     check(di2 === di, "persistiu após reload", `não persistiu: ${di2}`);
+    // agendamento pode cair no mês seguinte (ex.: começar no fim do mês)
+    if (!(await page.locator('main .grid button[data-status="planejado"]').count()))
+      await tap(page.getByRole("button", { name: "Próximo mês" }), "próximo mês (agenda)");
     const planejados = await page.locator('main .grid button[data-status="planejado"]').count();
     check(planejados > 0, `${planejados} dias planejados`, "nenhum dia agendado");
     // dia futuro planejado: pular e voltar
@@ -131,7 +136,7 @@ async function rodar(W, H) {
   await ctx.close();
 }
 
-for (const [w, h] of [[390, 844], [360, 780]]) {
+for (const [w, h] of (process.env.SMOKE_DEBUG ? [[390, 844]] : [[390, 844], [360, 780]])) {
   console.log(`viewport ${w}x${h}`);
   try { await rodar(w, h); } catch (e) { fails.push(`[${w}] ${e.message}`); console.log("  ✗", e.message); }
 }
