@@ -1,5 +1,6 @@
 "use client";
 
+import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { labelGrupo } from "@/lib/labels";
 import Link from "next/link";
@@ -32,7 +33,7 @@ export default function FeedbackPage() {
   const seriesCount = lastSess
     ? state.registros.filter(
         (r) =>
-          r.sessao_id === lastSess.id && r.tipo_serie !== "aquecimento",
+          r.sessao_id === lastSess.id && !ehSeriePreparatoria(r.tipo_serie),
       ).length
     : 0;
 

@@ -1,3 +1,4 @@
+import { ehSeriePreparatoria } from "@/lib/domain/enums";
 /**
  * e1RM — fórmula de Epley (só no motor, nunca inventada pela IA).
  * e1RM = carga × (1 + reps / 30)
@@ -15,7 +16,7 @@ export function melhorE1rm(
 ): number {
   let best = 0;
   for (const s of series) {
-    if (s.tipo_serie === "aquecimento") continue;
+    if (ehSeriePreparatoria(s.tipo_serie)) continue;
     const e = e1rmEpley(s.carga_kg, s.reps);
     if (e > best) best = e;
   }

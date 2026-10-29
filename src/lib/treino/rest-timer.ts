@@ -4,7 +4,7 @@
  * então continua certo com o app em background e retoma ao voltar.
  * Só LÊ o descanso que o plano/motor já prescreveu (presc.descanso_seg); não altera regras.
  */
-export type FaseSerie = "aquecimento" | "top_set" | "back_off" | "trabalho" | "drop";
+export type FaseSerie = "aquecimento" | "feeder" | "top_set" | "back_off" | "trabalho" | "drop";
 
 export type RestTimerState = {
   /** epoch ms em que o descanso termina */
@@ -25,6 +25,7 @@ export const DESCANSO_PADRAO_S = { composto: 150, isolado: 90 } as const;
 
 const ROTULO: Record<FaseSerie, string> = {
   aquecimento: "Descanso do aquecimento",
+  feeder: "Descanso da aproximação",
   top_set: "Descanso depois da série principal",
   back_off: "Descanso entre as séries de trabalho",
   trabalho: "Descanso entre as séries",
@@ -46,6 +47,11 @@ export function descansoSugerido(args: { fase: FaseSerie; composto: boolean; pre
     case "aquecimento": {
       const [lo, hi] = args.composto ? [45, 75] : [30, 60];
       return Math.min(hi, Math.max(lo, arred5(base * 0.4)));
+    }
+    case "feeder": {
+      // aproximação: um pouco mais que o aquecimento, ainda curto (60–120 s composto, 45–90 s isolado)
+      const [lo, hi] = args.composto ? [60, 120] : [45, 90];
+      return Math.min(hi, Math.max(lo, arred5(base * 0.6)));
     }
     case "top_set":
       return Math.min(args.composto ? 300 : 180, arred5(base * 1.25));

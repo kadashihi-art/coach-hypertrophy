@@ -242,7 +242,7 @@ export default function PlanoPage() {
             </div>
             {s!.prescricoes.length > 0 && (
               <ul className="mt-2 space-y-1 text-xs text-muted">
-                {s!.prescricoes.map((p) => {
+                {s!.prescricoes.map((p, i) => {
                   const ex = state.exercicios.find((e) => e.id === p.exercicio_id);
                   const est = state.estados.find(
                     (e) => e.exercicio_id === p.exercicio_id,
@@ -255,6 +255,9 @@ export default function PlanoPage() {
                         {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
                         {carga} kg
                         {p.tecnica === "top_set_backoff" ? " · top/back-off" : ""}
+                        {i === 0 ? (
+                          <span className="text-accent"> · aquece + aproximação antes</span>
+                        ) : null}
                       </span>
                       {s!.status !== "em_andamento" ? (
                         <button

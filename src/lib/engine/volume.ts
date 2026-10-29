@@ -1,3 +1,4 @@
+import { ehSeriePreparatoria } from "@/lib/domain/enums";
 /**
  * Volume efetivo = diretas + 0,5×indiretas (brief §4 / P5).
  * Faixa alvo 10–20 séries efetivas por grupo/semana.
@@ -32,7 +33,7 @@ export function volumeSessaoPorGrupo(
   exercicios: Exercicio[],
 ): VolumePorGrupo[] {
   const map = new Map<GrupoMuscular, { planejado: number; realizado: number }>();
-  const trabalho = series.filter((s) => s.tipo_serie !== "aquecimento");
+  const trabalho = series.filter((s) => !ehSeriePreparatoria(s.tipo_serie));
   for (const s of trabalho) {
     const ex = exercicios.find((e) => e.id === s.exercicio_id);
     if (!ex) continue;
@@ -57,7 +58,7 @@ export function acumularVolumeSemanal(
   exercicios: Exercicio[],
   semanaIso = currentIsoWeek(),
 ): VolumeSemanal[] {
-  const trabalho = series.filter((s) => s.tipo_serie !== "aquecimento");
+  const trabalho = series.filter((s) => !ehSeriePreparatoria(s.tipo_serie));
   const delta = new Map<
     GrupoMuscular,
     { diretas: number; indiretas: number }
