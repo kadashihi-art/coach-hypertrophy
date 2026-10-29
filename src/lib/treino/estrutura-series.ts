@@ -10,13 +10,42 @@
 import type { Exercicio, Prescricao, TipoSerie } from "@/lib/domain";
 import { ehSeriePreparatoria } from "@/lib/domain/enums";
 
-/** Fases de trabalho conforme a prescrição atual (inalteradas). */
+const TECNICAS_FORA_DA_ORDEM = new Set<string>(["drop_set", "rest_pause"]);
+
+/** % do top em cada fase da estrutura trabalho → top → back-off (iury). */
+export const PCT_TRABALHO_DO_TOP = 0.8;
+export const PCT_BACKOFF_DO_TOP = 0.9;
+
+/** Arredonda pra baixo no step do exercício (mín. 1 step quando há carga). */
+export function arredondarStep(kg: number, stepKg: number): number {
+  if (!(kg > 0)) return 0;
+  const r = stepKg > 0 ? Math.floor(kg / stepKg + 1e-9) * stepKg : Math.round(kg * 10) / 10;
+  return Math.max(stepKg > 0 ? stepKg : 0, Math.round(r * 100) / 100);
+}
+
+/** Cargas da estrutura a partir do top (= carga do motor). */
+export function cargasDaEstrutura(topKg: number, stepKg: number) {
+  return {
+    trabalho: arredondarStep(topKg * PCT_TRABALHO_DO_TOP, stepKg),
+    top_set: topKg,
+    back_off: arredondarStep(topKg * PCT_BACKOFF_DO_TOP, stepKg),
+  };
+}
+
+/** Texto do Plano para a ordem das séries (ou "" quando não se aplica). */
+export function rotuloOrdemSeries(presc: Pick<Prescricao, "series" | "tecnica">): string {
+  const f = fasesDeTrabalho(presc);
+  if (!f.includes("back_off")) return "";
+  const n = f.filter((x) => x === "trabalho").length;
+  return `${n > 0 ? `${n}× trabalho → ` : ""}top → back-off`;
+}
+
+/** Fases de trabalho conforme a prescrição. */
 export function fasesDeTrabalho(presc: Pick<Prescricao, "series" | "tecnica">): TipoSerie[] {
   const n = Math.max(0, presc.series);
-  // Ordem das séries que valem (pedido do iury): N−2 de trabalho → 1 top → 1 back-off.
-  // Só em top_set_backoff com N ≥ 2 — nas outras técnicas o motor não tem carga de top/back-off
-  // (ver conflitos no PR), então ficam como estavam.
-  if (presc.tecnica === "top_set_backoff" && n >= 2) {
+  // Ordem das séries que valem (iury): N−2 de trabalho → 1 top → 1 back-off, em todo exercício com N ≥ 2.
+  // N = 1, drop_set e rest_pause ficam como estavam.
+  if (n >= 2 && !TECNICAS_FORA_DA_ORDEM.has(presc.tecnica)) {
     return [...Array<TipoSerie>(n - 2).fill("trabalho"), "top_set", "back_off"];
   }
   if (presc.tecnica === "top_set_backoff" && n === 1) return ["top_set"];
@@ -64,10 +93,7 @@ export const PCT_AQUECIMENTO = 0.6;
 
 /** Carga de aquecimento exibida/pré-preenchida: 60% da carga de hoje, arredondada pra baixo ao step do exercício (conservador; mín. 1 step). */
 export function cargaAquecimento(cargaHojeKg: number, stepKg: number): number {
-  if (!(cargaHojeKg > 0)) return 0;
-  const bruto = cargaHojeKg * PCT_AQUECIMENTO;
-  const r = stepKg > 0 ? Math.floor(bruto / stepKg + 1e-9) * stepKg : Math.round(bruto * 10) / 10;
-  return Math.max(stepKg > 0 ? stepKg : 0, Math.round(r * 100) / 100);
+  return arredondarStep(cargaHojeKg * PCT_AQUECIMENTO, stepKg);
 }
 
 export function textoAquecimento(cargaHojeKg: number, stepKg: number): string {

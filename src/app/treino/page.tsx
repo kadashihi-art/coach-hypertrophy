@@ -17,7 +17,7 @@ import { incrementoCargaKg } from "@/lib/domain";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
-import { cargaAquecimento, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
+import { cargaAquecimento, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
 
 const FASE_META: Record<
   TipoSerie,
@@ -114,12 +114,15 @@ export default function TreinoPage() {
   const prep = prepFlags[prescIdx] ?? prescIdx === 0;
   const cargaTop = presc?.carga.top_set_kg ?? prefillCarga;
   /** kg pré-preenchido por fase (motor/âncora define top/trabalho; aquecimento = 60% arredondado ao step). */
-  const cargaDaFase = (f: TipoSerie | null): number =>
-    f === "aquecimento"
-      ? cargaAquecimento(prefillCarga, stepKg)
-      : f === "top_set"
-        ? cargaTop
-        : prefillCarga;
+  const usaOrdem = presc ? estruturaSeries(presc, false).includes("back_off") : false;
+  /** kg pré-preenchido por fase: top = motor; trabalho 80% / back-off 90% do top (arredondado); aquecimento 60%. */
+  const cargaDaFase = (f: TipoSerie | null, topKg: number = cargaTop): number => {
+    if (f === "aquecimento") return cargaAquecimento(topKg, stepKg);
+    if (usaOrdem && (f === "trabalho" || f === "top_set" || f === "back_off")) {
+      return cargasDaEstrutura(topKg, stepKg)[f];
+    }
+    return f === "top_set" ? topKg : prefillCarga;
+  };
 
   const [carga, setCarga] = useState(prefillCarga);
   const [reps, setReps] = useState(prefillReps);
@@ -143,12 +146,7 @@ export default function TreinoPage() {
   const hitTimer = useRef<number | null>(null);
 
   const faseInicial = presc ? proximaFase(presc, prep, seriesDone) : null;
-  const cargaInicial =
-    faseInicial === "aquecimento"
-      ? cargaAquecimento(prefillCarga, stepKg)
-      : faseInicial === "top_set"
-        ? cargaTop
-        : prefillCarga;
+  const cargaInicial = cargaDaFase(faseInicial);
   useEffect(() => {
     setCarga(cargaInicial);
     setReps(prefillReps);
@@ -297,30 +295,9 @@ export default function TreinoPage() {
       hitTimer.current = window.setTimeout(() => setHitFlash(false), 300);
     }
     rt.iniciar(descansoSugerido({ fase: tipo, composto: exercicioAtivo?.composto ?? true, prescritoSeg: presc.descanso_seg }), tipo);
-    if (tipo === "aquecimento" && result.cargas_atualizadas) {
-      const nextKg = result.trabalho_kg ?? carga;
-      setCarga(nextKg);
-      setTipo(null);
-      setCargasToast("Cargas atualizadas a partir do aquecimento");
-      window.setTimeout(() => setCargasToast(null), 2200);
-    } else if (tipo === "top_set") {
-      setTipo(null);
-      const back =
-        result.back_off_kg ??
-        (presc.carga.top_set_kg
-          ? Math.round((presc.carga.top_set_kg * 0.875) / stepKg) * stepKg
-          : undefined);
-      if (presc.carga.top_set_kg) {
-        const bo = Math.round((presc.carga.top_set_kg * 0.875) / stepKg) * stepKg;
-        setCarga(bo);
-      } else if (typeof back === "number") {
-        setCarga(back);
-      }
-    } else {
-      setTipo(null);
-      // Avanço automático: aquecimento → aproximação → top/trabalho já com o kg sugerido da fase.
-      if (tipo === "aquecimento" || tipo === "feeder" || proxima === "top_set") setCarga(cargaDaFase(proxima));
-    }
+    // Avanço automático: próxima fase já com o kg sugerido (back-off sai do top que você fez).
+    setTipo(null);
+    setCarga(cargaDaFase(proxima, tipo === "top_set" && carga > 0 ? carga : cargaTop));
     setReps(prefillReps);
 
     // Adaptação ao vivo: toast + prefill carga (presc.series já atualizado no state)

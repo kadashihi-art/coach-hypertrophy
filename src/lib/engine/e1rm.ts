@@ -15,7 +15,9 @@ export function melhorE1rm(
   series: Array<{ carga_kg: number; reps: number; tipo_serie?: string }>,
 ): number {
   let best = 0;
-  for (const s of series) {
+  // Com top set registrado, o e1RM vem do top (estrutura trabalho → top → back-off).
+  const tops = series.filter((s) => s.tipo_serie === "top_set");
+  for (const s of tops.length > 0 ? tops : series) {
     if (ehSeriePreparatoria(s.tipo_serie)) continue;
     const e = e1rmEpley(s.carga_kg, s.reps);
     if (e > best) best = e;

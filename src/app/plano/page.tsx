@@ -19,7 +19,7 @@ import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { VOLUME_MAX } from "@/lib/domain";
 import { narrarCargaPrescricao } from "@/lib/llm/coach";
 import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
-import { preparatoriasDaSessao } from "@/lib/treino/estrutura-series";
+import { preparatoriasDaSessao, rotuloOrdemSeries } from "@/lib/treino/estrutura-series";
 
 /** T8 — Split visual + mesociclo · plano gerado do perfil */
 export default function PlanoPage() {
@@ -255,9 +255,7 @@ export default function PlanoPage() {
                       <span>
                         {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
                         {carga} kg
-                        {p.tecnica === "top_set_backoff"
-                          ? ` · ${p.series > 2 ? `${p.series - 2}× trabalho → ` : ""}top → back-off`
-                          : ""}
+                        {rotuloOrdemSeries(p) ? ` · ${rotuloOrdemSeries(p)}` : ""}
                         {preparatoriasDaSessao(s!.prescricoes, state.exercicios)[i] ? (
                           <span className="text-accent"> · aquece + aproximação antes</span>
                         ) : null}

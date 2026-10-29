@@ -3,6 +3,7 @@
  * Só sugere ajustes para o resto da sessão atual; NÃO grava EstadoExercicio
  * (isso fica em finishSession / progressão R1–R12).
  */
+import { fasesDeTrabalho } from "@/lib/treino/estrutura-series";
 import type {
   EstadoExercicio,
   NivelAlerta,
@@ -89,8 +90,11 @@ export function adaptarAposSerie(args: {
   const abaixoPiso = trabalho.filter((s) => s.reps < piso);
   const comDor = todas.filter((s) => s.dor === true);
   const loggedCount = todas.filter((s) => s.tipo_serie !== "aquecimento" && s.tipo_serie !== "feeder").length;
-  const cargaBase =
-    registro.carga_kg > 0
+  // Estrutura trabalho → top → back-off: trabalho/back-off são % do top, então o corte sai do top (carga do motor).
+  const naOrdem = fasesDeTrabalho(presc).includes("back_off") && registro.tipo_serie !== "top_set";
+  const cargaBase = naOrdem
+    ? (presc.carga.top_set_kg ?? presc.carga.trabalho_kg ?? registro.carga_kg)
+    : registro.carga_kg > 0
       ? registro.carga_kg
       : (presc.carga.trabalho_kg ?? 0);
 
