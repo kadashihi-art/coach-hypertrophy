@@ -3,6 +3,7 @@
  * Prefere `contexto` do cliente (AppState local). Nunca writeUserState/saveState.
  */
 import { NextResponse } from "next/server";
+import { visaoHabilitada } from "@/lib/flags";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { AppStateSchema, GrupoMuscularSchema } from "@/lib/domain";
@@ -113,6 +114,12 @@ export async function POST(request: Request) {
     };
   }
 
+  if (body.midia && !visaoHabilitada()) {
+    return NextResponse.json(
+      { erro: "visao_desligada", mensagem_usuario: "Por enquanto eu ainda não consigo olhar foto ou vídeo por aqui. Me descreve com palavras como foi a execução (onde sentiu, o que travou, como ficou a amplitude) que eu te ajudo." },
+      { status: 400 },
+    );
+  }
   const coach = getCoachProvider();
   try {
     const envelope = await coach.conversar({

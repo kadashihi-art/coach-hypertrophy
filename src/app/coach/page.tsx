@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { VISAO_UI } from "@/lib/flags";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import { Badge, Button } from "@/components/ui";
@@ -64,7 +65,7 @@ export default function CoachPage() {
       id: "welcome",
       role: "assistant",
       content:
-        "Olá — sou seu coach. Pergunte qualquer coisa de treino, técnica, recuperação ou objetivos; uso seu histórico e o racional do seu plano quando ajuda. Pode anexar foto ou vídeo da execução 📎. Kg quem decide é o motor.",
+        "Olá — sou seu coach. Pergunte qualquer coisa de treino, técnica, recuperação ou objetivos; uso seu histórico e o racional do seu plano quando ajuda. Kg quem decide é o motor.",
     },
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -278,7 +279,7 @@ export default function CoachPage() {
                 : "mr-auto bg-card text-bone-50 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]"
             }`}
           >
-            {m.thumbs?.length ? (
+            {VISAO_UI && m.thumbs?.length ? (
               <div className="mb-1.5 flex gap-1">
                 {m.thumbs.map((t, i) => (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -343,6 +344,7 @@ export default function CoachPage() {
           ) : null}
         </div>
       )}
+      {VISAO_UI ? (<>
       <p className="mt-2 text-[10px] text-faint">
         Mídia: foto até {MIDIA_LIMITES.imagem_max_mb} MB (reduzida a {MIDIA_LIMITES.imagem_max_px}px) · vídeo até{" "}
         {MIDIA_LIMITES.video_max_seg} s e {MIDIA_LIMITES.video_max_mb} MB ({MIDIA_LIMITES.video_frames} frames extraídos no aparelho; o vídeo não é enviado nem salvo).
@@ -362,6 +364,7 @@ export default function CoachPage() {
         className="hidden"
         onChange={(e) => void onFile(e.target.files?.[0])}
       />
+      </>) : null}
       <form
         className="sticky bottom-0 mt-3 flex gap-2 rounded-2xl border border-border bg-[rgba(5,5,5,.96)] p-2 backdrop-blur-xl"
         onSubmit={(e) => {
@@ -369,6 +372,7 @@ export default function CoachPage() {
           void send(input);
         }}
       >
+        {VISAO_UI ? (<>
         <button
           type="button"
           aria-label="Anexar foto ou vídeo"
@@ -387,10 +391,11 @@ export default function CoachPage() {
         >
           📷
         </button>
+        </>) : null}
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={anexo ? "O que quer que eu olhe? (opcional)" : "Pergunte qualquer coisa ao coach…"}
+          placeholder={VISAO_UI && anexo ? "O que quer que eu olhe? (opcional)" : "Pergunte qualquer coisa ao coach…"}
           disabled={busy}
           className="min-h-11 flex-1 rounded-xl bg-ink-800 px-3 text-sm text-bone-50 outline-none placeholder:text-faint focus:ring-1 focus:ring-accent/60"
           maxLength={2000}

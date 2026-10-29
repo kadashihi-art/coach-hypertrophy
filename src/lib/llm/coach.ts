@@ -3,6 +3,7 @@
  * Narrativa sobre saída do motor. Nunca grava Blob/AppState.
  */
 import { TOM_COACH } from "./tom";
+import { visaoHabilitada } from "@/lib/flags";
 import { AJUSTAR_PLANO_NOME } from "@/lib/nav";
 import {
   CONTRATO_VERSAO,
@@ -723,9 +724,10 @@ export class HttpCoachProvider implements CoachProvider {
 
   async conversar(input: CoachConversarInput): Promise<LlmResponseEnvelope> {
     const stub = await this.stub.conversar(input);
+    if (!visaoHabilitada()) input = { ...input, midia: undefined };
     const system = buildCoachSystemWithArsenal([
       COACH_CHAT_SYSTEM,
-      input.midia ? COACH_VISION_SYSTEM : "",
+      input.midia ? COACH_VISION_SYSTEM : "Você não recebe foto nem vídeo neste app: nunca peça ou ofereça analisar foto/vídeo; peça descrição em palavras se precisar.",
       "CONTEXTO DO USUÁRIO (JSON do motor; use quando relevante, cite números exatamente):",
       JSON.stringify(input.contexto).slice(0, 14000),
     ].filter(Boolean));
