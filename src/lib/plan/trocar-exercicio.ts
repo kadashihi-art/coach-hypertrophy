@@ -65,13 +65,13 @@ export type PreviaTroca = {
 
 export type VolumePlano = Record<string, { diretas: number; indiretas: number; efetivas: number }>;
 
-function equipsDoPerfil(perfil: Perfil | null | undefined): Set<string> | null {
+export function equipsDoPerfil(perfil: Perfil | null | undefined): Set<string> | null {
   const eq = perfil?.equipamentos ?? [];
   if (!eq.length) return null;
   return new Set<string>([...eq, "peso_corporal"]);
 }
 
-function permitido(ex: Exercicio, perfil: Perfil | null | undefined): boolean {
+export function permitido(ex: Exercicio, perfil: Perfil | null | undefined): boolean {
   const restr = parseRestricoes(perfil?.restricoes ?? []);
   if (patternBlocked(ex.padrao, restr)) return false;
   const equips = equipsDoPerfil(perfil);

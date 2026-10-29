@@ -62,6 +62,12 @@ import {
   type AdaptacaoAoVivo,
 } from "@/lib/engine/adaptacao-ao-vivo";
 import { aplicarTroca } from "@/lib/plan/trocar-exercicio";
+import {
+  aplicarEdicao,
+  desfazerEdicao,
+  voltarAoCoach,
+  type Rascunho,
+} from "@/lib/plan/editar-treino";
 import { avaliarCheckinDeload } from "@/lib/engine/checkin-deload";
 import { incrementoCargaKg } from "@/lib/domain";
 
@@ -104,6 +110,10 @@ type Ctx = {
   ) => void;
   /** Troca permanente de exercício no plano (só após "Confirmar troca"). */
   trocarExercicio: (deId: string, paraId: string) => boolean;
+  /** Editar treino: só após "Confirmar". */
+  editarSessao: (r: Rascunho) => { ok: boolean; erro?: string };
+  desfazerEdicaoSessao: (sessaoId: string) => { ok: boolean; erro?: string };
+  voltarSessaoAoCoach: (sessaoId: string) => { ok: boolean; erro?: string };
 };
 
 const AppCtx = createContext<Ctx | null>(null);
@@ -1087,6 +1097,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return true;
   }, [state]);
 
+  const editarSessao = useCallback((r: Rascunho) => {
+    const res = aplicarEdicao(state, r);
+    if (!res.ok) return { ok: false, erro: res.erro };
+    setState(res.state);
+    return { ok: true };
+  }, [state]);
+
+  const desfazerEdicaoSessao = useCallback((sessaoId: string) => {
+    const res = desfazerEdicao(state, sessaoId);
+    if (!res.ok) return { ok: false, erro: res.erro };
+    setState(res.state);
+    return { ok: true };
+  }, [state]);
+
+  const voltarSessaoAoCoach = useCallback((sessaoId: string) => {
+    const res = voltarAoCoach(state, sessaoId);
+    if (!res.ok) return { ok: false, erro: res.erro };
+    setState(res.state);
+    return { ok: true };
+  }, [state]);
+
   const resetApp = useCallback(() => {
     setState(resetState());
   }, []);
@@ -1112,6 +1143,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDataInicio,
       markCalendario,
       trocarExercicio,
+      editarSessao,
+      desfazerEdicaoSessao,
+      voltarSessaoAoCoach,
     }),
     [
       state,
@@ -1133,6 +1167,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDataInicio,
       markCalendario,
       trocarExercicio,
+      editarSessao,
+      desfazerEdicaoSessao,
+      voltarSessaoAoCoach,
     ],
   );
 
