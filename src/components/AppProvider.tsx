@@ -44,12 +44,10 @@ import {
   aplicarAjusteVolumeNasSessoes,
   extractVolumeMarkers,
 } from "@/lib/engine/alertas-volume";
-import { proximaSessao } from "@/lib/plan/proxima-sessao";
+import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
 import { gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import {
   agendarSessoes,
-  desmarcarPulada,
-  marcarPulada,
 } from "@/lib/plan/calendario";
 import { remountPlano } from "@/lib/plan/remount-plano";
 import {
@@ -1060,26 +1058,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const markCalendario = useCallback(
     (sessaoId: string, action: "pular" | "planejar" | "feito") => {
       setState((s) => {
-        if (action === "pular") {
-          return { ...s, sessoes: marcarPulada(s.sessoes, sessaoId) };
-        }
-        if (action === "planejar") {
-          return { ...s, sessoes: desmarcarPulada(s.sessoes, sessaoId) };
-        }
-        // feito: mark concluida if not already (no series required for calendar sync)
+        // Calendário é a fonte do usuário: permite trocar o status de qualquer
+        // dia (inclusive um já "feito"). Só a sessão em andamento fica intocada.
         return {
           ...s,
-          sessoes: s.sessoes.map((x) =>
-            x.id === sessaoId && x.status !== "em_andamento"
-              ? {
-                  ...x,
-                  status: "concluida" as const,
-                  finalizada_em:
-                    x.finalizada_em ?? new Date().toISOString(),
-                  data: x.data ?? new Date().toISOString().slice(0, 10),
-                }
-              : x,
-          ),
+          sessoes: s.sessoes.map((x) => {
+            if (x.id !== sessaoId || x.status === "em_andamento") return x;
+            if (action === "pular") return { ...x, status: "pulada" as const };
+            if (action === "planejar")
+              return { ...x, status: "planejada" as const };
+            return {
+              ...x,
+              status: "concluida" as const,
+              finalizada_em: x.finalizada_em ?? new Date().toISOString(),
+              data: x.data ?? hojeIsoSaoPaulo(),
+            };
+          }),
         };
       });
     },

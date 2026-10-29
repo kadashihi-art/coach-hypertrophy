@@ -7,9 +7,30 @@ import { PlanoTabs } from "@/components/PlanoTabs";
 import { Badge, Button, Card, SectionTitle } from "@/components/ui";
 import {
   derivarCalendario,
+  parseIsoDate,
   type CalendarioDiaView,
 } from "@/lib/plan/calendario";
 import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
+
+/** "2026-10-29" → "Qui, 29 out" (pt-BR, sem pontos). */
+function dataHumana(iso: string): string {
+  const d = parseIsoDate(iso);
+  const dow = d
+    .toLocaleDateString("pt-BR", { weekday: "short", timeZone: "UTC" })
+    .replace(".", "");
+  const mes = d
+    .toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" })
+    .replace(".", "");
+  return `${dow.charAt(0).toUpperCase()}${dow.slice(1)}, ${d.getUTCDate()} ${mes}`;
+}
+
+const STATUS_LABEL: Record<CalendarioDiaView["status"], string> = {
+  planejado: "Planejado",
+  feito: "Feito",
+  pulado: "Pulado",
+  vazio: "Sem treino",
+  em_andamento: "Em andamento",
+};
 
 const DOW = ["S", "T", "Q", "Q", "S", "S", "D"]; // Seg→Dom labels short
 
@@ -33,7 +54,8 @@ export default function CalendarioPage() {
   const { state, markCalendario, setDataInicio } = useApp();
   const [year, setYear] = useState(2026);
   const [month0, setMonth0] = useState(9); // Oct 0-indexed fallback; hydrated below
-  const [selected, setSelected] = useState<CalendarioDiaView | null>(null);
+  // Guarda só a data: o card lê o dia sempre do estado atual (não de uma cópia).
+  const [selectedData, setSelectedData] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -47,6 +69,10 @@ export default function CalendarioPage() {
     () => derivarCalendario(state.sessoes, year, month0),
     [state.sessoes, year, month0],
   );
+
+  const selected = selectedData
+    ? (days.find((d) => d.data === selectedData) ?? null)
+    : null;
 
   const firstDow = useMemo(() => {
     // Mon=0 … Sun=6 for grid padding
@@ -80,7 +106,7 @@ export default function CalendarioPage() {
   }
 
   return (
-    <main className="motion-fade-up px-5 pb-10 pt-8">
+    <main className="motion-fade-up px-5 pb-28 pt-8">
       <PlanoTabs />
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
         Calendário
@@ -88,16 +114,16 @@ export default function CalendarioPage() {
       <h1 className="mb-2 text-2xl font-bold capitalize">{titulo}</h1>
       <p className="mb-3 text-sm text-muted">
         {dataInicio
-          ? `Início do meso: ${dataInicio}`
+          ? `Início do meso: ${dataHumana(dataInicio)}`
           : "Defina a data de início em Meu treino."}{" "}
         {next ? `· Próximo: ${next.nome}` : ""}
       </p>
 
       <div className="mb-3 flex gap-2">
-        <Button variant="ghost" className="min-h-10 flex-1 text-sm" onClick={prevMonth}>
+        <Button variant="ghost" className="min-h-10 flex-1 text-sm" onClick={prevMonth} aria-label="Mês anterior">
           ←
         </Button>
-        <Button variant="ghost" className="min-h-10 flex-1 text-sm" onClick={nextMonth}>
+        <Button variant="ghost" className="min-h-10 flex-1 text-sm" onClick={nextMonth} aria-label="Próximo mês">
           →
         </Button>
       </div>
@@ -117,11 +143,13 @@ export default function CalendarioPage() {
             <button
               key={d.data}
               type="button"
-              onClick={() => setSelected(d)}
+              onClick={() => setSelectedData(d.data)}
+              data-status={d.status}
+              aria-label={`${dataHumana(d.data)}${d.nome ? ` · ${d.nome}` : ""} · ${STATUS_LABEL[d.status]}`}
               className={`aspect-square rounded-xl text-xs font-bold transition ${statusColor(d.status)} ${
                 selected?.data === d.data ? "ring-2 ring-accent" : ""
               }`}
-              title={d.nome ?? d.status}
+              title={d.nome ?? STATUS_LABEL[d.status]}
             >
               {dayNum}
             </button>
@@ -137,50 +165,41 @@ export default function CalendarioPage() {
       </div>
 
       {selected ? (
-        <Card className="mb-4">
+        <Card className="mb-4" data-testid="card-dia">
           <p className="font-semibold">
-            {selected.data}
+            {dataHumana(selected.data)}
             {selected.nome ? ` · ${selected.nome}` : ""}
-          </p>
-          <p className="mt-1 text-xs text-muted capitalize">
-            Status: {selected.status}
           </p>
           {selected.sessao_id ? (
             <div className="mt-3 flex flex-col gap-2">
-              <Button
-                variant="ghost"
-                className="min-h-11 text-sm"
-                onClick={() => {
-                  markCalendario(selected.sessao_id!, "planejar");
-                  setSelected({ ...selected, status: "planejado" });
-                }}
-              >
-                Marcar planejado
-              </Button>
-              <Button
-                variant="primary"
-                className="min-h-11 text-sm"
-                onClick={() => {
-                  markCalendario(selected.sessao_id!, "feito");
-                  setSelected({ ...selected, status: "feito" });
-                }}
-              >
-                Marcar feito
-              </Button>
-              <Button
-                variant="warn"
-                className="min-h-11 text-sm"
-                onClick={() => {
-                  markCalendario(selected.sessao_id!, "pular");
-                  setSelected({ ...selected, status: "pulado" });
-                }}
-              >
-                Pular (proximaSessao ignora)
-              </Button>
+              {(
+                [
+                  ["planejar", "planejado", "Planejado", "bg-accent/20 text-accent"],
+                  ["feito", "feito", "Feito", "bg-go text-ink-950"],
+                  ["pular", "pulado", "Pular", "bg-warn/30 text-warn"],
+                ] as const
+              ).map(([acao, st, label, ativo]) => {
+                const on = selected.status === st;
+                return (
+                  <Button
+                    key={acao}
+                    variant="ghost"
+                    aria-pressed={on}
+                    disabled={selected.status === "em_andamento"}
+                    className={`min-h-11 text-sm ${on ? `${ativo} ring-2 ring-current` : ""}`}
+                    onClick={() => markCalendario(selected.sessao_id!, acao)}
+                  >
+                    {on ? `✓ ${label}` : label}
+                  </Button>
+                );
+              })}
+              {selected.status === "em_andamento" ? (
+                <p className="text-xs text-muted">Treino em andamento.</p>
+              ) : null}
             </div>
           ) : (
             <p className="mt-2 text-xs text-muted">
-              Sem sessão neste dia.{" "}
+              Sem treino neste dia.{" "}
               {!dataInicio ? (
                 <Link href="/plano/ajustar" className="text-accent">
                   Definir início →
@@ -199,8 +218,7 @@ export default function CalendarioPage() {
           </p>
           <Button
             onClick={() => {
-              const iso = new Date().toISOString().slice(0, 10);
-              setDataInicio(iso);
+              setDataInicio(hojeIsoSaoPaulo());
             }}
           >
             Começar hoje

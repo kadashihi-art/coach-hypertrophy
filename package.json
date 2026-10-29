@@ -21,7 +21,8 @@
     "smoke:coach-geral": "npx --yes tsx scripts/smoke-coach-geral.ts",
     "smoke:rest-timer": "npx --yes tsx scripts/smoke-rest-timer.ts",
     "smoke:estrutura-series": "npx --yes tsx scripts/smoke-estrutura-series.ts",
-    "smoke:trocar-exercicio": "npx --yes tsx scripts/smoke-trocar-exercicio.ts"
+    "smoke:trocar-exercicio": "npx --yes tsx scripts/smoke-trocar-exercicio.ts",
+    "smoke:calendario": "node scripts/smoke-calendario.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
@@ -39,6 +40,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "playwright": "^1.64.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
