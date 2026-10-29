@@ -11,8 +11,7 @@ import { NEGOCIAR_SYSTEM, RespostaNegociacaoSchema, interpretarFeedbackHeuristic
 export const maxDuration = 90;
 
 const BodySchema = z.object({
-  // vazio = abertura; 1 caractere (ex.: "C" acidental) é rejeitado
-  mensagem: z.string().max(2000).default("").refine((t) => mensagemApiValida(t, true), "mensagem muito curta"),
+  mensagem: z.string().max(2000).default(""),
   proposta: z.unknown().optional(),
   parq_bloqueado: z.boolean().optional(),
   historico: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).max(16).default([]),
@@ -34,6 +33,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ erro: "payload inválido" }, { status: 400 });
   const { mensagem, proposta, historico } = parsed.data;
   if (parsed.data.parq_bloqueado) return NextResponse.json({ erro: "PAR-Q bloqueia prescrição" }, { status: 403 });
+  // vazio = abertura; 1 caractere (ex.: "C" acidental) é rejeitado — depois do gate PAR-Q
+  if (!mensagemApiValida(mensagem, true)) return NextResponse.json({ erro: "mensagem muito curta" }, { status: 400 });
 
   const heur = mensagem.trim() ? interpretarFeedbackHeuristico(mensagem) : { resposta: comAberturaSincera(apresentarStub(proposta)), ajustes: {}, condicoes: [] };
   const apiKey = process.env.COACH_LLM_API_KEY?.trim();

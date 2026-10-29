@@ -307,7 +307,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         data: ck.data,
       });
 
-      let alertas = s.alertas.filter(
+      const alertas = s.alertas.filter(
         (a) =>
           !(
             a.data === ck.data &&
@@ -448,7 +448,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const prescricoes = deload.prescricoes;
 
       // Alertas de R5/R6/AGUA do dia (R9 já pode ter vindo do check-in)
-      let alertas = [...s.alertas];
+      const alertas = [...s.alertas];
       for (const a of deload.alertas) {
         const dup = alertas.some(
           (x) =>
@@ -807,7 +807,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
 
       // Resolve alertas N1 de R9 do dia (check-in); volume alerts ficam abertos
-      let alertas = s.alertas.map((a) =>
+      const alertas = s.alertas.map((a) =>
         a.nivel === "N1" &&
         a.data === sess.data &&
         !a.resolvido &&

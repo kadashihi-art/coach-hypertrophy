@@ -34,7 +34,8 @@ import {
 export default function HojePage() {
   const { state, ready, startSession } = useApp();
   const router = useRouter();
-  const [pickedId, setPickedId] = useState<string | null>(null);
+  // escolha manual vale só enquanto a sugerida não muda (ex.: acabou de concluir)
+  const [picked, setPicked] = useState<{ id: string; sug: string | null } | null>(null);
   const [alertaFechado, setAlertaFechado] = useState(false);
 
   useEffect(() => {
@@ -46,18 +47,11 @@ export default function HojePage() {
 
   const hojeSP = ready ? hojeIsoSaoPaulo() : null;
   const ciclo = useMemo(() => sessoesDoPlano(state, hojeSP), [state, hojeSP]);
-  const sugerida = useMemo(() => proximaSessao(state), [state, hojeSP]);
+  const sugerida = useMemo(() => proximaSessao(state), [state]);
   const fase = useMemo(() => faseAtiva(state.plano, hojeSP), [state.plano, hojeSP]);
 
-  useEffect(() => {
-    if (sugerida && !pickedId) setPickedId(sugerida.id);
-  }, [sugerida, pickedId]);
-
-  // Se a sugerida mudou (ex.: acabou de concluir), acompanhar
-  useEffect(() => {
-    if (sugerida) setPickedId(sugerida.id);
-    // só reage quando a sessão sugerida muda (ex.: acabou de concluir)
-  }, [sugerida?.id]);
+  const pickedId = picked && picked.sug === (sugerida?.id ?? null) ? picked.id : (sugerida?.id ?? null);
+  const setPickedId = (id: string) => setPicked({ id, sug: sugerida?.id ?? null });
 
   const sess =
     ciclo.find((s) => s.id === pickedId) ??
@@ -65,20 +59,17 @@ export default function HojePage() {
     ciclo[0];
 
   const plano = state.plano;
-  const [hojeLabel, setHojeLabel] = useState<string>("");
-  const [hojeIso, setHojeIso] = useState<string | null>(null);
-  useEffect(() => {
-    const d = new Date();
-    setHojeIso(d.toISOString().slice(0, 10));
-    setHojeLabel(
-      d.toLocaleDateString("pt-BR", {
+  // ready só é true no cliente (estado hidratado), então dá pra ler a data direto
+  const agora = ready ? new Date() : null;
+  const hojeIso = agora ? agora.toISOString().slice(0, 10) : null;
+  const hojeLabel = agora
+    ? agora.toLocaleDateString("pt-BR", {
         weekday: "long",
         day: "numeric",
         month: "short",
         timeZone: "America/Sao_Paulo",
-      }),
-    );
-  }, []);
+      })
+    : "";
   const alerta =
     state.alertas.find((a) => !a.resolvido) ??
     state.alertas.find((a) => a.nivel !== "N0") ??
