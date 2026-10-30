@@ -19,11 +19,16 @@ import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { VOLUME_MAX } from "@/lib/domain";
 import { narrarCargaPrescricao } from "@/lib/llm/coach";
 import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
+import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
+import { edicaoDa, podeDesfazer, podeVoltarAoCoach, sessaoEditavel } from "@/lib/plan/editar-treino";
+import { podeDesfazerCorrecao, sessaoCorrigivel } from "@/lib/plan/corrigir-concluida";
 import { preparatoriasDaSessao, rotuloOrdemSeries } from "@/lib/treino/estrutura-series";
 
 /** T8 — Split visual + mesociclo · plano gerado do perfil */
 export default function PlanoPage() {
-  const { state, startSession } = useApp();
+  const { state, startSession, desfazerEdicaoSessao, voltarSessaoAoCoach, desfazerCorrecaoSessao } = useApp();
+  const [editar, setEditar] = useState<string | null>(null);
+  const [confirmaCoach, setConfirmaCoach] = useState<string | null>(null);
   const router = useRouter();
   const plano = state.plano;
   const next = proximaSessao(state);
@@ -87,6 +92,9 @@ export default function PlanoPage() {
       ) : null}
       {trocar ? (
         <TrocarExercicioSheet deId={trocar} onClose={() => setTrocar(null)} onTrocado={setAviso} />
+      ) : null}
+      {editar ? (
+        <EditarTreinoSheet sessaoId={editar} onClose={() => setEditar(null)} onSalvo={setAviso} />
       ) : null}
       {banner ? (
         <div className="motion-swap mb-4 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-bone-50">
@@ -275,6 +283,61 @@ export default function PlanoPage() {
                 })}
               </ul>
             )}
+            {edicaoDa(state, s!.id) ? (
+              <div data-testid="editado" className="mt-3 rounded-2xl border border-accent/30 bg-accent/5 px-3 py-2 text-xs">
+                <p className="font-semibold text-accent">Editado por você</p>
+                {confirmaCoach === s!.id ? (
+                  <div className="mt-2">
+                    <p className="mb-2 text-bone-50">Voltar este treino ao plano do Coach? Suas edições nele somem; o histórico continua.</p>
+                    <div className="flex gap-2">
+                      <button type="button" className="min-h-9 flex-1 rounded-full bg-accent px-3 font-semibold text-ink-950" onClick={() => { const r = voltarSessaoAoCoach(s!.id); setAviso(r.ok ? "Pronto: o treino voltou ao plano do Coach." : (r.erro ?? "Não deu agora.")); setConfirmaCoach(null); }}>Sim, voltar</button>
+                      <button type="button" className="min-h-9 flex-1 rounded-full border border-border px-3 text-muted" onClick={() => setConfirmaCoach(null)}>Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {podeDesfazer(state, s!.id) ? (
+                      <button type="button" className="min-h-9 rounded-full border border-border px-3 font-semibold text-bone-50" onClick={() => { const r = desfazerEdicaoSessao(s!.id); setAviso(r.ok ? "Desfeito: voltei a versão anterior do treino." : (r.erro ?? "Não deu agora.")); }}>Desfazer última edição</button>
+                    ) : null}
+                    {podeVoltarAoCoach(state, s!.id) ? (
+                      <button type="button" className="min-h-9 rounded-full border border-border px-3 font-semibold text-accent" onClick={() => setConfirmaCoach(s!.id)}>Voltar ao plano do Coach</button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : null}
+            {sessaoEditavel(state, s!.id) ? (
+              <button
+                type="button"
+                data-testid="editar-treino"
+                onClick={() => setEditar(s!.id)}
+                className="motion-press mt-3 min-h-11 w-full rounded-2xl border border-accent/40 text-sm font-semibold text-accent"
+              >
+                Editar treino
+              </button>
+            ) : null}
+            {sessaoCorrigivel(state, s!.id) ? (
+              <div className="mt-3 flex flex-col gap-2">
+                <button
+                  type="button"
+                  data-testid="corrigir-registro"
+                  onClick={() => setEditar(s!.id)}
+                  className="motion-press min-h-11 w-full rounded-2xl border border-accent/40 text-sm font-semibold text-accent"
+                >
+                  Corrigir registro
+                </button>
+                {podeDesfazerCorrecao(state, s!.id) ? (
+                  <button
+                    type="button"
+                    data-testid="desfazer-correcao"
+                    className="min-h-9 rounded-full border border-border px-3 text-xs font-semibold text-bone-50"
+                    onClick={() => { const r = desfazerCorrecaoSessao(s!.id); setAviso(r.ok ? "Desfeito: o registro voltou como era antes da correção." : (r.erro ?? "Não deu agora.")); }}
+                  >
+                    Desfazer correção
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <Button
               className="motion-press mt-3 min-h-11 text-sm"
               variant={next?.id === s!.id ? "primary" : "ghost"}

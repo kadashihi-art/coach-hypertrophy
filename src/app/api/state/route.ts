@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { AppStateSchema } from "@/lib/domain";
 import { hasBlobCredentials } from "@/lib/blob";
+import { validarEdicoesNoEstado } from "@/lib/plan/editar-treino";
+import { validarCorrecoesNoEstado } from "@/lib/plan/corrigir-concluida";
 import { readUserState, writeUserState } from "@/lib/user-state";
 
 export async function GET() {
@@ -60,6 +62,10 @@ async function upsert(request: Request) {
       { error: "Invalid AppState", details: parsed.error.flatten() },
       { status: 400 },
     );
+  }
+  const erroEdicao = validarEdicoesNoEstado(parsed.data) ?? validarCorrecoesNoEstado(parsed.data);
+  if (erroEdicao) {
+    return NextResponse.json({ error: "Invalid edit", details: erroEdicao }, { status: 400 });
   }
   const stored = await writeUserState(session.user.id, parsed.data);
   return NextResponse.json(stored);
