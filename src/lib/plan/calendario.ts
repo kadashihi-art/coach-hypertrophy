@@ -45,6 +45,26 @@ export function agendarSessoes(
   plano: Plano,
   dataInicio: string,
 ): Sessao[] {
+  // Dias já ocupados por sessão concluída/em andamento (histórico intocado).
+  // Se o início cair num desses dias (ex.: "Começar hoje" num dia já Feito), o plano
+  // novo começa no próximo dia livre, mantendo o espaçamento; colisões posteriores
+  // empurram só aquela sessão pro próximo dia livre.
+  const fixa = (s: Sessao) => s.status === "concluida" || s.status === "em_andamento";
+  const primeiraId = [...sessoes]
+    .filter((s) => plano.sessoes.includes(s.id) || s.plano_id === plano.id)
+    .sort((a, b) => a.ordem - b.ordem)[0]?.id;
+  const ocupados = new Set<string>();
+  for (const s of sessoes) {
+    if (s.data && fixa(s) && !(primeiraId === s.id && s.data === dataInicio)) ocupados.add(s.data);
+  }
+  while (ocupados.has(dataInicio)) dataInicio = addDaysIso(dataInicio, 1);
+  const livre = (s: Sessao, data: string) => {
+    if (fixa(s)) return data;
+    while (ocupados.has(data)) data = addDaysIso(data, 1);
+    ocupados.add(data);
+    return data;
+  };
+
   const fases = plano.estrutura?.fases;
   if (fases?.length) {
     const dateByIdF = new Map<string, string>();
@@ -54,6 +74,10 @@ export function agendarSessoes(
         if (d.sessao_id) dateByIdF.set(d.sessao_id, addDaysIso(start, d.dia));
       }
     }
+    const ordF = [...sessoes]
+      .filter((s) => dateByIdF.has(s.id))
+      .sort((a, b) => (dateByIdF.get(a.id)! < dateByIdF.get(b.id)! ? -1 : 1));
+    for (const s of ordF) dateByIdF.set(s.id, livre(s, dateByIdF.get(s.id)!));
     return sessoes.map((s) => {
       const data = dateByIdF.get(s.id);
       if (!data) return s;
@@ -76,7 +100,7 @@ export function agendarSessoes(
     let gap = offN - off0;
     if (gap < 0) gap += 7;
     const daysFromStart = weekIdx * 7 + gap;
-    dateById.set(ordered[idx].id, addDaysIso(dataInicio, daysFromStart));
+    dateById.set(ordered[idx].id, livre(ordered[idx], addDaysIso(dataInicio, daysFromStart)));
   }
 
   return sessoes.map((s) => {

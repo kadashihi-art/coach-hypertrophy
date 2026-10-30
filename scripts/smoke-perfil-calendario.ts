@@ -66,6 +66,22 @@ ok(
   "all sessions scheduled",
 );
 
+// "Começar hoje" num dia que já tem sessão concluída (de outro plano/histórico):
+// a 1ª sessão nova vai pro próximo dia livre, espaçamento mantido, histórico intocado.
+{
+  const feita = { ...g1.sessoes[0]!, id: "hist-feita", status: "concluida" as const, data: inicio, finalizada_em: "2026-11-03T20:00:00.000Z" };
+  const antes = [feita, ...g2.sessoes];
+  const ag = agendarSessoes(antes, planoComInicio, inicio);
+  const h = ag.find((s) => s.id === "hist-feita")!;
+  ok(JSON.stringify(h) === JSON.stringify(feita), "concluída intocada");
+  const novas = ag.filter((s) => s.id !== "hist-feita").sort((a, b) => a.ordem - b.ordem);
+  ok(novas[0]!.data === "2026-11-04", `1ª nova no próximo dia livre (got ${novas[0]!.data})`);
+  ok(novas.every((s) => s.data !== inicio), "nenhuma nova escondida atrás da concluída");
+  const semConflito = scheduled.filter((s) => g2.sessoes.some((x) => x.id === s.id)).sort((a, b) => a.ordem - b.ordem);
+  const delta = (xs: typeof novas) => xs.slice(1).map((s, i) => (Date.parse(s.data!) - Date.parse(xs[i]!.data!)) / 864e5);
+  ok(JSON.stringify(delta(novas)) === JSON.stringify(delta(semConflito)), "espaçamento do plano mantido");
+}
+
 // Mark first as pulada → proximaSessao skips it
 const afterSkip = marcarPulada(scheduled, scheduled[0]!.id);
 const state: AppState = {
