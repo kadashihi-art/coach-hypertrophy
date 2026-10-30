@@ -23,6 +23,11 @@ function isoWeek(d = new Date()): string {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+/** Semana ISO de uma data (mesma conta de currentIsoWeek). */
+export function isoWeekDe(d: Date): string {
+  return isoWeek(d);
+}
+
 export function currentIsoWeek(): string {
   return isoWeek(new Date());
 }
