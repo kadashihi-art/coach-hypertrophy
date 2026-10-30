@@ -25,7 +25,8 @@
     "smoke:calendario": "node scripts/smoke-calendario.mjs",
     "smoke:editar-treino": "npx --yes tsx scripts/smoke-editar-treino.ts",
     "smoke:editar-concluida": "npx --yes tsx scripts/smoke-editar-concluida.ts",
-    "smoke:sem-mudanca-sem-edicao": "npx --yes tsx scripts/smoke-sem-mudanca-sem-edicao.ts"
+    "smoke:sem-mudanca-sem-edicao": "npx --yes tsx scripts/smoke-sem-mudanca-sem-edicao.ts",
+    "smoke:hoje-editar": "npx --yes tsx scripts/smoke-hoje-editar.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
