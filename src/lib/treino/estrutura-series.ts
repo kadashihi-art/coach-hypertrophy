@@ -101,6 +101,40 @@ export function textoAquecimento(cargaHojeKg: number, stepKg: number): string {
   return `Aquecimento: ${String(kg).replace(".", ",")} kg (cerca de 60% da carga de hoje)`;
 }
 
+/** % da aproximação sobre a PRIMEIRA série de trabalho efetiva (1ª não preparatória). */
+export const PCT_APROXIMACAO = 0.85;
+
+/**
+ * Carga da aproximação (feeder): 85% da 1ª série de trabalho efetiva, pra baixo no step.
+ * Garante estritamente < 1ª de trabalho (senão trabalho − 1 step, mín. 1 step) e ≥ aquecimento.
+ * Colisão (step grosso, ex. trabalho 10 / step 5 / aquecimento 5): o limite "< trabalho" vence;
+ * a aproximação pode ficar IGUAL ao aquecimento, nunca abaixo dele nem ≥ trabalho
+ * (exceto trabalho = 1 step, onde tudo vale 1 step — não há carga menor disponível).
+ */
+export function cargaAproximacao(primeiraTrabalhoKg: number, stepKg: number, aquecimentoKg = 0): number {
+  if (!(primeiraTrabalhoKg > 0)) return 0;
+  const st = stepKg > 0 ? stepKg : 0;
+  let kg = arredondarStep(primeiraTrabalhoKg * PCT_APROXIMACAO, st);
+  if (st > 0 && kg >= primeiraTrabalhoKg - 1e-9) kg = Math.max(st, Math.round((primeiraTrabalhoKg - st) * 100) / 100);
+  if (kg < aquecimentoKg && aquecimentoKg < primeiraTrabalhoKg) kg = aquecimentoKg;
+  return kg;
+}
+
+/** Carga da 1ª série de trabalho efetiva: N≥2 → trabalho (80% do top), ou top se a ordem começa no top; N=1/drop/rest-pause → a própria série. */
+export function cargaPrimeiraTrabalho(
+  presc: Pick<Prescricao, "series" | "tecnica">,
+  topKg: number,
+  trabalhoKg: number,
+  stepKg: number,
+): number {
+  const f = fasesDeTrabalho(presc);
+  if (f.includes("back_off")) {
+    const c = cargasDaEstrutura(topKg, stepKg);
+    return f[0] === "trabalho" ? c.trabalho : c.top_set;
+  }
+  return f[0] === "top_set" ? topKg : trabalhoKg;
+}
+
 /** Próxima fase a executar dado o que já foi logado (por contagem de preparatórias e de trabalho). */
 export function proximaFase(
   presc: Pick<Prescricao, "series" | "tecnica">,

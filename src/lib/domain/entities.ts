@@ -116,7 +116,7 @@ export const RestTimerSchema = z.object({
 });
 export type RestTimer = z.infer<typeof RestTimerSchema>;
 
-export const SessaoSchema = z.object({
+const SessaoBaseSchema = z.object({
   id: z.string(),
   plano_id: z.string(),
   nome: z.string(),
@@ -132,7 +132,6 @@ export const SessaoSchema = z.object({
   iniciada_em: z.string().optional(),
   finalizada_em: z.string().optional(),
 });
-export type Sessao = z.infer<typeof SessaoSchema>;
 
 export const MesocicloSchema = z.object({
   total_semanas: z.number().int().min(3).max(12),
@@ -334,3 +333,26 @@ export function volumeEfetivo(
 ): number {
   return diretas + 0.5 * indiretas;
 }
+
+/** Snapshot gravado ao concluir a sessão: entradas exatas da decisão (permite corrigir e reaplicar). */
+export const SnapshotConclusaoSchema = z.object({
+  versao: z.literal(1),
+  /** EstadoExercicio de cada exercício da sessão imediatamente antes da decisão (já com a âncora do dia). */
+  estados_antes: z.array(EstadoExercicioSchema),
+  checkin: CheckinSchema.nullable(),
+  /** volumes_semanais antes de somar esta sessão. */
+  volumes_semanais_antes: z.array(VolumeSemanalSchema),
+  mesociclo: MesocicloSchema.nullable(),
+  /** Semana ISO usada para somar o volume desta sessão. */
+  semana_iso: z.string(),
+});
+export type SnapshotConclusao = z.infer<typeof SnapshotConclusaoSchema>;
+
+/** Âncora de aquecimento registrada no dia (carga que virou trabalho/top). */
+export const AncoraSessaoSchema = z.object({ exercicio_id: z.string(), trabalho_kg: z.number().nonnegative() });
+
+export const SessaoSchema = SessaoBaseSchema.extend({
+  ancoras_sessao: z.array(AncoraSessaoSchema).optional(),
+  snapshot_conclusao: SnapshotConclusaoSchema.optional(),
+});
+export type Sessao = z.infer<typeof SessaoSchema>;
