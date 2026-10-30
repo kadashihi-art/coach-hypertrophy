@@ -1,0 +1,272 @@
+/* Coach Hypertrophy - Estilos */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    min-height: 100vh;
+    color: #333;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #b21f1f;
+}
+
+header h1 {
+    font-size: 2.5em;
+    color: #1a2a6c;
+    margin-bottom: 10px;
+}
+
+header p {
+    font-size: 1.2em;
+    color: #666;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+section {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid #e9ecef;
+}
+
+section h2 {
+    color: #1a2a6c;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.exercises-list,
+workout-display,
+stats,
+tips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.exercise-item {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 5px solid #b21f1f;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s;
+}
+
+.exercise-item:hover {
+    transform: translateX(5px);
+}
+
+.exercise-item h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.exercise-item p {
+    color: #666;
+    font-size: 0.95em;
+}
+
+.workout-item {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 5px solid #1a2a6c;
+}
+
+.workout-item h3 {
+    color: #1a2a6c;
+    margin-bottom: 8px;
+}
+
+.workout-item p {
+    color: #555;
+    margin: 5px 0;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    border: 2px solid #dee2e6;
+}
+
+.stat-card h3 {
+    font-size: 2em;
+    color: #b21f1f;
+    margin-bottom: 5px;
+}
+
+.stat-card p {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.tips-list {
+    list-style: none;
+}
+
+.tips-list li {
+    background: #fff3cd;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 4px solid #ffc107;
+}
+
+footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #dee2e6;
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* Botão de ação */
+.action-btn {
+    background: linear-gradient(135deg, #b21f1f, #ff6b6b);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 10px;
+    transition: all 0.3s;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(178, 31, 31, 0.4);
+}
+
+/* Botões de edição */
+.edit-btn {
+    border: none;
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: all 0.3s;
+}
+
+.edit-btn:hover {
+    transform: scale(1.05);
+}
+
+.edit-btn-decrease {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.edit-btn-increase {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.edit-btn-delete {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.edit-btn-cancel {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.edit-btn-save {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+}
+
+/* Modal de edição */
+.edit-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.edit-modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.edit-modal-content h2 {
+    color: #b21f1f;
+    margin-bottom: 20px;
+}
+
+.edit-workout-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.edit-workout-item {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 4px solid #b21f1f;
+}
+
+/* Responsivo */
+@media (max-width: 600px) {
+    header h1 {
+        font-size: 2em;
+    }
+    
+    .container {
+        padding: 20px;
+    }
+    
+    section {
+        padding: 15px;
+    }
+}
