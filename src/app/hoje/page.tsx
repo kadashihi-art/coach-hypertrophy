@@ -142,8 +142,8 @@ export default function HojePage() {
         : temAgenda && hoje && !sessHoje
           ? "descanso"
           : "novo";
-  const proxData = sugerida?.data
-    ? new Date(`${sugerida.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
+  const proxData = sess?.data
+    ? new Date(`${sess.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
     : null;
 
   // Semana strip (seg→dom da semana atual, fuso SP)
@@ -287,7 +287,7 @@ export default function HojePage() {
             <>
               <h2 className="text-3xl font-bold tracking-tight">Descanso</h2>
               <p className="mt-2 text-sm text-bone-300">
-                Próximo: <span className="font-semibold">{sess.nome}</span>
+                {sess.id === sugerida?.id ? "Próximo" : sess.status === "concluida" ? "Feito" : "Escolhido"}: <span className="font-semibold">{sess.nome}</span>
                 {proxData ? <span className="capitalize"> · {proxData}</span> : null}
               </p>
             </>
