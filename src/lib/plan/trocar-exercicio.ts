@@ -15,7 +15,7 @@ import type {
   Sessao,
 } from "@/lib/domain";
 import { volumeEfetivo } from "@/lib/domain";
-import { cargaDoEstado, findAlt } from "@/lib/plan/alternativa";
+import { cargaParaExercicio, findAlt } from "@/lib/plan/alternativa";
 import {
   estimarCargaKg,
   exerciseAllowed,
@@ -57,7 +57,7 @@ export type PreviaTroca = {
   faixa_reps: [number, number];
   rir_alvo: number;
   carga_kg: number;
-  carga_origem: "historico" | "estimativa";
+  carga_origem: "historico" | "mesmo_padrao" | "estimativa";
   sessoes_afetadas: { id: string; nome: string }[];
   volume_antes: VolumePlano;
   volume_depois: VolumePlano;
@@ -188,11 +188,15 @@ export function previaTroca(state: AppState, deId: string, paraId: string): Prev
   if (!base) return null;
   const ok = listarAlternativasTroca({ exercicioId: deId, catalog, perfil: state.perfil }).some((a) => a.exercicio.id === paraId);
   if (!ok) return null;
-  const temEstado = state.estados.some((e) => e.exercicio_id === paraId);
   const estimativa = state.perfil
-    ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, para.padrao, para.composto, para.equipamento)
+    ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, para.padrao, para.composto, para.equipamento, {
+        sexo: state.perfil.sexo,
+        idade: state.perfil.idade,
+        grupo: para.grupo_primario,
+      })
     : base.carga.trabalho_kg;
-  const carga = cargaDoEstado(state.estados, paraId, estimativa);
+  const sugerida = cargaParaExercicio(state, paraId, estimativa);
+  const carga = sugerida.carga_kg;
   const depois = aplicarTroca(state, deId, paraId);
   if (!depois) return null;
   return {
@@ -202,7 +206,12 @@ export function previaTroca(state: AppState, deId: string, paraId: string): Prev
     faixa_reps: base.faixa_reps,
     rir_alvo: base.rir_alvo,
     carga_kg: carga,
-    carga_origem: temEstado ? "historico" : "estimativa",
+    carga_origem:
+      sugerida.origem === "estimativa"
+        ? "estimativa"
+        : sugerida.origem === "mesmo_padrao"
+          ? "mesmo_padrao"
+          : "historico",
     sessoes_afetadas: alvo.map((s) => ({ id: s.id, nome: s.nome })),
     volume_antes: volumePlanejado(sessoes, catalog),
     volume_depois: volumePlanejado(sessoesDoPlano(depois), catalog),
@@ -220,9 +229,13 @@ export function aplicarTroca(state: AppState, deId: string, paraId: string): App
   const valid = listarAlternativasTroca({ exercicioId: deId, catalog, perfil: state.perfil }).some((a) => a.exercicio.id === paraId);
   if (!valid) return null;
   const estimativa = state.perfil
-    ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, para.padrao, para.composto, para.equipamento)
+    ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, para.padrao, para.composto, para.equipamento, {
+        sexo: state.perfil.sexo,
+        idade: state.perfil.idade,
+        grupo: para.grupo_primario,
+      })
     : 0;
-  const carga = cargaDoEstado(state.estados, paraId, estimativa);
+  const carga = cargaParaExercicio(state, paraId, estimativa).carga_kg;
   const equips = equipsDoPerfil(state.perfil);
   const ids = new Set(state.plano.sessoes);
   const conflito = state.sessoes.some(

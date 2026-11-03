@@ -211,6 +211,9 @@ export default function OnboardingPage() {
 
   const [peso, setPeso] = useState(p?.peso_kg ?? 82);
   const [altura, setAltura] = useState(p?.altura_cm ?? 178);
+  const [sexo, setSexo] = useState<Perfil["sexo"]>(p?.sexo);
+  const [informarIdade, setInformarIdade] = useState(p?.idade != null);
+  const [idade, setIdade] = useState(p?.idade ?? 30);
   const [exp, setExp] = useState<Experiencia>(p?.experiencia ?? "intermediario");
   const [dias, setDias] = useState(p?.dias_por_semana ?? 4);
   const [mins, setMins] = useState(p?.minutos_por_sessao ?? 60);
@@ -263,6 +266,8 @@ export default function OnboardingPage() {
       const parqPatch: Partial<Perfil> = {
         peso_kg: peso,
         altura_cm: altura,
+        sexo,
+        idade: informarIdade ? idade : undefined,
         experiencia: exp,
         dias_por_semana: dias,
         minutos_por_sessao: mins,
@@ -293,6 +298,8 @@ export default function OnboardingPage() {
       onboarding_concluido: true,
       peso_kg: peso,
       altura_cm: altura,
+      sexo,
+      idade: informarIdade ? idade : undefined,
       experiencia: exp,
       dias_por_semana: dias,
       minutos_por_sessao: mins,
@@ -393,6 +400,49 @@ export default function OnboardingPage() {
             <NumStepper value={peso} onChange={setPeso} step={0.5} unit="kg" label="Peso" />
             <div className="my-6" />
             <NumStepper value={altura} onChange={setAltura} step={1} unit="cm" label="Altura" />
+            <div className="mt-6">
+              <p className="mb-2 text-xs text-muted">
+                Sexo <span className="text-muted/70">(opcional — só afina a carga inicial)</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(["masculino", "feminino"] as const).map((s) => (
+                  <Chip
+                    key={s}
+                    selected={sexo === s}
+                    onClick={() => setSexo(sexo === s ? undefined : s)}
+                  >
+                    {s === "masculino" ? "Masculino" : "Feminino"}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            <div className="mt-6">
+              <p className="mb-2 text-xs text-muted">
+                Idade <span className="text-muted/70">(opcional)</span>
+              </p>
+              {informarIdade ? (
+                <>
+                  <NumStepper
+                    value={idade}
+                    onChange={(n) => setIdade(Math.round(Math.min(100, Math.max(14, n))))}
+                    step={1}
+                    unit="anos"
+                    label="Idade"
+                  />
+                  <button
+                    type="button"
+                    className="mt-2 text-[11px] text-muted underline"
+                    onClick={() => setInformarIdade(false)}
+                  >
+                    Não informar
+                  </button>
+                </>
+              ) : (
+                <Chip selected={false} onClick={() => setInformarIdade(true)}>
+                  Informar idade
+                </Chip>
+              )}
+            </div>
             <div className="mt-6">
               <p className="mb-2 text-xs text-muted">Experiência</p>
               <div className="flex flex-wrap gap-2">

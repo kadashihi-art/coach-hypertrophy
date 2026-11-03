@@ -794,6 +794,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             perfil: partial,
             perfil_base: perfil,
             estados: snapshot.estados,
+            // Janela recente: suficiente para memória/tendência e payload enxuto.
+            registros: snapshot.registros.slice(-1200),
             skip_llm: opts?.skipLlm ?? false,
           }),
         });
@@ -848,6 +850,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         perfil,
         catalog,
         estadosAnteriores: snapshot.estados,
+        registros: snapshot.registros,
         skipLlm: true,
       });
       let plano = local.plano;

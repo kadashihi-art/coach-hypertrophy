@@ -17,7 +17,7 @@ import type {
   SnapshotSessao,
 } from "@/lib/domain";
 import { VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
-import { cargaDoEstado, findAlt } from "@/lib/plan/alternativa";
+import { cargaParaExercicio, findAlt } from "@/lib/plan/alternativa";
 import { estimarCargaKg } from "@/lib/plan/gerar-plano";
 import {
   equipsDoPerfil,
@@ -263,9 +263,13 @@ export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { se
     if (atual) return { ...atual, ordem: i + 1, series: it.series, faixa_reps: faixa };
     const ex = catalog.find((e) => e.id === it.exercicio_id)!;
     const estimativa = state.perfil
-      ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, ex.padrao, ex.composto, ex.equipamento)
+      ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, ex.padrao, ex.composto, ex.equipamento, {
+          sexo: state.perfil.sexo,
+          idade: state.perfil.idade,
+          grupo: ex.grupo_primario,
+        })
       : 0;
-    const carga = cargaDoEstado(state.estados, ex.id, estimativa);
+    const carga = cargaParaExercicio(state, ex.id, estimativa).carga_kg;
     if (!state.estados.some((e) => e.exercicio_id === ex.id)) estadosNovos.push(novoEstado(ex.id, carga, faixa, rirBase));
     const molde = sessao.prescricoes.find((p) => catalog.find((e) => e.id === p.exercicio_id)?.composto === ex.composto);
     return {
