@@ -1,4 +1,8 @@
-import type { EstadoExercicio, Exercicio, Padrao, Prescricao } from "@/lib/domain";
+import type { AppState, EstadoExercicio, Exercicio, Padrao, Prescricao } from "@/lib/domain";
+import {
+  cargaSugeridaParaExercicio,
+  type CargaSugerida,
+} from "@/lib/engine/memoria-carga";
 
 /** F4: primeira alternativa do mesmo padrão (prioriza equipamentos disponíveis). */
 export function findAlt(
@@ -40,4 +44,26 @@ export function cargaDoEstado(
 ): number {
   const est = estados.find((e) => e.exercicio_id === exercicioId);
   return est?.alvo_proxima_sessao?.carga_kg ?? est?.carga_atual_kg ?? fallback;
+}
+
+/**
+ * Carga com memória: estado calibrado → histórico exato → mesmo padrão → estimativa.
+ * Use em troca/edição/remontagem e no logger.
+ */
+export function cargaParaExercicio(
+  state: Pick<AppState, "estados" | "registros" | "exercicios">,
+  exercicioId: string,
+  fallback: number,
+  opts: { excluirSessaoId?: string } = {},
+): CargaSugerida {
+  return cargaSugeridaParaExercicio(
+    {
+      estados: state.estados ?? [],
+      registros: state.registros ?? [],
+      exercicios: state.exercicios ?? [],
+    },
+    exercicioId,
+    fallback,
+    opts,
+  );
 }

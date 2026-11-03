@@ -23,6 +23,7 @@ import type {
 import { posicionarDescanso, microcicloTexto } from "./estrutura";
 import { derivarRacional } from "./racional";
 import { findAlt } from "./alternativa";
+import { incrementoCargaKg } from "@/lib/domain";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao } from "./parq";
 
 export type PlanoGerado = {
@@ -547,9 +548,29 @@ export function estimarCargaKg(
   padrao: Padrao,
   composto: boolean,
   equipamento: Equipamento,
+  opts: {
+    sexo?: Perfil["sexo"];
+    idade?: number;
+    /** Grupo primário define o incremento (superiores 2,5 / inferiores 5). */
+    grupo?: GrupoMuscular;
+  } = {},
 ): number {
+  // Peso corporal e core não têm carga externa: o motor prescreve 0 kg.
+  if (
+    equipamento === "peso_corporal" ||
+    padrao === "core_antiextensao" ||
+    padrao === "core_antirotacao"
+  ) {
+    return 0;
+  }
+
   const expMul =
     experiencia === "iniciante" ? 0.55 : experiencia === "avancado" ? 0.85 : 0.7;
+
+  // Opcionais e conservadores: ausência mantém exatamente o cálculo anterior.
+  const sexoMul = opts.sexo === "feminino" ? 0.7 : 1;
+  const idade = opts.idade ?? 0;
+  const idadeMul = idade >= 60 ? 0.85 : idade >= 45 ? 0.93 : 1;
 
   const patternFactor: Partial<Record<Padrao, number>> = {
     agachamento: 0.9,
@@ -572,10 +593,10 @@ export function estimarCargaKg(
   if (equipamento === "maquina" && padrao === "agachamento") f *= 1.6; // leg press stack
   if (equipamento === "cabo" && !composto) f *= 0.9;
 
-  let kg = peso_kg * f * expMul;
-  // Round to 2.5
-  kg = Math.round(kg / 2.5) * 2.5;
-  return Math.max(2.5, kg);
+  let kg = peso_kg * f * expMul * sexoMul * idadeMul;
+  const step = opts.grupo ? incrementoCargaKg(opts.grupo) : 2.5;
+  kg = Math.round(kg / step) * step;
+  return Math.max(step, kg);
 }
 
 
@@ -717,6 +738,11 @@ export function gerarPlanoFromPerfil(
         ex.padrao,
         ex.composto,
         ex.equipamento,
+        {
+          sexo: perfil.sexo,
+          idade: perfil.idade,
+          grupo: ex.grupo_primario,
+        },
       );
       const alt = findAlt(catalog, ex.padrao, equips, ex.id);
 

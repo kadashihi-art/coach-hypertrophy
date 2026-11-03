@@ -40,6 +40,12 @@ export const PerfilSchema = z.object({
   dias_descanso_fixos: z.array(z.number().int().min(0).max(6)).max(5).optional(),
   /** Condições/ajustes acordados na negociação do plano (texto curto). */
   acordos_plano: z.array(z.string().max(240)).max(12).optional(),
+  /**
+   * Opcionais: só afinam a estimativa inicial de carga.
+   * Não bloqueiam onboarding; ausência mantém o cálculo anterior.
+   */
+  sexo: z.enum(["masculino", "feminino"]).optional(),
+  idade: z.number().int().min(14).max(100).optional(),
   onboarding_concluido: z.boolean().default(false),
   /** PAR-Q+ screening (7 perguntas clássicas). Qualquer SIM → parq_liberado=false. */
   parq_respostas: z.array(z.boolean()).optional(),
