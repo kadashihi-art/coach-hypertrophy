@@ -1,5 +1,6 @@
 "use client";
 
+import { LIMITES_ENTRADA as LE, validarAltura, validarPeso } from "@/lib/domain/limites";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -240,11 +241,11 @@ export default function MeuTreinoPage() {
       <Card className="mb-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-muted">Peso (kg)</span>
-          <NumStepper value={peso} step={0.5} onChange={(n) => setPeso(Math.min(200, Math.max(40, n)))} />
+          <NumStepper value={peso} step={0.5} unit="kg" min={LE.peso_min_kg} max={LE.peso_max_kg} validar={validarPeso} onChange={setPeso} />
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm text-muted">Altura (cm)</span>
-          <NumStepper value={altura} step={1} onChange={(n) => setAltura(Math.min(220, Math.max(140, n)))} />
+          <NumStepper value={altura} step={1} unit="cm" min={LE.altura_min_cm} max={LE.altura_max_cm} validar={validarAltura} onChange={setAltura} />
         </div>
       </Card>
 

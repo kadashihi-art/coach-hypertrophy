@@ -1,5 +1,6 @@
 "use client";
 
+import { LIMITES_ENTRADA as LE, validarAltura, validarPeso } from "@/lib/domain/limites";
 import { VolumeBar, hapticUmaVez } from "@/components/VolumeBar";
 import { acentuar, labelGrupo } from "@/lib/labels";
 import { createPortal } from "react-dom";
@@ -318,9 +319,9 @@ export default function PerfilPage() {
     const set = (x: Partial<Rascunho>) => setDraft({ ...d, ...x });
     switch (c) {
       case "peso":
-        return <NumStepper value={d.peso_kg} step={0.5} unit="kg" onChange={(n) => set({ peso_kg: Math.min(200, Math.max(40, n)) })} />;
+        return <NumStepper value={d.peso_kg} step={0.5} unit="kg" min={LE.peso_min_kg} max={LE.peso_max_kg} validar={validarPeso} onChange={(n) => set({ peso_kg: n })} />;
       case "altura":
-        return <NumStepper value={d.altura_cm} step={1} unit="cm" onChange={(n) => set({ altura_cm: Math.min(220, Math.max(140, n)) })} />;
+        return <NumStepper value={d.altura_cm} step={1} unit="cm" min={LE.altura_min_cm} max={LE.altura_max_cm} validar={validarAltura} onChange={(n) => set({ altura_cm: n })} />;
       case "sexo":
         return (
           <div className="flex flex-wrap gap-2">

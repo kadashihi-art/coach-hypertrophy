@@ -6,6 +6,7 @@
  *   mesmos exercícios são reaplicadas em ordem. Sem snapshot: só histórico e volume mudam.
  * - Nenhuma regra nova: decidirProgressao/aplicarDecisao/aplicarEstadoNaPrescricao são as do Coach.
  */
+import { validarCarga, validarReps } from "@/lib/domain/limites";
 import { volumeExtraDoRegistro } from "@/lib/engine/tecnicas";
 import { z } from "zod";
 import type {
@@ -165,6 +166,11 @@ export function validarRascunhoCorrecao(state: AppState, r: RascunhoCorrecao): s
   for (const it of r.itens) {
     if (!state.exercicios.some((e) => e.id === it.exercicio_id)) return "Exercício não encontrado.";
     if (it.series.some((s) => s.rir_percebido > RIR_MAX_REGISTRO)) return `O registro aceita RIR de 0 a ${RIR_MAX_REGISTRO}.`;
+    const ex = state.exercicios.find((e) => e.id === it.exercicio_id);
+    for (const s of it.series) {
+      const e = validarCarga(s.carga_kg, ex?.padrao) ?? validarReps(s.reps, 0);
+      if (e) return `${ex?.nome ?? "Exercício"}: ${e}`;
+    }
   }
   const exs = r.itens.map((i) => i.exercicio_id);
   if (new Set(exs).size !== exs.length) return "O mesmo exercício aparece duas vezes.";

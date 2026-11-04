@@ -115,7 +115,7 @@ function Num({ label, valor, onChange, step, min, max }: { label: string; valor:
         step={step}
         onChange={(e) => {
           const v = Number(e.target.value);
-          if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)));
+          if (Number.isFinite(v)) onChange(Math.max(min, v)); // acima do limite: a revisão bloqueia com mensagem
         }}
         className="mt-1 min-h-10 w-16 rounded-xl border border-border bg-ink-900 px-2 text-sm text-bone-50"
       />

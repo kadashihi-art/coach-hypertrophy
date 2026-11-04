@@ -7,6 +7,7 @@ import { validarEdicaoAoVivoNoEstado } from "@/lib/treino/editar-durante-treino"
 import { validarTecnicasNoEstado } from "@/lib/engine/tecnicas";
 import { validarCorrecoesNoEstado } from "@/lib/plan/corrigir-concluida";
 import { readUserState, writeUserState } from "@/lib/user-state";
+import { validarEntradasNovas } from "@/lib/domain/limites";
 
 export async function GET() {
   const session = await auth();
@@ -68,6 +69,12 @@ async function upsert(request: Request) {
   const erroEdicao = validarEdicoesNoEstado(parsed.data) ?? validarCorrecoesNoEstado(parsed.data) ?? validarEdicaoAoVivoNoEstado(parsed.data) ?? validarTecnicasNoEstado(parsed.data);
   if (erroEdicao) {
     return NextResponse.json({ error: "Invalid edit", details: erroEdicao }, { status: 400 });
+  }
+  // Limites só em registros novos/alterados: dados antigos fora dos limites continuam valendo.
+  const anterior = await readUserState(session.user.id);
+  const erroLimite = validarEntradasNovas(anterior?.state ?? null, parsed.data);
+  if (erroLimite) {
+    return NextResponse.json({ error: "Invalid input", details: erroLimite }, { status: 400 });
   }
   const stored = await writeUserState(session.user.id, parsed.data);
   return NextResponse.json(stored);
