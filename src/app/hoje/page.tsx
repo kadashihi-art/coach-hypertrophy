@@ -3,7 +3,7 @@
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { apresentarAlerta } from "@/lib/alertas/apresentar";
-import { labelGrupo } from "@/lib/labels";
+import { fmtKg, labelGrupo } from "@/lib/labels";
 import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -338,9 +338,9 @@ export default function HojePage() {
                 const carga = est?.alvo_proxima_sessao.carga_kg ?? p.carga.trabalho_kg;
                 return (
                   <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate">{ex?.nome ?? p.exercicio_id}</span>
+                    <span className="truncate">{ex?.nome ?? "Exercício"}</span>
                     <span className="load-num shrink-0 text-muted">
-                      {carga} kg · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]}
+                      {fmtKg(carga)} kg · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]}
                     </span>
                   </li>
                 );

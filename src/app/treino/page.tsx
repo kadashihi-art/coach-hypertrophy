@@ -1,6 +1,7 @@
 "use client";
 
 import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
+import { fmtKg } from "@/lib/labels";
 import { parseRestricoes } from "@/lib/plan/restricoes";
 import { resumirExercicio, textoUltimaVez, textoTendencia } from "@/lib/engine/memoria-carga";
 import { guiaPorPadrao } from "@/lib/plan/guia-por-padrao";
@@ -638,7 +639,7 @@ export default function TreinoPage() {
                 {s.tecnica ? <span className="text-[10px] font-semibold text-accent">{nomeTecnica(s.tecnica.tipo)}</span> : null}
               </div>
               <span className="num text-sm font-bold">
-                {s.carga_kg} kg · {s.reps} reps · RIR {s.rir_percebido}
+                {fmtKg(s.carga_kg)} kg · {s.reps} reps · RIR {s.rir_percebido}
                 {s.tecnica?.reps_extra.length ? ` + ${s.tecnica.carga_extra_kg ? `${String(s.tecnica.carga_extra_kg).replace(".", ",")} kg × ` : ""}${s.tecnica.reps_extra.join("+")}` : ""}
               </span>
             </div>

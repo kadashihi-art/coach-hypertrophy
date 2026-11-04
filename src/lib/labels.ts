@@ -58,3 +58,8 @@ export function acentuar(t: string): string {
     return m[0] === m[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r;
   });
 }
+
+/** 32.5 → "32,5" (decimal com vírgula, pt-BR) */
+export function fmtKg(n: number): string {
+  return String(n).replace(".", ",");
+}
