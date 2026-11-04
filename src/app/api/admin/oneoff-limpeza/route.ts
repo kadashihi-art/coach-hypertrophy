@@ -64,6 +64,11 @@ async function inventario() {
   }
   for (const p of vivos) {
     if (dono.has(p)) continue;
+    if (/^auth\/verification\/[^/]*%40[^/]*__(0ca85e9b|4d7886be)[0-9a-f]*\.json$/.test(p)) {
+      const j = await lerJson(p);
+      orfaos.push({ path: p, tipo: "link mágico antigo (formato legado)", motivo: `expira ${String(j?.expires ?? "?")}` });
+      continue;
+    }
     if (p.startsWith("auth/verification/")) {
       const j = await lerJson(p);
       const ident = String(j?.identifier ?? "").toLowerCase();
