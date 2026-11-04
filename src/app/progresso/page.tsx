@@ -192,11 +192,13 @@ export default function ProgressoPage() {
               <div>
                 <p className="font-semibold">{ex?.nome ?? e.exercicio_id}</p>
                 <p className="text-xs text-muted">
-                  PR {e.pr_carga_kg} kg × {e.pr_reps} · carga atual{" "}
-                  {e.carga_atual_kg} kg
+                  {e.pr_reps > 0
+                    ? `PR ${e.pr_carga_kg} kg × ${e.pr_reps}`
+                    : "Recorde: sem dados ainda"}{" "}
+                  · carga atual {e.carga_atual_kg} kg
                 </p>
               </div>
-              <Stat label="e1RM" value={`${e.e1rm_estimado_kg}`} mono />
+              <Stat label="e1RM" value={e.pr_reps > 0 && e.e1rm_estimado_kg > 0 ? `${e.e1rm_estimado_kg}` : "—"} mono />
             </Card>
           );
         })}

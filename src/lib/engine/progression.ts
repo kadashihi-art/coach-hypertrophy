@@ -15,6 +15,7 @@ import type {
 import { incrementoCargaKg, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { roundToStep } from "./ancorar-carga";
 import { e1rmEpley, melhorE1rm } from "./e1rm";
+import { recordeDasSeries, RECORDE_VAZIO } from "./recordes";
 
 export type ProgressionInput = {
   exercicio_id: string;
@@ -499,11 +500,6 @@ export function aplicarDecisao(
   decisao: DecisaoProgressao,
   series?: RegistroSerie[],
 ): EstadoExercicio {
-  const e1rm =
-    series && series.length > 0
-      ? melhorE1rm(series)
-      : e1rmEpley(decisao.nova_carga_kg, estado.faixa_reps[0]);
-
   const progrediu = decisao.acao === "subir_carga";
   // R12 sem série válida não calibra de fato: mantém a pendência para a próxima
   // sessão (só quando existe carga externa; peso corporal/core já está calibrado).
@@ -513,20 +509,14 @@ export function aplicarDecisao(
     estado.carga_atual_kg > 0;
 
   const workSets = series?.filter((s) => !ehSeriePreparatoria(s.tipo_serie)) ?? [];
-  const cargaMaximaSessao = workSets.reduce((m, s) => Math.max(m, s.carga_kg), 0);
-  // PR/e1RM iniciais vinham da estimativa (nunca levantada). Na 1ª sessão real,
-  // eles passam a valer só o que o usuário fez de fato.
-  const prProvisorio =
-    estado.primeira_sessao &&
-    estado.origem_carga === "estimativa_conservadora" &&
-    estado.pr_reps === 0 &&
-    workSets.length > 0;
-  const prCarga = Math.max(
-    prProvisorio ? 0 : estado.pr_carga_kg,
-    cargaMaximaSessao,
-    decisao.nova_carga_kg,
-  );
-  const bestReps = workSets.reduce((m, s) => Math.max(m, s.reps), estado.pr_reps);
+  // PR/e1RM só de séries reais (melhor série de trabalho por e1RM). Estado antigo com
+  // PR de 0 reps era estimativa (nunca levantada) e não conta.
+  const daSessao = recordeDasSeries(workSets);
+  const anterior =
+    estado.pr_reps > 0
+      ? { e1rm_estimado_kg: estado.e1rm_estimado_kg, pr_carga_kg: estado.pr_carga_kg, pr_reps: estado.pr_reps }
+      : RECORDE_VAZIO;
+  const recorde = daSessao.e1rm_estimado_kg > anterior.e1rm_estimado_kg ? daSessao : anterior;
 
   const memoria = memoriaDaSessao(series, decisao.nova_carga_kg);
 
@@ -544,9 +534,7 @@ export function aplicarDecisao(
     ultima_progressao_em: progrediu
       ? decisao.data
       : estado.ultima_progressao_em,
-    e1rm_estimado_kg: Math.max(prProvisorio ? 0 : estado.e1rm_estimado_kg, e1rm),
-    pr_carga_kg: prCarga,
-    pr_reps: bestReps,
+    ...recorde,
     origem_carga:
       decisao.regra === "R12" && !calibracaoAdiada
         ? "calibracao"

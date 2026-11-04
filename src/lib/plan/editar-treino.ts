@@ -236,8 +236,8 @@ function novoEstado(exId: string, carga: number, faixa: [number, number], rir: n
     alvo_proxima_sessao: { carga_kg: carga, faixa_reps: faixa, rir_alvo: rir },
     sessoes_sem_progresso: 0,
     ultima_progressao_em: null,
-    e1rm_estimado_kg: Math.round(carga * (1 + faixa[1] / 30) * 10) / 10,
-    pr_carga_kg: carga,
+    e1rm_estimado_kg: 0, // sem dados até o 1º treino real
+    pr_carga_kg: 0,
     pr_reps: 0,
     origem_carga: "estimativa_conservadora",
     primeira_sessao: true,

@@ -9,6 +9,8 @@
  *  3) concluir uma sessão nova dá o mesmo estado que o código de antes do PR, só com o snapshot a mais.
  * Não lê nada por rede. O arquivo é só lido, nunca escrito.
  */
+import { isoWeekDe } from "../src/lib/engine/volume";
+import { recordeDoExercicio, registrosValidos } from "../src/lib/engine/recordes";
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
@@ -174,7 +176,15 @@ function checar(nome: string, raw: unknown, v: Velho | null) {
   ok(JSON.stringify(limpo(novo)) === JSON.stringify(limpo(semSnap)), `${nome}: com e sem snapshot, o resto é igual`);
   if (v) {
     const antigo = v(structuredClone(ini));
-    ok(JSON.stringify(limpo(novo)) === JSON.stringify(limpo(antigo)), `${nome}: concluir dá o mesmo estado do código de antes do PR (só o snapshot a mais)`);
+    // fix/progresso-e1rm-pr: e1RM/PR agora vêm só dos registros reais (o código antigo
+    // semeava estimativas). Carga, alvo, RIR, séries e decisões têm que continuar iguais.
+    // Volume agora entra na semana do dia do treino (antes: semana do clique em concluir).
+    const semRecorde = (st: AppState) => ({ ...st, volumes_semanais: [], estados: st.estados.map(({ e1rm_estimado_kg: _a, pr_carga_kg: _b, pr_reps: _c, ...r }) => r) });
+    ok(JSON.stringify(limpo(semRecorde(novo))) === JSON.stringify(limpo(semRecorde(antigo))), `${nome}: concluir dá o mesmo estado do código de antes do PR (fora e1RM/PR e a semana do volume)`);
+    const semAlvo = alvo.data ? isoWeekDe(new Date(`${alvo.data}T12:00:00`)) : null;
+    ok(!semAlvo || novo.volumes_semanais.some((v) => v.semana_iso === semAlvo), `${nome}: volume na semana do dia do treino`);
+    const regsOk = registrosValidos(novo);
+    ok(novo.estados.every((e) => { const r = recordeDoExercicio(regsOk, e.exercicio_id); return e.e1rm_estimado_kg === r.e1rm_estimado_kg && e.pr_carga_kg === r.pr_carga_kg && e.pr_reps === r.pr_reps || !regsOk.some((x) => x.exercicio_id === e.exercicio_id); }), `${nome}: e1RM/PR = melhor série real`);
   } else {
     ok(false, `${nome}: não consegui ler o código de antes do PR (${BASE_COMMIT}) no git`);
   }
