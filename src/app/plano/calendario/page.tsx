@@ -13,6 +13,7 @@ import {
 import { comparacaoMeta, duracaoDaSessao, resumoDuracao } from "@/lib/engine/duracao-treino";
 import { useClientValue } from "@/lib/use-client-value";
 import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
+import { agendaEfetiva } from "@/lib/plan/pendente";
 
 /** "2026-10-29" → "Qui, 29 out" (pt-BR, sem pontos). */
 function dataHumana(iso: string): string {
@@ -66,9 +67,11 @@ export default function CalendarioPage() {
   // Guarda só a data: o card lê o dia sempre do estado atual (não de uma cópia).
   const [selectedData, setSelectedData] = useState<string | null>(null);
 
+  const hojeCal = useClientValue<string | null>(hojeIsoSaoPaulo, null);
+  // Treino não feito anda pra frente (só leitura); pulo explícito continua no dia.
   const days = useMemo(
-    () => derivarCalendario(state.sessoes, year, month0),
-    [state.sessoes, year, month0],
+    () => derivarCalendario(agendaEfetiva(state, hojeCal).sessoes, year, month0),
+    [state, hojeCal, year, month0],
   );
 
   const selected = selectedData

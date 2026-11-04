@@ -45,7 +45,8 @@
     "smoke:duracao": "npx --yes tsx scripts/smoke-duracao.ts",
     "smoke:catalogo-ordem": "npx --yes tsx scripts/smoke-catalogo-ordem.ts",
     "smoke:llm-cadeia": "npx --yes tsx scripts/smoke-llm-cadeia.ts",
-    "smoke:inicio": "npx --yes tsx scripts/smoke-inicio.ts"
+    "smoke:inicio": "npx --yes tsx scripts/smoke-inicio.ts",
+    "smoke:pendente": "npx --yes tsx scripts/smoke-pendente.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
