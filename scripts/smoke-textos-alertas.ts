@@ -56,11 +56,11 @@ ok(legado.urgencia === "atencao", "urgência atenção");
 // 2) Alertas de volume gerados agora, todos os músculos
 const grupos = Object.keys(GRUPO_LABEL) as never[];
 const vols = grupos.flatMap((g) => [
-  { grupo: g, semana_iso: "2026-W44", series_efetivas: 7, series_diretas: 7, series_indiretas: 0 },
-  { grupo: g, semana_iso: "2026-W45", series_efetivas: 1, series_diretas: 1, series_indiretas: 0 },
+  { grupo: g, semana_iso: "2026-W45", series_efetivas: 7, series_diretas: 7, series_indiretas: 0 },
+  { grupo: g, semana_iso: "2026-W46", series_efetivas: 1, series_diretas: 1, series_indiretas: 0 },
 ]);
 const vAlto = grupos.map((g) => ({ grupo: g, semana_iso: "2026-W45", series_efetivas: 24, series_diretas: 24, series_indiretas: 0 }));
-const r10 = avaliarAlertasVolume({ volumes_semanais: vols as never, semana_iso: "2026-W45" });
+const r10 = avaliarAlertasVolume({ volumes_semanais: vols as never, semana_iso: "2026-W47", inicio: "2026-11-02" });
 const r11 = avaliarAlertasVolume({ volumes_semanais: vAlto as never, semana_iso: "2026-W45", rir_medio_por_grupo: { peito: 1 } as never });
 ok(r10.length > 0 && r11.length > 0, `gerou ${r10.length} baixo + ${r11.length} alto`);
 for (const a of [...r10, ...r11]) {

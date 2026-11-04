@@ -26,6 +26,7 @@ import {
   avaliarAlertasVolume,
   extractVolumeMarkers,
 } from "@/lib/engine/alertas-volume";
+import { inicioDeUso } from "@/lib/inicio";
 import { calcularDuracaoTreino } from "@/lib/engine/duracao-treino";
 import { aplicarRecordes, registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
 
@@ -186,6 +187,7 @@ export function concluirSessao(
         semana_iso: semanaIso,
         rir_medio_por_grupo,
         markers_ativos: markersAtivos,
+        inicio: inicioDeUso({ sessoes: s.sessoes, registros: s.registros, checkins: s.checkins }),
       });
       const hojeIso =
         sess.data ?? new Date().toISOString().slice(0, 10);

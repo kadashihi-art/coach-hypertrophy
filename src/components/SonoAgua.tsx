@@ -20,6 +20,7 @@ import {
   serieDias,
   type DiaSonoAgua,
 } from "@/lib/sono-agua/avaliacao";
+import { inicioDeUso } from "@/lib/inicio";
 import type { AlertaApresentado } from "@/lib/alertas/apresentar";
 
 const hojeUtc = () => new Date().toISOString().slice(0, 10);
@@ -36,7 +37,7 @@ export function useSonoAgua(janela: 7 | 14) {
   const { state } = useApp();
   const hoje = useClientValue(hojeUtc, "");
   return useMemo(() => {
-    const dias = hoje ? serieDias(state.checkins, hoje, janela) : [];
+    const dias = hoje ? serieDias(state.checkins, hoje, janela, inicioDeUso(state)) : [];
     const meta = metaAguaMl(pesoAtual(state.checkins, state.perfil?.peso_kg));
     return {
       dias,
@@ -45,7 +46,7 @@ export function useSonoAgua(janela: 7 | 14) {
       agua: avaliarAgua(dias, meta, janela),
       vazio: hoje ? estadoVazio(dias, janela) : null,
     };
-  }, [state.checkins, state.perfil?.peso_kg, hoje, janela]);
+  }, [state, hoje, janela]);
 }
 
 function Avaliacao({ a, testId }: { a: AlertaApresentado; testId: string }) {

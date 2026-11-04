@@ -63,9 +63,10 @@ export function horaDoEixo(min: number): string {
 }
 
 /** Últimos `dias` dias terminando em `hojeIso` (o mais antigo primeiro). Um check-in por dia (o último salvo). */
-export function serieDias(checkins: CheckinLike[], hojeIso: string, dias: number): DiaSonoAgua[] {
+export function serieDias(checkins: CheckinLike[], hojeIso: string, dias: number, inicio: string | null = null): DiaSonoAgua[] {
   const porDia = new Map<string, CheckinLike>();
-  for (const c of checkins) porDia.set(c.data, c);
+  // Antes do primeiro registro de uso: dia fica vazio (dado continua salvo, só fora da conta).
+  for (const c of checkins) if (!inicio || c.data >= inicio) porDia.set(c.data, c);
   const out: DiaSonoAgua[] = [];
   for (let i = dias - 1; i >= 0; i--) {
     const data = diaMenos(hojeIso, i);
