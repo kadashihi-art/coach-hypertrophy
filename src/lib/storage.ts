@@ -1,6 +1,7 @@
 "use client";
 
 import { AppStateSchema, type AppState } from "./domain";
+import { mergeCatalogoExercicios } from "./catalog/merge";
 import { seedState } from "./seed";
 
 /** v5: zero fake progress (volumes/PRs/decisões só com registros). */
@@ -21,7 +22,10 @@ export function loadState(): AppState {
       saveState(seedState);
       return structuredClone(seedState);
     }
-    return parsed.data;
+    return {
+      ...parsed.data,
+      exercicios: mergeCatalogoExercicios(parsed.data.exercicios),
+    };
   } catch {
     return structuredClone(seedState);
   }
