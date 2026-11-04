@@ -25,8 +25,10 @@ function autorizado(req: Request): boolean {
 }
 const nf = () => new NextResponse("Not Found", { status: 404 });
 
+const URLS = new Map<string, string>();
+const bk = (p: string) => BACKUP + p.replace(/%40/g, "_at_");
 async function lerTexto(p: string): Promise<string | null> {
-  const r = await get(p, { access: "private", useCache: false });
+  const r = await get(URLS.get(p) ?? p, { access: "private", useCache: false });
   if (!r || r.statusCode !== 200 || !r.stream) return null;
   return await new Response(r.stream).text();
 }
@@ -40,6 +42,7 @@ async function inventario() {
   let cursor: string | undefined;
   do {
     const r = await list({ cursor, limit: 1000 });
+    for (const b of r.blobs) URLS.set(b.pathname, b.url);
     all.push(...r.blobs.map((b) => b.pathname));
     cursor = r.hasMore ? r.cursor : undefined;
   } while (cursor);
@@ -114,11 +117,11 @@ export async function POST(req: Request) {
   for (const p of alvos) {
     const t = await lerTexto(p);
     if (t === null) return NextResponse.json({ abortado: true, motivo: "falha ao ler " + p.slice(0, 20) }, { status: 500 });
-    await put(BACKUP + p, t, { access: "private", contentType: "application/json", addRandomSuffix: false, allowOverwrite: true });
+    await put(bk(p), t, { access: "private", contentType: "application/json", addRandomSuffix: false, allowOverwrite: true });
     backup[p] = t;
   }
-  for (const p of alvos) if ((await lerTexto(BACKUP + p)) !== backup[p]) return NextResponse.json({ abortado: true, motivo: "backup não confere" }, { status: 500 });
-  await del(alvos);
+  for (const p of alvos) if ((await lerTexto(bk(p))) !== backup[p]) return NextResponse.json({ abortado: true, motivo: "backup não confere" }, { status: 500 });
+  await del(alvos.map((p) => URLS.get(p) ?? p));
   const depois = await inventario();
   return NextResponse.json({
     apagados: alvos.length,
