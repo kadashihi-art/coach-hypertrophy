@@ -30,7 +30,8 @@
     "smoke:memoria-carga": "npx --yes tsx scripts/smoke-memoria-carga.ts",
     "smoke:catalogo": "npx --yes tsx scripts/smoke-catalogo.ts",
     "smoke:alternativa": "npx --yes tsx scripts/smoke-alternativa.ts",
-    "smoke:progresso": "npx --yes tsx scripts/smoke-progresso.ts"
+    "smoke:progresso": "npx --yes tsx scripts/smoke-progresso.ts",
+    "smoke:carga-real": "npx --yes tsx scripts/smoke-carga-real.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

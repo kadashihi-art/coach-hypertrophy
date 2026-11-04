@@ -95,6 +95,12 @@ function base(
   };
 }
 
+/** Carga realmente levantada na série-âncora (top → trabalho mais pesada). null sem série válida. */
+export function cargaRealDaSessao(series: RegistroSerie[]): number | null {
+  const a = pickTopSetAnchor(series.filter((s) => s.carga_kg > 0 && s.reps > 0));
+  return a ? a.carga_kg : null;
+}
+
 /**
  * R12 — calibração real da primeira sessão.
  *
@@ -130,20 +136,21 @@ export function calibrarCargaInicial(args: {
   const repsAlvo = faixaReps[0] + Math.max(0, rirAlvo);
   const bruta = e1rmSessao / (1 + repsAlvo / 30);
 
-  // Limite de segurança por sessão. RIR ≥ 3 indica estimativa bem folgada.
+  // Limite de segurança por sessão, relativo ao que o usuário LEVANTOU (não à
+  // estimativa): RIR alto libera mais degraus, RIR apertado limita a subida.
+  // A estimativa inicial é só um palpite — se ele já levantou mais, a carga real vence.
+  const real = anchor.carga_kg;
   const degrausSubida =
-    anchor.rir_percebido >= 3 ? 4 : anchor.rir_percebido >= 2 ? 3 : 2;
+    anchor.rir_percebido >= 3 ? 2 : anchor.rir_percebido >= 2 ? 1 : 0;
   const maxSubida = degrausSubida * step;
-  const maxDescida = 3 * step;
-  const limitada = Math.min(
-    cargaAtualKg + maxSubida,
-    Math.max(cargaAtualKg - maxDescida, bruta),
-  );
+  const piso = Math.max(real * 0.85, real - 3 * step);
+  const limitada = Math.min(real + maxSubida, Math.max(piso, bruta));
   // Subir arredonda pra cima: se a conta pede 11 kg e o step é 2,5, 10 kg ficaria parado.
   const cargaKg =
-    bruta > cargaAtualKg + 0.01
-      ? Math.max(step, Math.ceil(limitada / step) * step)
+    bruta > real + 0.01
+      ? Math.max(step, Math.ceil((limitada - 1e-9) / step) * step)
       : Math.max(step, roundToStep(limitada, step));
+  void cargaAtualKg;
 
   return { cargaKg, anchor };
 }
@@ -158,8 +165,12 @@ export function decidirProgressao(
   const series = trabalho(input.series);
   const estado = input.estado;
   const [piso, topo] = estado.faixa_reps;
-  const carga = estado.carga_atual_kg;
   const inc = incrementoCargaKg(input.grupo_primario);
+  // Carga de referência = o que o usuário REALMENTE levantou na série-âncora
+  // (top, senão a trabalho mais pesada). Se ele subiu/adaptou a carga sugerida
+  // por conta própria, a progressão parte daí — não do número antigo do estado.
+  const real = cargaRealDaSessao(series);
+  const carga = real ?? estado.carga_atual_kg;
 
   // —— R7 Suspender por dor (segurança primeiro) ——
   const seriesComDor = series.filter((s) => s.dor).length;
@@ -202,14 +213,14 @@ export function decidirProgressao(
     }
 
     const alvo = calib.cargaKg;
-    const delta = Math.round((alvo - carga) * 10) / 10;
+    const delta = Math.round((alvo - estado.carga_atual_kg) * 10) / 10;
     const acao =
       delta > 0 ? "subir_carga" : delta < 0 ? "reduzir_carga" : "manter_carga";
     const { anchor } = calib;
     const motivo =
       `Primeira sessão: ${anchor.carga_kg} kg × ${anchor.reps} reps @ RIR ${anchor.rir_percebido}. ` +
       `Calibrado para ~${estado.faixa_reps[0]} reps @ RIR ${estado.rir_alvo} → ${alvo} kg ` +
-      `(antes ${carga} kg).`;
+      `(antes ${estado.carga_atual_kg} kg).`;
 
     return base(input, "R12", acao, alvo, motivo, "pratica", delta > 0);
   }
@@ -406,8 +417,10 @@ export function decidirProgressao(
   }
 
   // —— R1 Dupla progressão ——
-  if (todasNaFaixa && todasNoTopo && rirUltimaOk) {
-    const nova = Math.round((carga + inc) * 10) / 10;
+  if (todasNoTopo && avaliadas.every((s) => s.reps >= piso) && rirUltimaOk) {
+    // Muita sobra (RIR ≥ alvo + 2 em todas) → 2 degraus; senão 1. Nunca mais que isso por sessão.
+    const folga = avaliadas.every((s) => s.rir_percebido >= estado.rir_alvo + 2);
+    const nova = Math.round((carga + (folga ? 2 : 1) * inc) * 10) / 10;
     return base(
       input,
       "R1",
