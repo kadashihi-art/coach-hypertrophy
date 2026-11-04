@@ -24,13 +24,15 @@ export type PedidoLlm = {
   validar?: (texto: string) => boolean;
   /** Rótulo do ponto de uso, só pro log. */
   ponto?: string;
+  /** TEMPORÁRIO (diagnóstico de uso único): usa só esta etapa. */
+  forcarEtapa?: EtapaLlm;
   /** Só pra testes. */
   fetchImpl?: typeof fetch;
 };
 
 export type RespostaLlm = { texto: string; etapa: EtapaLlm; modelo: string };
 
-export type TentativaLlm = { etapa: EtapaLlm; resultado: "ok" | FalhaLlm; status?: number; ms?: number };
+export type TentativaLlm = { etapa: EtapaLlm; resultado: "ok" | FalhaLlm; status?: number; ms?: number; modelo?: string };
 
 export const GROQ_MODEL_PADRAO = "llama-3.3-70b-versatile";
 export const GEMINI_MODEL_PADRAO = "gemini-flash-latest";
@@ -73,6 +75,7 @@ function etapas(p: PedidoLlm): Etapa[] {
       timeoutMs: TIMEOUT_GRATIS_MS,
       tentativas: 2,
     });
+  if (p.forcarEtapa) return out.filter((e) => e.etapa === p.forcarEtapa);
   return out;
 }
 
@@ -145,7 +148,7 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
       } catch {
         falha = "erro";
       }
-      log.push({ etapa: e.etapa, resultado: resp ? "ok" : falha, status, ms: Date.now() - t0 });
+      log.push({ etapa: e.etapa, resultado: resp ? "ok" : falha, status, ms: Date.now() - t0, ...(p.forcarEtapa ? { modelo: e.modelo } : {}) });
       // cota ou resposta inválida: não adianta repetir a mesma etapa
       if (resp || falha === "cota" || falha === "invalido") break;
     }
