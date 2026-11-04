@@ -187,7 +187,7 @@ export default function PlanoPage() {
           </p>
         ) : null}
         {plano.bloqueado && (
-          <p className="mt-3 text-sm text-danger">Plano bloqueado (alerta N2).</p>
+          <p className="mt-3 text-sm text-danger">⛔ Plano pausado por segurança. Procure liberação profissional antes de treinar com progressão.</p>
         )}
         {next && (
           <p className="mt-3 text-xs text-accent">Próximo do ciclo: {next.nome}</p>
@@ -233,7 +233,7 @@ export default function PlanoPage() {
                   ) : null}
                 </p>
                 <p className="text-xs text-muted">
-                  {s!.grupos.join(" · ") || "—"} · ~{s!.duracao_estimada_min} min ·{" "}
+                  {s!.grupos.map((g) => labelGrupo(g).toLowerCase()).join(" · ") || "—"} · ~{s!.duracao_estimada_min} min ·{" "}
                   {s!.prescricoes.length} ex.
                 </p>
               </div>

@@ -106,8 +106,8 @@ export function adaptarAposSerie(args: {
       ? reduzirCarga(cargaBase, 0.925, stepKg)
       : undefined;
     const motivo = alt
-      ? `Dor em ${comDor.length} séries — considere parar ou trocar para ${alt}.`
-      : `Dor em ${comDor.length} séries — considere parar ou pular o restante.`;
+      ? `Você marcou dor em ${comDor.length} séries. Melhor parar ou trocar para ${alt}.`
+      : `Você marcou dor em ${comDor.length} séries. Melhor parar ou pular o resto deste exercício.`;
     return {
       aplicada: true,
       carga_sugerida_kg: carga,
@@ -138,7 +138,7 @@ export function adaptarAposSerie(args: {
         carga_sugerida_kg: nova,
         series_alvo_ajustado: seriesAlvo,
         cortar_serie_extra: true,
-        motivo: `Carga das próximas séries −10% e −1 série (${fails} falhas no piso ${piso}).`,
+        motivo: `Você ficou abaixo de ${piso} repetições ${fails} vezes. Baixei 10% da carga e tirei 1 série.`,
         regra: "AO_VIVO_R4",
       };
     }
@@ -146,7 +146,7 @@ export function adaptarAposSerie(args: {
     return {
       aplicada: true,
       carga_sugerida_kg: nova,
-      motivo: `Carga das próximas séries −7,5% (falha no piso ${piso}).`,
+      motivo: `Você ficou abaixo de ${piso} repetições. Baixei um pouco a carga das próximas séries.`,
       regra: "AO_VIVO_R4",
     };
   }
@@ -157,7 +157,7 @@ export function adaptarAposSerie(args: {
     return {
       aplicada: true,
       carga_sugerida_kg: nova,
-      motivo: `RIR 0 no piso — carga seguinte levemente reduzida (${nova} kg).`,
+      motivo: `Essa foi até a falha no limite de repetições. Próxima série com ${String(nova).replace(".", ",")} kg.`,
       regra: "AO_VIVO_RIR0",
     };
   }
@@ -166,7 +166,7 @@ export function adaptarAposSerie(args: {
   if (registro.dor && comDor.length === 1) {
     return {
       aplicada: false,
-      motivo: "Dor marcada nesta série — monitore; 2ª dor dispara alerta N1.",
+      motivo: "Dor marcada nesta série. Fica de olho: se doer de novo, sugiro parar ou trocar.",
       regra: "NENHUMA",
     };
   }

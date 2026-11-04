@@ -122,19 +122,19 @@ export default function FeedbackPage() {
             !a.resolvido &&
             lastSess &&
             a.origem_sessao_id === lastSess.id &&
-            (a.motivo.includes("[R10:") || a.motivo.includes("[R11:]")),
+            (a.motivo.includes("[R10:") || a.motivo.includes("[R11:")),
         );
         if (volAlerts.length === 0) return null;
         const r10 = volAlerts.filter((a) => a.motivo.includes("[R10:")).length;
         const r11 = volAlerts.filter((a) => a.motivo.includes("[R11:")).length;
         const bits = [
-          r10 ? `${r10} grupo(s) abaixo da faixa` : null,
-          r11 ? `${r11} grupo(s) acima da faixa` : null,
+          r10 ? `${r10 === 1 ? "1 músculo ficou" : `${r10} músculos ficaram`} com pouco volume` : null,
+          r11 ? `${r11 === 1 ? "1 músculo passou" : `${r11} músculos passaram`} do volume ideal` : null,
         ].filter(Boolean);
         return (
           <Card className="mb-4 border-warn/40 bg-[rgba(255,184,60,.08)]">
             <p className="text-sm text-warn">
-              Volume: {bits.join(" · ")}. Próximas sessões ajustadas — veja Progresso.
+              ⚠️ {bits.join(" e ")}. Já ajustei os próximos treinos. Veja os detalhes em Progresso.
             </p>
           </Card>
         );

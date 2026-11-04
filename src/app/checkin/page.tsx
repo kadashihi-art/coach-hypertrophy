@@ -190,7 +190,7 @@ export default function CheckinPage() {
       </div>
       {aguaBaixa && (
         <p className="mt-2 text-xs text-muted">
-          Hidratação &lt; {AGUA_MIN_ML / 1000} L — alerta N1 (não corta séries).
+          💧 Menos de {String(AGUA_MIN_ML / 1000).replace(".", ",")} L de água. Seu treino não muda, mas beba um pouco antes de começar.
         </p>
       )}
 

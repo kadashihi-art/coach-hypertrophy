@@ -327,7 +327,9 @@ export default function TreinoPage() {
       if (typeof adapt.carga_sugerida_kg === "number") {
         setCarga(adapt.carga_sugerida_kg);
       }
-      setCargasToast(adapt.motivo);
+      const alt = adapt.sugerir_alternativa;
+      const nomeAlt = alt ? state.exercicios.find((e) => e.id === alt)?.nome ?? alt.replace(/_/g, " ") : null;
+      setCargasToast(alt && nomeAlt ? adapt.motivo.replace(alt, nomeAlt) : adapt.motivo);
       window.setTimeout(() => setCargasToast(null), 2800);
     } else if (adapt && !adapt.aplicada && adapt.motivo.includes("Dor marcada")) {
       setCargasToast(adapt.motivo);
@@ -438,7 +440,7 @@ export default function TreinoPage() {
                 dor ? "bg-danger/20 text-danger" : "bg-white/5 text-muted"
               }`}
             >
-              {dor ? "Dor marcada" : "Marcar dor (F5)"}
+              {dor ? "Dor marcada" : "Marcar dor"}
             </button>
           </div>
         )}
