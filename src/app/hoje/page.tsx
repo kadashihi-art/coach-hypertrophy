@@ -17,7 +17,7 @@ import {
   Card,
   EvidenciaBadge,
 } from "@/components/ui";
-import { addDaysIso } from "@/lib/plan/calendario";
+import { addDaysIso, semanaDoCalendario } from "@/lib/plan/calendario";
 import {
   hojeIsoSaoPaulo,
   proximaSessao,
@@ -161,24 +161,7 @@ export default function HojePage() {
     : null;
 
   // Semana strip (seg→dom da semana atual, fuso SP)
-  const semana = (() => {
-    if (!hoje) return [] as { iso: string; label: string; st: "feito" | "planejado" | "pulado" | "vazio"; hoje: boolean }[];
-    const dow = (new Date(`${hoje}T12:00:00Z`).getUTCDay() + 6) % 7; // 0=seg
-    const seg = addDaysIso(hoje, -dow);
-    const L = ["S", "T", "Q", "Q", "S", "S", "D"];
-    return L.map((label, i) => {
-      const iso = addDaysIso(seg, i);
-      const ss = agendaSess.filter((x) => x.data === iso);
-      const st = ss.some((x) => x.status === "concluida")
-        ? ("feito" as const)
-        : ss.some((x) => x.status === "pulada") && !ss.some((x) => x.status === "planejada")
-          ? ("pulado" as const)
-          : ss.length
-            ? ("planejado" as const)
-            : ("vazio" as const);
-      return { iso, label, st, hoje: iso === hoje };
-    });
-  })();
+  const semana = hoje ? semanaDoCalendario(agendaSess, hoje, state.dias_limpos ?? []) : [];
   const consistencia = (() => {
     if (!hoje) return null;
     const ini = addDaysIso(hoje, -27);
@@ -476,14 +459,20 @@ export default function HojePage() {
                 <div key={d.iso} className="flex flex-col items-center gap-1">
                   <span className={`text-[10px] ${d.hoje ? "font-bold text-accent" : "text-faint"}`}>{d.label}</span>
                   <span
+                    data-status={d.st}
+                    title={d.nome ?? undefined}
                     className={`h-2.5 w-2.5 rounded-full ${
                       d.st === "feito"
                         ? "bg-accent"
                         : d.st === "planejado"
                           ? "border border-accent/70"
-                          : d.st === "pulado"
-                            ? "bg-warn/50"
-                            : "bg-ink-800"
+                          : d.st === "em_andamento"
+                            ? "bg-accent/60"
+                            : d.st === "pulado"
+                              ? "bg-warn/50"
+                              : d.st === "limpo"
+                                ? "border border-dashed border-ink-600"
+                                : "bg-ink-800"
                     } ${d.hoje ? "ring-2 ring-accent/40 ring-offset-1 ring-offset-transparent" : ""}`}
                   />
                 </div>

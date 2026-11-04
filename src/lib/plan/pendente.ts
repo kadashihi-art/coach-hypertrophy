@@ -6,6 +6,9 @@
  *
  * Calculado só na leitura (determinístico). Nada é gravado: s.data salvo continua igual.
  * Pulo explícito (status "pulada") é respeitado: não entra na fila e mantém a data.
+ * Marcações manuais do calendário também: dia limpo nunca recebe treino, e treino com data
+ * marcada à mão (data_manual, futura) fica no dia. Treino tirado de um dia (Limpar dia) volta
+ * para a fila sem data e entra no próximo dia de treino livre, na ordem do plano.
  */
 import type { AppState, Sessao } from "@/lib/domain";
 import { sessoesDoPlano } from "./proxima-sessao";
@@ -29,23 +32,43 @@ export function agendaEfetiva(
 ): AgendaEfetiva {
   const base = { sessoes: state.sessoes, pendentes: [] as Pendente[] };
   if (!hoje || !state.plano?.mesociclo?.data_inicio) return base;
+  const limpos = new Set(state.dias_limpos ?? []);
   const ordered = sessoesDoPlano(state as AppState, hoje);
-  const fila = ordered.filter((s) => s.status === "planejada" && !!s.data);
-  const pendentes = fila.filter((s) => s.data! < hoje);
-  if (pendentes.length === 0) return base;
+  // Marcação manual no calendário (data futura) fica onde o usuário pôs.
+  const manualFixa = (s: Sessao) => !!s.data_manual && !!s.data && s.data >= hoje;
+  const fila = ordered.filter((s) => s.status === "planejada" && !manualFixa(s));
+  const pendentes = fila.filter((s) => !!s.data && s.data < hoje);
+  const semData = fila.filter((s) => !s.data);
+  const emDiaLimpo = fila.filter((s) => !!s.data && limpos.has(s.data));
+  if (pendentes.length === 0 && semData.length === 0 && emDiaLimpo.length === 0) return base;
 
-  // Hoje já tem treino feito/em andamento? O pendente vai para o próximo dia.
-  const ocupadoHoje = state.sessoes.some(
-    (s) => s.data === hoje && (s.status === "concluida" || s.status === "parcial" || s.status === "em_andamento"),
-  );
-  const inicio = ocupadoHoje ? somaDias(hoje, 1) : hoje;
-  const slots = [...new Set([inicio, ...fila.map((s) => s.data!).filter((d) => d >= inicio)])].sort();
+  // Dias que a agenda não pode usar: limpos, com treino feito/em andamento, ou marcados à mão.
+  const bloqueado = new Set<string>(limpos);
+  for (const s of state.sessoes) {
+    if (!s.data) continue;
+    if (s.status === "concluida" || s.status === "parcial" || s.status === "em_andamento" || s.status === "pulada" || manualFixa(s)) {
+      bloqueado.add(s.data);
+    }
+  }
+  const datas = fila.map((s) => s.data).filter((d): d is string => !!d && d >= hoje && !bloqueado.has(d));
+  if (pendentes.length > 0) {
+    let ini = hoje;
+    while (bloqueado.has(ini)) ini = somaDias(ini, 1);
+    datas.push(ini);
+  }
+  const slots = [...new Set(datas)].sort();
   const porSemana = Math.max(1, state.plano.dias_por_semana ?? 3);
+  if (slots.length === 0) {
+    let d = hoje;
+    while (bloqueado.has(d)) d = somaDias(d, 1);
+    slots.push(d);
+  }
   while (slots.length < fila.length) {
     const ref = slots[slots.length - porSemana];
     const ultimo = slots[slots.length - 1]!;
     let novo = ref ? somaDias(ref, 7) : somaDias(ultimo, 1);
     if (novo <= ultimo) novo = somaDias(ultimo, 1);
+    while (bloqueado.has(novo)) novo = somaDias(novo, 1);
     slots.push(novo);
   }
   const nova = new Map<string, string>();

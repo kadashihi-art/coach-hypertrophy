@@ -14,6 +14,7 @@ import { comparacaoMeta, duracaoDaSessao, resumoDuracao } from "@/lib/engine/dur
 import { useClientValue } from "@/lib/use-client-value";
 import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
 import { agendaEfetiva } from "@/lib/plan/pendente";
+import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 
 /** "2026-10-29" → "Qui, 29 out" (pt-BR, sem pontos). */
 function dataHumana(iso: string): string {
@@ -33,6 +34,7 @@ const STATUS_LABEL: Record<CalendarioDiaView["status"], string> = {
   pulado: "Pulado",
   vazio: "Sem treino",
   em_andamento: "Em andamento",
+  limpo: "Dia limpo",
 };
 
 const DOW = ["S", "T", "Q", "Q", "S", "S", "D"]; // Seg→Dom labels short
@@ -47,6 +49,8 @@ function statusColor(s: CalendarioDiaView["status"]) {
       return "bg-accent text-ink-950";
     case "planejado":
       return "bg-accent/20 text-accent border border-accent/40";
+    case "limpo":
+      return "bg-ink-900 text-faint border border-dashed border-ink-700";
     default:
       return "bg-ink-800 text-faint";
   }
@@ -54,7 +58,11 @@ function statusColor(s: CalendarioDiaView["status"]) {
 
 /** Calendário mensal mínimo gamer — planejado / feito / pulado */
 export default function CalendarioPage() {
-  const { state, markCalendario, setDataInicio } = useApp();
+  const { state, markCalendario, setDataInicio, limparDiaCalendario, desfazerLimpezaDia } = useApp();
+  // Limpar dia: só grava depois do Confirmar.
+  const [confirmarLimpar, setConfirmarLimpar] = useState<string | null>(null);
+  const [avisoLimpar, setAvisoLimpar] = useState<string | null>(null);
+  const [corrigir, setCorrigir] = useState<string | null>(null);
   // Mês do relógio do aparelho (no servidor: outubro/2026 até hidratar) + navegação relativa.
   const mesBase = useClientValue(() => {
     const n = new Date();
@@ -70,7 +78,7 @@ export default function CalendarioPage() {
   const hojeCal = useClientValue<string | null>(hojeIsoSaoPaulo, null);
   // Treino não feito anda pra frente (só leitura); pulo explícito continua no dia.
   const days = useMemo(
-    () => derivarCalendario(agendaEfetiva(state, hojeCal).sessoes, year, month0),
+    () => derivarCalendario(agendaEfetiva(state, hojeCal).sessoes, year, month0, state.dias_limpos ?? []),
     [state, hojeCal, year, month0],
   );
 
@@ -138,7 +146,11 @@ export default function CalendarioPage() {
             <button
               key={d.data}
               type="button"
-              onClick={() => setSelectedData(d.data)}
+              onClick={() => {
+                setSelectedData(d.data);
+                setConfirmarLimpar(null);
+                setAvisoLimpar(null);
+              }}
               data-status={d.status}
               aria-label={`${dataHumana(d.data)}${d.nome ? ` · ${d.nome}` : ""} · ${STATUS_LABEL[d.status]}`}
               className={`aspect-square rounded-xl text-xs font-bold transition ${statusColor(d.status)} ${
@@ -157,6 +169,7 @@ export default function CalendarioPage() {
         <Badge tone="go">feito</Badge>
         <Badge tone="warn">pulado</Badge>
         <Badge tone="muted">vazio</Badge>
+        <Badge tone="muted">limpo</Badge>
       </div>
 
       {selected ? (
@@ -195,7 +208,7 @@ export default function CalendarioPage() {
                     aria-pressed={on}
                     disabled={selected.status === "em_andamento"}
                     className={`min-h-11 text-sm ${on ? "ring-2 ring-white/60" : ""}`}
-                    onClick={() => markCalendario(selected.sessao_id!, acao)}
+                    onClick={() => markCalendario(selected.sessao_id!, acao, selected.data)}
                   >
                     {on ? `✓ ${label}` : label}
                   </Button>
@@ -204,6 +217,13 @@ export default function CalendarioPage() {
               {selected.status === "em_andamento" ? (
                 <p className="text-xs text-muted">Treino em andamento.</p>
               ) : null}
+            </div>
+          ) : selected.status === "limpo" ? (
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-xs text-muted">Dia limpo: nenhum treino é colocado aqui.</p>
+              <Button variant="ghost" className="min-h-11 text-sm" onClick={() => desfazerLimpezaDia(selected.data)}>
+                Desfazer limpeza
+              </Button>
             </div>
           ) : (
             <p className="mt-2 text-xs text-muted">
@@ -215,9 +235,61 @@ export default function CalendarioPage() {
               ) : null}
             </p>
           )}
+          {selected.status !== "limpo" && selected.status !== "em_andamento" ? (
+            <div className="mt-3 border-t border-ink-800 pt-3" data-testid="limpar-dia">
+              {selected.status === "feito" ? (
+                <>
+                  <p className="mb-2 text-xs text-muted">
+                    Este dia tem treino feito. Limpar o dia não apaga treino nem série registrada. Para mudar o que foi feito, use Corrigir registro.
+                  </p>
+                  {state.sessoes.find((x) => x.id === selected.sessao_id)?.status === "concluida" ? (
+                  <Button variant="ghost" className="min-h-11 w-full text-sm" onClick={() => setCorrigir(selected.sessao_id)}>
+                    Corrigir registro
+                  </Button>
+                  ) : null}
+                </>
+              ) : confirmarLimpar === selected.data ? (
+                <>
+                  <p className="mb-2 text-sm">
+                    {selected.nome
+                      ? `Tirar ${selected.nome} deste dia? O treino continua no plano e passa para o próximo dia de treino livre. Nenhuma série é apagada.`
+                      : "Deixar este dia livre? Nenhum treino será colocado aqui."}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="warn"
+                      className="min-h-11 flex-1 text-sm"
+                      onClick={() => {
+                        const r = limparDiaCalendario(selected.data, selected.sessao_id);
+                        setConfirmarLimpar(null);
+                        setAvisoLimpar(
+                          r.ok
+                            ? r.tirado
+                              ? `Dia limpo. ${r.tirado} voltou para a fila.`
+                              : "Dia limpo."
+                            : "Este dia tem treino feito ou em andamento e não foi limpo.",
+                        );
+                      }}
+                    >
+                      Confirmar
+                    </Button>
+                    <Button variant="ghost" className="min-h-11 flex-1 text-sm" onClick={() => setConfirmarLimpar(null)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <Button variant="ghost" className="min-h-11 w-full text-sm" onClick={() => setConfirmarLimpar(selected.data)}>
+                  Limpar dia
+                </Button>
+              )}
+            </div>
+          ) : null}
+          {avisoLimpar ? <p className="mt-2 text-xs text-muted" role="status">{avisoLimpar}</p> : null}
         </Card>
         </section>
       ) : null}
+      {corrigir ? <EditarTreinoSheet sessaoId={corrigir} onClose={() => setCorrigir(null)} /> : null}
 
       {!dataInicio && state.plano ? (
         <Card>

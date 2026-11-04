@@ -32,6 +32,8 @@ import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
 import { gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import {
   agendarSessoes,
+  desfazerLimpeza,
+  limparDia,
 } from "@/lib/plan/calendario";
 import { remountPlano } from "@/lib/plan/remount-plano";
 import {
@@ -97,7 +99,12 @@ type Ctx = {
   markCalendario: (
     sessaoId: string,
     action: "pular" | "planejar" | "feito",
+    /** Dia da célula tocada: planejar/pular fixam o treino nesse dia (marcação manual). */
+    dataDia?: string,
   ) => void;
+  /** Limpar dia no calendário (só após o usuário confirmar). */
+  limparDiaCalendario: (data: string, sessaoId: string | null) => { ok: boolean; motivo?: "feito" | "em_andamento"; tirado?: string | null };
+  desfazerLimpezaDia: (data: string) => void;
   /** Troca permanente de exercício no plano (só após "Confirmar troca"). */
   trocarExercicio: (deId: string, paraId: string) => boolean;
   /** Editar treino: só após "Confirmar". */
@@ -898,7 +905,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markCalendario = useCallback(
-    (sessaoId: string, action: "pular" | "planejar" | "feito") => {
+    (sessaoId: string, action: "pular" | "planejar" | "feito", dataDia?: string) => {
       setState((s) => {
         // Calendário é a fonte do usuário: permite trocar o status de qualquer
         // dia (inclusive um já "feito"). Só a sessão em andamento fica intocada.
@@ -906,9 +913,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...s,
           sessoes: s.sessoes.map((x) => {
             if (x.id !== sessaoId || x.status === "em_andamento") return x;
-            if (action === "pular") return { ...x, status: "pulada" as const };
+            const fixar = dataDia ? { data: dataDia, data_manual: true } : {};
+            if (action === "pular") return { ...x, ...fixar, status: "pulada" as const };
             if (action === "planejar")
-              return { ...x, status: "planejada" as const };
+              return { ...x, ...fixar, status: "planejada" as const };
             return {
               ...x,
               status: "concluida" as const,
@@ -921,6 +929,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  const limparDiaCalendario = useCallback((data: string, sessaoId: string | null) => {
+    const r = limparDia(state, data, sessaoId);
+    if (!r.ok) return { ok: false, motivo: r.motivo };
+    setState(r.state);
+    return { ok: true, tirado: r.tirado };
+  }, [state]);
+
+  const desfazerLimpezaDia = useCallback((data: string) => {
+    setState((s) => desfazerLimpeza(s, data));
+  }, []);
 
   const trocarExercicio = useCallback((deId: string, paraId: string) => {
     const next = aplicarTroca(state, deId, paraId);
@@ -1002,6 +1021,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
+      limparDiaCalendario,
+      desfazerLimpezaDia,
       trocarExercicio,
       editarSessao,
       desfazerEdicaoSessao,
@@ -1030,6 +1051,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
+      limparDiaCalendario,
+      desfazerLimpezaDia,
       trocarExercicio,
       editarSessao,
       desfazerEdicaoSessao,
