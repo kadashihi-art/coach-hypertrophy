@@ -2,12 +2,15 @@
 
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
+import { apresentarAlerta } from "@/lib/alertas/apresentar";
+import { labelGrupo } from "@/lib/labels";
+import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import {
-  AlertaBanner,
+  AlertaCard,
   Button,
   Card,
   EvidenciaBadge,
@@ -30,7 +33,6 @@ import {
   resumoSonoCheckin,
 } from "@/lib/domain/sono";
 import {
-  PARQ_BLOQUEIO_MSG,
   precisaResponderParq,
   parqBloqueiaPrescricao,
 } from "@/lib/plan/parq";
@@ -242,8 +244,8 @@ export default function HojePage() {
         <div className="motion-swap relative mb-4">
           {alertaUnico === "parq" ? (
             <Card className="border-danger/40 bg-danger/10 text-sm">
-              <p className="mb-1 font-bold text-danger">PAR-Q+ · bloqueio N2</p>
-              <p className="mb-2 text-muted">{PARQ_BLOQUEIO_MSG}</p>
+              <p className="mb-1 font-bold text-danger">⛔ Plano pausado por segurança</p>
+              <p className="mb-2 text-muted">Uma resposta do questionário de saúde pede liberação profissional antes de treinar com progressão. Procure um médico ou profissional de saúde.</p>
               {parqPendente ? (
                 <Link href="/onboarding" className="text-xs font-semibold text-accent underline">
                   Responder triagem PAR-Q+
@@ -255,7 +257,16 @@ export default function HojePage() {
               )}
             </Card>
           ) : alertaUnico === "alerta" && alerta ? (
-            <AlertaBanner nivel={alerta.nivel} motivo={semCodigoRegra(alerta.motivo)} recomendacao={alerta.recomendacao} />
+            (() => {
+              const ap = apresentarAlerta(alerta);
+              const alvo = ap.acao?.tipo === "revisar_treino" ? proximoTreinoParaAlerta(state, ap.acao.grupo) : null;
+              return (
+                <AlertaCard
+                  alerta={ap}
+                  onAcao={alvo ? () => { setAvisoEdicao(null); setEditar(alvo); } : undefined}
+                />
+              );
+            })()
           ) : (
             <div className="rounded-2xl border border-accent/30 bg-[rgba(184,255,60,.08)] px-4 py-3 pr-10 text-sm text-accent">
               {deloadResumo}
@@ -304,7 +315,7 @@ export default function HojePage() {
               <div className="mt-2 flex flex-wrap gap-2 text-sm text-bone-300">
                 <span className="num">~{sess.duracao_estimada_min} min</span>
                 <span>·</span>
-                <span>{sess.grupos.slice(0, 4).join(" · ")}</span>
+                <span>{sess.grupos.slice(0, 4).map((g) => labelGrupo(g).toLowerCase()).join(" · ")}</span>
               </div>
             </>
           )}

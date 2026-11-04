@@ -185,7 +185,7 @@ export function avaliarCheckinDeload(args: {
       nivel: "N1",
       motivo: `Check-in: prontidão ${checkin.prontidao}/5, sono ${checkin.sono_h}h.`,
       recomendacao:
-        "R9 — manter carga; sessão do dia ajustada: −1 série nos exercícios principais.",
+        "Mantive as cargas e tirei 1 série dos exercícios principais hoje.",
     });
   }
   if (aguaBaixa && checkin) {
@@ -194,7 +194,7 @@ export function avaliarCheckinDeload(args: {
       nivel: "N1",
       motivo: `Hidratação baixa: ${checkin.agua_ml} ml (< ${AGUA_MIN_ML} ml).`,
       recomendacao:
-        "Beber água antes/durante o treino. Não corta séries sozinho.",
+        "Beba água antes e durante o treino. Seu treino não muda por isso.",
     });
   }
   if (r6 && mesociclo) {
@@ -202,28 +202,28 @@ export function avaliarCheckinDeload(args: {
       data,
       nivel: "N1",
       motivo: `Semana ${mesociclo.semana_atual}/${mesociclo.total_semanas} (foco ${mesociclo.foco}) — deload programado.`,
-      recomendacao: "R6 soft — cargas de trabalho/top −10% hoje.",
+      recomendacao: "Hoje as cargas ficam 10% mais leves.",
     });
   }
   if (regras.includes("R5")) {
     alertas.push({
       data,
       nivel: "N1",
-      motivo: "Platô: 3+ sessões sem progressão em exercício(s) de hoje.",
-      recomendacao: "R5 soft — −10% na carga desses exercícios hoje.",
+      motivo: "Platô: 3 treinos ou mais sem evoluir em alguns exercícios de hoje.",
+      recomendacao: "Baixei 10% da carga desses exercícios hoje.",
     });
   }
 
   const partes: string[] = [];
-  if (r9) partes.push("−1 série nos compostos (R9; carga mantida)");
-  if (r6) partes.push("−10% carga (R6 deload)");
-  if (regras.includes("R5")) partes.push("−10% carga nos platôs (R5)");
-  if (aguaBaixa) partes.push("alerta de hidratação");
+  if (r9) partes.push("1 série a menos nos exercícios principais, cargas mantidas");
+  if (r6) partes.push("cargas 10% mais leves (semana de recuperação)");
+  if (regras.includes("R5")) partes.push("10% menos carga nos exercícios travados");
+  if (aguaBaixa) partes.push("lembrete de beber água");
 
   const motivo =
     partes.length > 0
-      ? `Sessão ajustada: ${partes.join("; ")}.`
-      : "Check-in ok — sem ajuste de deload.";
+      ? `Treino de hoje ajustado: ${partes.join("; ")}.`
+      : "Check-in ok, treino normal hoje.";
 
   const aplicado = ajustes.some(
     (a) =>
@@ -245,13 +245,13 @@ export function avaliarCheckinDeload(args: {
 export function resumoAjusteDeload(r: ResultadoCheckinDeload): string | null {
   if (!r.aplicado && !r.regras.includes("AGUA")) return null;
   if (r.regras.includes("R9")) {
-    return "Sessão ajustada: −1 série nos compostos";
+    return "Treino de hoje mais leve: 1 série a menos nos exercícios principais, cargas mantidas.";
   }
   if (r.regras.includes("R6") || r.regras.includes("R5")) {
-    return "Sessão ajustada: cargas de deload (−10%)";
+    return "Treino de hoje mais leve: cargas 10% menores pra recuperar.";
   }
   if (r.regras.includes("AGUA")) {
-    return "Hidratação baixa — beba água (sem corte de séries)";
+    return "💧 Pouca água hoje. Seu treino não muda, mas beba um pouco antes de começar.";
   }
   return r.motivo;
 }

@@ -593,7 +593,7 @@ export default function OnboardingPage() {
             </div>
             {parqBloqueado ? (
               <Card className="border-danger/40 bg-danger/10">
-                <p className="mb-2 text-sm font-bold text-danger">Bloqueio N2 · PAR-Q+</p>
+                <p className="mb-2 text-sm font-bold text-danger">⛔ Plano pausado por segurança</p>
                 <p className="mb-3 text-sm text-muted">
                   Há pelo menos uma resposta SIM. Não geramos plano nem liberamos
                   sessão. Procure avaliação profissional (ePARmed-X+ /

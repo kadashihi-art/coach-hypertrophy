@@ -11,6 +11,10 @@ import type {
 } from "@/lib/domain";
 import { VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { currentIsoWeek } from "@/lib/engine/volume";
+import { labelGrupo } from "@/lib/labels";
+
+const nomeG = (g: string) => labelGrupo(g).toLowerCase();
+const series = (n: number) => `${n} ${n === 1 ? "série" : "séries"}`;
 
 export type AlertaVolume = {
   grupo: GrupoMuscular;
@@ -102,8 +106,8 @@ export function avaliarAlertasVolume(
           grupo,
           regra: "R10",
           nivel: "N1",
-          motivo: `[${m}] Volume efetivo de ${grupo} abaixo de ${VOLUME_MIN} por 2 semanas (${ant} → ${cur} séries).`,
-          recomendacao: `Adicionar ${delta} série(s) no grupo ${grupo} nas próximas sessões.`,
+          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} abaixo de ${VOLUME_MIN} por 2 semanas (${ant} → ${cur} séries).`,
+          recomendacao: `Adicionar ${series(delta)} de ${nomeG(grupo)} nos próximos treinos.`,
           series_efetivas: cur,
           acao: "adicionar_series",
           delta_series: delta,
@@ -131,8 +135,8 @@ export function avaliarAlertasVolume(
           grupo,
           regra: "R11",
           nivel: "N1",
-          motivo: `[${m}] Volume efetivo de ${grupo} ${cur} > ${VOLUME_MAX}.${motivoRir}`,
-          recomendacao: `Remover 2 séries do grupo ${grupo} nas próximas sessões.`,
+          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} ${cur} > ${VOLUME_MAX}.${motivoRir}`,
+          recomendacao: `Remover 2 séries de ${nomeG(grupo)} nos próximos treinos.`,
           series_efetivas: cur,
           acao: "remover_series",
           delta_series: 2,

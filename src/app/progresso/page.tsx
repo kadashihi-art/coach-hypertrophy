@@ -3,10 +3,14 @@
 import { VolumeBar } from "@/components/VolumeBar";
 import { labelGrupo } from "@/lib/labels";
 import { semCodigoRegra } from "@/lib/llm/tom";
+import { apresentarAlerta } from "@/lib/alertas/apresentar";
+import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
+import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
 import {
+  AlertaCard,
   Badge,
   Card,
   EvidenciaBadge,
@@ -24,6 +28,7 @@ export default function ProgressoPage() {
 
   const [semanaAtual, setSemanaAtual] = useState("2026-W44");
   const [barsOn, setBarsOn] = useState(false);
+  const [editar, setEditar] = useState<string | null>(null);
   useEffect(() => {
     const id = requestAnimationFrame(() => setBarsOn(true));
     return () => cancelAnimationFrame(id);
@@ -150,23 +155,19 @@ export default function ProgressoPage() {
 
       {alertasVolume.length > 0 && (
         <>
-          <SectionTitle title="Alertas de volume" />
+          {editar ? <EditarTreinoSheet sessaoId={editar} onClose={() => setEditar(null)} /> : null}
+          <SectionTitle title="Volume por músculo" />
           <div className="mb-6 space-y-3 motion-stagger">
             {alertasVolume.map((a) => {
-              const isR10 = a.motivo.includes("[R10:");
+              const ap = apresentarAlerta(a);
+              const alvo = ap.acao?.tipo === "revisar_treino" ? proximoTreinoParaAlerta(state, ap.acao.grupo) : null;
               return (
-                <Card key={a.id}>
-                  <div className="mb-1 flex flex-wrap gap-2">
-                    <Badge tone={isR10 ? "warn" : "danger"}>
-                      {isR10 ? "Abaixo da faixa" : "Acima da faixa"}
-                    </Badge>
-                    <Badge tone="muted">N1</Badge>
-                  </div>
-                  <p className="text-sm">
-                    {semCodigoRegra(a.motivo.replace(/\[[^\]]+\]\s*/, ""))}
-                  </p>
-                  <p className="mt-1 text-xs text-accent">{a.recomendacao}</p>
-                </Card>
+                <AlertaCard
+                  key={a.id}
+                  testId="alerta-volume"
+                  alerta={ap}
+                  onAcao={alvo ? () => setEditar(alvo) : undefined}
+                />
               );
             })}
           </div>
@@ -213,7 +214,7 @@ export default function ProgressoPage() {
         <ProgressBar value={consistenciaPct} max={100} tone="accent" />
         <p className="mt-2 text-xs text-muted">
           {temHistorico
-            ? `${concluidas} concluída(s) nesta janela · sem streak punitivo.`
+            ? `${concluidas} ${concluidas === 1 ? "treino feito" : "treinos feitos"} nas últimas 4 semanas.`
             : "Sem dados ainda — complete um treino."}
         </p>
       </Card>

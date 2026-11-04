@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent, type PropsWithChildren, type ReactNode } from "react";
 import type { Evidencia, NivelAlerta } from "@/lib/domain";
+import { apresentarAlerta, type AlertaApresentado } from "@/lib/alertas/apresentar";
 
 export function Card({
   children,
@@ -73,7 +74,43 @@ export function EvidenciaBadge({ evidencia }: { evidencia: Evidencia }) {
   return <span className={`ev ev-${evidencia}`}>{label[evidencia]}</span>;
 }
 
-/** Alertas N0 / N1 / N2 — vermelho só em N2 */
+/** Card de alerta: título claro, porquê, dica e ação. Urgência só por cor/ícone. */
+export function AlertaCard({
+  alerta,
+  onAcao,
+  testId,
+}: {
+  alerta: AlertaApresentado;
+  onAcao?: () => void;
+  testId?: string;
+}) {
+  const estilo = {
+    info: { card: "alert-n0", icone: "ℹ️", cor: "text-bone-50", rotulo: "Aviso" },
+    atencao: { card: "alert-n1", icone: "⚠️", cor: "text-warn", rotulo: "Atenção" },
+    bloqueio: { card: "alert-n2", icone: "⛔", cor: "text-danger", rotulo: "Importante" },
+  }[alerta.urgencia];
+  return (
+    <div className={`card ${estilo.card} px-3 py-3 pr-10 text-sm`} data-testid={testId ?? "alerta-card"} role="status">
+      <div className={`flex items-center gap-2 font-semibold ${estilo.cor}`}>
+        <span aria-label={estilo.rotulo} role="img">{estilo.icone}</span>
+        <span>{alerta.titulo}</span>
+      </div>
+      <p className="mt-1 text-bone-50/90">{alerta.porque}</p>
+      {alerta.dica ? <p className="mt-1 text-xs text-muted">{alerta.dica}</p> : null}
+      {alerta.acao && onAcao ? (
+        <button
+          type="button"
+          onClick={onAcao}
+          className="motion-press mt-2 min-h-10 rounded-xl border border-accent/40 px-3 text-xs font-semibold text-accent"
+        >
+          {alerta.acao.rotulo}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Compat: banner antigo agora passa pelo apresentador. */
 export function AlertaBanner({
   nivel,
   motivo,
@@ -83,30 +120,7 @@ export function AlertaBanner({
   motivo: string;
   recomendacao: string;
 }) {
-  if (nivel === "N0") {
-    return (
-      <div className="card alert-n0 px-3 py-2 text-xs text-muted">
-        <span className="mr-2 inline-block h-2 w-2 rounded-full bg-go" />
-        N0 · {motivo}
-      </div>
-    );
-  }
-  if (nivel === "N1") {
-    return (
-      <div className="card alert-n1 px-3 py-3 text-sm">
-        <div className="font-semibold">N1 · Atenção</div>
-        <p className="mt-1 text-bone-50/90">{motivo}</p>
-        <p className="mt-1 text-xs text-muted">{recomendacao}</p>
-      </div>
-    );
-  }
-  return (
-    <div className="card alert-n2 px-3 py-3 text-sm">
-      <div className="font-semibold">N2 · Plano bloqueado</div>
-      <p className="mt-1 text-bone-50/90">{motivo}</p>
-      <p className="mt-1 text-xs text-muted">{recomendacao}</p>
-    </div>
-  );
+  return <AlertaCard alerta={apresentarAlerta({ nivel, motivo, recomendacao })} />;
 }
 
 export function ProgressBar({
