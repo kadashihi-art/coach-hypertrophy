@@ -32,6 +32,7 @@
     "smoke:alternativa": "npx --yes tsx scripts/smoke-alternativa.ts",
     "smoke:progresso": "npx --yes tsx scripts/smoke-progresso.ts",
     "smoke:textos-alertas": "npx --yes tsx scripts/smoke-textos-alertas.ts",
+    "smoke:editar-durante-treino": "npx --yes tsx scripts/smoke-editar-durante-treino.ts",
     "smoke:carga-real": "npx --yes tsx scripts/smoke-carga-real.ts"
   },
   "dependencies": {

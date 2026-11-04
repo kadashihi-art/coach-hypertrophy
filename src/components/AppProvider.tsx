@@ -1,5 +1,6 @@
 "use client";
 
+import { aplicarEdicaoAoVivo, desfazerEdicaoAoVivo, type RascunhoAoVivo } from "@/lib/treino/editar-durante-treino";
 import {
   createContext,
   useCallback,
@@ -105,6 +106,8 @@ type Ctx = {
   corrigirSessaoConcluida: (r: RascunhoCorrecao) => { ok: boolean; erro?: string; avisos?: string[] };
   desfazerCorrecaoSessao: (sessaoId: string) => { ok: boolean; erro?: string };
   voltarSessaoAoCoach: (sessaoId: string) => { ok: boolean; erro?: string };
+  editarAoVivo: (r: RascunhoAoVivo) => { ok: true; removidas: string[]; linhas: string[] } | { ok: false; erro: string };
+  desfazerAoVivo: () => { ok: true } | { ok: false; erro: string };
 };
 
 const AppCtx = createContext<Ctx | null>(null);
@@ -960,6 +963,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, [state]);
 
+  const editarAoVivo = useCallback((r: RascunhoAoVivo) => {
+    const res = aplicarEdicaoAoVivo(state, r);
+    if (!res.ok) return { ok: false as const, erro: res.erro };
+    setState(res.state);
+    return { ok: true as const, removidas: res.montagem.removidas, linhas: res.montagem.linhas };
+  }, [state]);
+
+  const desfazerAoVivo = useCallback(() => {
+    const res = desfazerEdicaoAoVivo(state);
+    if (!res.ok) return { ok: false as const, erro: res.erro };
+    setState(res.state);
+    return { ok: true as const };
+  }, [state]);
+
   const resetApp = useCallback(() => {
     setState(resetState());
   }, []);
@@ -990,6 +1007,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       corrigirSessaoConcluida,
       desfazerCorrecaoSessao,
       voltarSessaoAoCoach,
+      editarAoVivo,
+      desfazerAoVivo,
     }),
     [
       state,
@@ -1016,6 +1035,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       corrigirSessaoConcluida,
       desfazerCorrecaoSessao,
       voltarSessaoAoCoach,
+      editarAoVivo,
+      desfazerAoVivo,
     ],
   );
 
