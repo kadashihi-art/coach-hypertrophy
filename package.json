@@ -41,7 +41,8 @@
     "smoke:reavaliacao-nivel": "npx --yes tsx scripts/smoke-reavaliacao-nivel.ts",
     "smoke:sono-agua": "npx --yes tsx scripts/smoke-sono-agua.ts",
     "smoke:falha": "npx --yes tsx scripts/smoke-falha.ts",
-    "smoke:limites": "npx --yes tsx scripts/smoke-limites.ts"
+    "smoke:limites": "npx --yes tsx scripts/smoke-limites.ts",
+    "smoke:duracao": "npx --yes tsx scripts/smoke-duracao.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

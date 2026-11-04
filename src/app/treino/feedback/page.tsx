@@ -14,6 +14,7 @@ import {
   ProgressBar,
   SectionTitle,
 } from "@/components/ui";
+import { comparacaoMeta, duracaoDaSessao, formatarDescanso } from "@/lib/engine/duracao-treino";
 import type { LlmResponseEnvelope } from "@/lib/llm/contract";
 
 /** T6 — Análise pós-treino com evidência, R# e volume vs planejado */
@@ -114,8 +115,36 @@ export default function FeedbackPage() {
         {lastSess?.nome ?? "Sessão"} concluída
       </h1>
       <p className="mb-4 text-sm text-muted">
-        {seriesCount} séries de trabalho · regras de progressão aplicadas
+        {seriesCount} {seriesCount === 1 ? "série" : "séries"} de trabalho · regras de progressão aplicadas
       </p>
+
+      {(() => {
+        const dt = lastSess ? duracaoDaSessao(lastSess, state.registros) : null;
+        if (!dt) return null;
+        const meta = comparacaoMeta(dt.duracao_min, state.perfil?.minutos_por_sessao);
+        return (
+          <section data-testid="duracao-treino" aria-label="Duração do treino"><Card className="mb-4">
+            <div className="flex justify-around text-center">
+              <div>
+                <p className="load-num text-2xl font-bold">{dt.duracao_min} min</p>
+                <p className="text-xs text-muted">Duração</p>
+              </div>
+              <div>
+                <p className="load-num text-2xl font-bold">
+                  {dt.descanso_medio_s != null ? formatarDescanso(dt.descanso_medio_s) : "—"}
+                </p>
+                <p className="text-xs text-muted">Descanso médio real</p>
+              </div>
+            </div>
+            {meta ? <p className="mt-3 text-center text-sm text-muted">{meta}</p> : null}
+            {dt.pausas_ignoradas > 0 ? (
+              <p className="mt-1 text-center text-xs text-muted">
+                {dt.pausas_ignoradas === 1 ? "Uma pausa longa ficou fora da conta." : `${dt.pausas_ignoradas} pausas longas ficaram fora da conta.`}
+              </p>
+            ) : null}
+          </Card></section>
+        );
+      })()}
 
       {(() => {
         const volAlerts = state.alertas.filter(

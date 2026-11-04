@@ -10,6 +10,7 @@ import {
   parseIsoDate,
   type CalendarioDiaView,
 } from "@/lib/plan/calendario";
+import { comparacaoMeta, duracaoDaSessao, resumoDuracao } from "@/lib/engine/duracao-treino";
 import { useClientValue } from "@/lib/use-client-value";
 import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
 
@@ -162,6 +163,18 @@ export default function CalendarioPage() {
             {dataHumana(selected.data)}
             {selected.nome ? ` · ${selected.nome}` : ""}
           </p>
+          {(() => {
+            if (!selected.sessao_id || selected.status !== "feito") return null;
+            const sess = state.sessoes.find((x) => x.id === selected.sessao_id);
+            const dt = sess ? duracaoDaSessao(sess, state.registros) : null;
+            if (!dt) return null;
+            const meta = comparacaoMeta(dt.duracao_min, state.perfil?.minutos_por_sessao);
+            return (
+              <p className="mt-1 text-sm text-muted" data-testid="duracao-dia">
+                ⏱ {resumoDuracao(dt)}{meta ? `. ${meta}` : ""}
+              </p>
+            );
+          })()}
           {selected.sessao_id ? (
             <div className="mt-3 flex flex-col gap-2">
               {(
