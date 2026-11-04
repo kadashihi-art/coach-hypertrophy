@@ -73,7 +73,13 @@ export default function CalendarioPage() {
   const year = Math.floor((mesBase + deslocMes) / 12);
   const month0 = (mesBase + deslocMes) % 12;
   // Guarda só a data: o card lê o dia sempre do estado atual (não de uma cópia).
-  const [selectedData, setSelectedData] = useState<string | null>(null);
+  const [escolhido, setSelectedData] = useState<string | null>(null);
+  // Chips da semana em Hoje abrem o calendário já no dia tocado (?dia=AAAA-MM-DD).
+  const diaUrl = useClientValue<string | null>(() => {
+    const d = new URLSearchParams(window.location.search).get("dia");
+    return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+  }, null);
+  const selectedData = escolhido ?? diaUrl;
 
   const hojeCal = useClientValue<string | null>(hojeIsoSaoPaulo, null);
   // Treino não feito anda pra frente (só leitura); pulo explícito continua no dia.
@@ -191,7 +197,7 @@ export default function CalendarioPage() {
               </p>
             );
           })()}
-          {selected.sessao_id ? (
+          {selected.sessao_id && selected.status !== "feito" ? (
             <div className="mt-3 flex flex-col gap-2">
               {(
                 [
@@ -209,6 +215,7 @@ export default function CalendarioPage() {
                     disabled={selected.status === "em_andamento"}
                     className={`min-h-11 text-sm ${on ? "ring-2 ring-white/60" : ""}`}
                     onClick={() => markCalendario(selected.sessao_id!, acao, selected.data)}
+                    data-acao={acao}
                   >
                     {on ? `✓ ${label}` : label}
                   </Button>
@@ -216,6 +223,11 @@ export default function CalendarioPage() {
               })}
               {selected.status === "em_andamento" ? (
                 <p className="text-xs text-muted">Treino em andamento.</p>
+              ) : null}
+              {state.sessoes.find((x) => x.id === selected.sessao_id)?.data_manual && selected.status !== "em_andamento" ? (
+                <Button variant="ghost" className="min-h-11 text-sm" data-acao="desfazer" onClick={() => markCalendario(selected.sessao_id, "desfazer", selected.data)}>
+                  Desfazer marcação (volta a seguir a agenda)
+                </Button>
               ) : null}
             </div>
           ) : selected.status === "limpo" ? (
@@ -225,8 +237,14 @@ export default function CalendarioPage() {
                 Desfazer limpeza
               </Button>
             </div>
-          ) : (
-            <p className="mt-2 text-xs text-muted">
+          ) : selected.sessao_id ? null : (
+            <div className="mt-2 flex flex-col gap-2">
+            {dataInicio && hojeCal && selected.data >= hojeCal ? (
+              <Button variant="ghost" className="min-h-11 text-sm" data-acao="trazer" onClick={() => markCalendario(null, "trazer", selected.data)}>
+                Planejar o próximo treino aqui
+              </Button>
+            ) : null}
+            <p className="text-xs text-muted">
               Sem treino neste dia.{" "}
               {!dataInicio ? (
                 <Link href="/plano/ajustar" className="text-accent">
@@ -234,6 +252,7 @@ export default function CalendarioPage() {
                 </Link>
               ) : null}
             </p>
+            </div>
           )}
           {selected.status !== "limpo" && selected.status !== "em_andamento" ? (
             <div className="mt-3 border-t border-ink-800 pt-3" data-testid="limpar-dia">
