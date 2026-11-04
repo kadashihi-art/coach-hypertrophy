@@ -1,5 +1,6 @@
 "use client";
 
+import { ExercicioThumb } from "@/components/ExercicioImagem";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useApp } from "@/components/AppProvider";
@@ -98,7 +99,8 @@ export function TrocarExercicioSheet({
             <div className="space-y-2">
               {lista.map((e) => (
                 <button key={e.id} type="button" onClick={() => setDeId(e.id)} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
-                  <span className="font-semibold text-bone-50">{e.nome}</span>
+                  <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
+              <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
                   <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento]}</span>
                 </button>
@@ -127,6 +129,7 @@ export function TrocarExercicioSheet({
                     className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left"
                   >
                     <div className="flex items-center justify-between gap-2">
+                      <ExercicioThumb ex={a.exercicio} size={40} />
                       <span className="font-semibold text-bone-50">{a.exercicio.nome}</span>
                       <VariacaoInfo ex={a.exercicio} state={state} />
                       <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted">{EQUIP[a.exercicio.equipamento]}</span>

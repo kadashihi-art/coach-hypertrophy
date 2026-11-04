@@ -1,7 +1,7 @@
 "use client";
 
 import { labelSplit, humanizarSplits } from "@/lib/plan/split-label";
-import { acentuar, labelGrupo } from "@/lib/labels";
+import { acentuar, labelEquipamento, labelFoco, labelGrupo, labelObjetivo } from "@/lib/labels";
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
@@ -116,7 +116,7 @@ export default function PlanoPage() {
       </div>
       <p className="mb-3 text-sm text-muted">
         {plano.dias_por_semana}×/semana · {plano.minutos_por_sessao} min ·{" "}
-        {plano.objetivo}
+        {labelObjetivo(plano.objetivo)}
         {plano.mesociclo.data_inicio
           ? ` · início ${plano.mesociclo.data_inicio}`
           : ""}
@@ -126,7 +126,7 @@ export default function PlanoPage() {
         <div className="mb-4 flex flex-wrap gap-2">
           {perfil.equipamentos.map((e) => (
             <span key={e} className="chip-motion on text-[11px] !px-2.5 !py-1">
-              {e.replace("_", " ")}
+              {labelEquipamento(e)}
             </span>
           ))}
           {perfil.restricoes.map((r) => (
@@ -134,7 +134,7 @@ export default function PlanoPage() {
               key={r}
               className="rounded-full border border-warn/50 bg-warn/10 px-2.5 py-1 text-[11px] font-semibold capitalize text-warn"
             >
-              {r}
+              {acentuar(r.replace(/_/g, " "))}
             </span>
           ))}
         </div>
@@ -148,7 +148,7 @@ export default function PlanoPage() {
               Semana {plano.mesociclo.semana_atual}/{plano.mesociclo.total_semanas}
             </p>
           </div>
-          <Badge tone="accent">{plano.mesociclo.foco}</Badge>
+          <Badge tone="accent">{labelFoco(plano.mesociclo.foco)}</Badge>
         </div>
         <div className="mt-3 flex gap-1">
           {Array.from({ length: plano.mesociclo.total_semanas }).map((_, i) => (

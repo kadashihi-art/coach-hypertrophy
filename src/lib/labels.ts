@@ -63,3 +63,21 @@ export function acentuar(t: string): string {
 export function fmtKg(n: number): string {
   return String(n).replace(".", ",");
 }
+
+/** Equipamento salvo → rótulo de tela. */
+export const EQUIPAMENTO_LABEL: Record<string, string> = {
+  barra: "barra", halteres: "halteres", maquina: "máquina", cabo: "cabo", peso_corporal: "peso do corpo",
+  banco: "banco", rack: "rack", elastico: "elástico", kettlebell: "kettlebell", outros: "outros",
+};
+export function labelEquipamento(e: string): string {
+  return EQUIPAMENTO_LABEL[e] ?? e.replace(/_/g, " ");
+}
+/** Foco do mesociclo → rótulo de tela. */
+export const FOCO_LABEL: Record<string, string> = {
+  acumulo: "Acúmulo", intensificacao: "Intensificação", realizacao: "Realização", deload: "Semana leve",
+  manutencao: "Manutenção", adaptacao: "Adaptação", recuperacao: "Recuperação", hipertrofia: "Hipertrofia", forca: "Força",
+};
+export function labelFoco(f?: string | null): string {
+  if (!f) return "";
+  return FOCO_LABEL[f] ?? acentuar(f.replace(/_/g, " "));
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { ExercicioThumb } from "@/components/ExercicioImagem";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { VariacaoInfo } from "@/components/VariacaoInfo";
@@ -87,6 +88,7 @@ export function EditarDuranteTreinoSheet(props: {
         <div className="space-y-2">
           {cands.map((e) => (
             <button key={e.id} type="button" data-testid="aovivo-add-ex" onClick={() => { setR(adicionarAoVivo(state, r, e.id, modo.adicionar)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
+              <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
               <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento] ?? ""}{e.composto ? " · multiarticular" : ""}</span>
@@ -116,7 +118,8 @@ export function EditarDuranteTreinoSheet(props: {
           <div className="space-y-2">
             {alts.map((e) => (
               <button key={e.id} type="button" data-testid="aovivo-alt" onClick={() => { setR(trocarAoVivo(state, r, idx, e.id)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
-                <span className="font-semibold text-bone-50">{e.nome}</span>
+                <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
+              <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
                 <span className="block text-[11px] text-muted">{EQUIP[e.equipamento] ?? ""}</span>
               </button>
