@@ -7,7 +7,7 @@ import { semCodigoRegra } from "@/lib/llm/tom";
 import { apresentarAlerta } from "@/lib/alertas/apresentar";
 import { fmtKg, labelGrupo } from "@/lib/labels";
 import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
@@ -23,7 +23,9 @@ import {
   proximaSessao,
   sessoesDoPlano,
 } from "@/lib/plan/proxima-sessao";
-import { agendaEfetiva, avisoPendente } from "@/lib/plan/pendente";
+import { agendaEfetiva, avisoPendente, sessoesDoCalendario } from "@/lib/plan/pendente";
+import { faixaDeDias, TEXTO_STATUS, type StatusFaixa } from "@/lib/plan/faixa";
+import { DiaAcoes } from "@/components/DiaAcoes";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { alvoEditarHoje } from "@/lib/plan/hoje-editar";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
@@ -42,6 +44,16 @@ import {
   parqBloqueiaPrescricao,
 } from "@/lib/plan/parq";
 
+const COR_STATUS: Record<StatusFaixa, string> = {
+  feito: "text-go",
+  pendente: "text-warn",
+  planejado: "text-accent",
+  folga: "text-faint",
+  pulado: "text-warn/80",
+  limpo: "text-faint",
+  em_andamento: "text-accent",
+};
+
 export default function HojePage() {
   const { state, ready, startSession } = useApp();
   const router = useRouter();
@@ -50,6 +62,16 @@ export default function HojePage() {
   const [alertaFechado, setAlertaFechado] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);
   const [avisoEdicao, setAvisoEdicao] = useState<string | null>(null);
+  // Faixa de dias: dia aberto no painel + rolagem inicial até hoje (uma vez).
+  const [diaAberto, setDiaAberto] = useState<string | null>(null);
+  const rolouFaixa = useRef(false);
+  const faixaRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el || rolouFaixa.current) return;
+    const hojeEl = el.querySelector<HTMLElement>("[data-hoje='1']");
+    if (!hojeEl) return;
+    rolouFaixa.current = true;
+    el.scrollLeft = Math.max(0, hojeEl.offsetLeft - el.offsetLeft - 20);
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -147,6 +169,8 @@ export default function HojePage() {
   const aviso = hoje ? avisoPendente(agenda.pendentes, hoje) : null;
   const dataEfetiva = (id: string | undefined) => agendaSess.find((x) => x.id === id)?.data ?? null;
   const temAgenda = state.sessoes.some((s) => !!s.data);
+  const faixa = faixaDeDias(state, hoje);
+  const diaSel = faixa.find((f) => f.dia.data === diaAberto) ?? null;
   const sessHoje = hoje ? agendaSess.find((s) => s.data === hoje && s.status !== "pulada") : undefined;
   const estadoHero: "andamento" | "feito" | "descanso" | "novo" =
     sess?.status === "em_andamento"
@@ -161,7 +185,7 @@ export default function HojePage() {
     : null;
 
   // Semana strip (seg→dom da semana atual, fuso SP)
-  const semana = hoje ? semanaDoCalendario(agendaSess, hoje, state.dias_limpos ?? []) : [];
+  const semana = hoje ? semanaDoCalendario(sessoesDoCalendario(agenda), hoje, state.dias_limpos ?? []) : [];
   const consistencia = (() => {
     if (!hoje) return null;
     const ini = addDaysIso(hoje, -27);
@@ -378,31 +402,69 @@ export default function HojePage() {
         </Card>
       )}
 
-      {/* Escolher outro dia do ciclo */}
-      {ciclo.length > 1 ? (
-        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-          {ciclo.map((s) => {
-            const on = s.id === sess?.id;
-            const done = s.status === "concluida";
-            const live = s.status === "em_andamento";
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => { setPickedId(s.id); setAvisoEdicao(null); }}
-                className={`chip-motion shrink-0 rounded-[14px] border px-3 py-2 text-left ${
-                  on ? "on border-accent bg-[rgba(184,255,60,.12)]" : "border-border bg-surface"
-                }`}
-              >
-                <div className="text-[10px] uppercase tracking-wide text-faint">
-                  Dia {s.ordem}
-                  {live ? " · agora" : done ? " · ok" : ""}
-                </div>
-                <div className={`text-sm font-semibold ${on ? "text-accent" : ""}`}>{s.nome}</div>
-              </button>
-            );
-          })}
-        </div>
+      {/* Faixa de dias: mesma agenda do calendário (datas reais). Tocar abre as ações do dia aqui. */}
+      {faixa.length ? (
+        <section aria-label="Seus dias de treino" className="mb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs uppercase text-muted">Seus dias</p>
+            <Link href="/plano/calendario" className="text-xs font-semibold text-accent">Abrir calendário →</Link>
+          </div>
+          <div
+            ref={faixaRef}
+            data-testid="faixa-dias"
+            className="-mx-5 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {faixa.map((f) => {
+              const aberto = diaAberto === f.dia.data;
+              return (
+                <button
+                  key={f.dia.data}
+                  type="button"
+                  data-dia={f.dia.data}
+                  data-status={f.status}
+                  data-hoje={f.hoje ? "1" : undefined}
+                  aria-pressed={aberto}
+                  aria-label={`${f.rotulo}${f.hoje ? ", hoje" : ""}: ${f.dia.nome ?? "sem treino"}, ${TEXTO_STATUS[f.status]}`}
+                  onClick={() => setDiaAberto(aberto ? null : f.dia.data)}
+                  className={`chip-motion w-[92px] shrink-0 snap-start rounded-[14px] border px-2.5 py-2 text-left ${
+                    aberto ? "border-accent bg-[rgba(184,255,60,.12)]" : f.hoje ? "border-accent/70 bg-surface" : "border-border bg-surface"
+                  }`}
+                >
+                  <div className={`text-[10px] uppercase tracking-wide ${f.hoje ? "font-bold text-accent" : "text-faint"}`}>
+                    {f.hoje ? "Hoje" : f.rotulo.split(" ")[0]} · {f.rotulo.split(" ")[1]}
+                  </div>
+                  <div className="truncate text-sm font-semibold">{f.dia.nome ?? "—"}</div>
+                  <div className={`text-[11px] font-semibold ${COR_STATUS[f.status]}`}>{TEXTO_STATUS[f.status]}</div>
+                </button>
+              );
+            })}
+          </div>
+          {diaSel ? (
+            <div data-testid="painel-dia"><Card className="mt-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold">
+                  {diaSel.rotulo}
+                  {diaSel.dia.nome ? ` · ${diaSel.dia.nome}` : ""}
+                </p>
+                <span className={`text-xs font-semibold ${COR_STATUS[diaSel.status]}`}>{TEXTO_STATUS[diaSel.status]}</span>
+              </div>
+              <DiaAcoes key={diaSel.dia.data} dia={diaSel.dia} />
+              <div className="mt-3 flex gap-2">
+                {diaSel.dia.sessao_id && !diaSel.dia.sessao_id.includes("#") && diaSel.status !== "feito" && diaSel.dia.sessao_id !== sess?.id ? (
+                  <Button variant="ghost" className="min-h-11 flex-1 text-sm" onClick={() => { setPickedId(diaSel.dia.sessao_id!); setAvisoEdicao(null); }}>
+                    Ver este treino
+                  </Button>
+                ) : null}
+                <Link href={`/plano/calendario?dia=${diaSel.dia.data}`} className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-border text-sm font-semibold text-accent">
+                  Abrir calendário
+                </Link>
+                <Button variant="ghost" className="min-h-11 text-sm" aria-label="Fechar" onClick={() => setDiaAberto(null)}>
+                  ✕
+                </Button>
+              </div>
+            </Card></div>
+          ) : null}
+        </section>
       ) : null}
 
       {/* Check-in: entrada única */}

@@ -104,6 +104,8 @@ type Ctx = {
     action: AcaoDia,
     /** Dia tocado (data salva ou da agenda calculada): a ação fixa o treino nesse dia. */
     dataDia: string,
+    /** Treino escolhido no painel (trocar, ou pular/feito em dia vazio). */
+    escolhido?: string | null,
   ) => void;
   /** Limpar dia no calendário (só após o usuário confirmar). */
   limparDiaCalendario: (data: string, sessaoId: string | null) => { ok: boolean; motivo?: "feito" | "em_andamento"; tirado?: string | null };
@@ -908,8 +910,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markCalendario = useCallback(
-    (sessaoId: string | null, action: AcaoDia, dataDia: string) => {
-      setState((s) => marcarDia(s, agendaEfetiva(s, hojeIsoSaoPaulo()).sessoes, dataDia, sessaoId, action));
+    (sessaoId: string | null, action: AcaoDia, dataDia: string, escolhido?: string | null) => {
+      setState((s) => marcarDia(s, agendaEfetiva(s, hojeIsoSaoPaulo()).sessoes, dataDia, sessaoId, action, escolhido));
     },
     [],
   );

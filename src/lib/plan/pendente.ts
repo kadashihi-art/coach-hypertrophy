@@ -5,7 +5,9 @@
  * ganha dias novos no mesmo ritmo da semana (sem buraco no fim do mesociclo).
  *
  * Calculado só na leitura (determinístico). Nada é gravado: s.data salvo continua igual.
- * Pulo explícito (status "pulada") é respeitado: não entra na fila e mantém a data.
+ * Pulo explícito (status "pulada") é respeitado no dia em que foi pulado: o dia continua
+ * aparecendo como pulado. Depois que o dia passa, o treino volta na próxima rodada do plano
+ * (fila, na ordem do plano). Sem isso, pular treinos esvaziava a agenda dali para frente.
  * Marcações manuais do calendário também: dia limpo nunca recebe treino, e treino com data
  * marcada à mão (data_manual, futura) fica no dia. Treino tirado de um dia (Limpar dia) volta
  * para a fila sem data e entra no próximo dia de treino livre, na ordem do plano.
@@ -24,23 +26,34 @@ export type AgendaEfetiva = {
   sessoes: Sessao[];
   /** Treinos que passaram da data sem ser feitos (na ordem do plano). */
   pendentes: Pendente[];
+  /** Dias já passados em que um treino foi pulado (o treino em si voltou para a fila). Só para mostrar. */
+  pulos: Sessao[];
 };
+
+/** Sessões para o calendário e a faixa: agenda + marcas de pulo dos dias que já passaram. */
+export function sessoesDoCalendario(a: AgendaEfetiva): Sessao[] {
+  return [...a.sessoes, ...a.pulos];
+}
 
 export function agendaEfetiva(
   state: Pick<AppState, "sessoes" | "plano"> & Partial<AppState>,
   hoje: string | null | undefined,
 ): AgendaEfetiva {
-  const base = { sessoes: state.sessoes, pendentes: [] as Pendente[] };
+  const base = { sessoes: state.sessoes, pendentes: [] as Pendente[], pulos: [] as Sessao[] };
   if (!hoje || !state.plano?.mesociclo?.data_inicio) return base;
   const limpos = new Set(state.dias_limpos ?? []);
   const ordered = sessoesDoPlano(state as AppState, hoje);
   // Marcação manual no calendário (data futura) fica onde o usuário pôs.
   const manualFixa = (s: Sessao) => !!s.data_manual && !!s.data && s.data >= hoje;
-  const fila = ordered.filter((s) => s.status === "planejada" && !manualFixa(s));
-  const pendentes = fila.filter((s) => !!s.data && s.data < hoje);
-  const semData = fila.filter((s) => !s.data);
-  const emDiaLimpo = fila.filter((s) => !!s.data && limpos.has(s.data));
-  if (pendentes.length === 0 && semData.length === 0 && emDiaLimpo.length === 0) return base;
+  // Pulado em dia que já passou: volta na próxima rodada (depois dos planejados, na ordem do plano).
+  const voltaDoPulo = (s: Sessao) => s.status === "pulada" && !!s.data && s.data < hoje;
+  const planejadas = ordered.filter((s) => s.status === "planejada" && !manualFixa(s));
+  const voltam = ordered.filter(voltaDoPulo);
+  const fila = [...planejadas, ...voltam];
+  const pendentes = planejadas.filter((s) => !!s.data && s.data < hoje);
+  const semData = planejadas.filter((s) => !s.data);
+  const emDiaLimpo = planejadas.filter((s) => !!s.data && limpos.has(s.data));
+  if (pendentes.length === 0 && semData.length === 0 && emDiaLimpo.length === 0 && voltam.length === 0) return base;
 
   // Dias que a agenda não pode usar: limpos, com treino feito/em andamento, ou marcados à mão.
   const bloqueado = new Set<string>(limpos);
@@ -50,7 +63,7 @@ export function agendaEfetiva(
       bloqueado.add(s.data);
     }
   }
-  const datas = fila.map((s) => s.data).filter((d): d is string => !!d && d >= hoje && !bloqueado.has(d));
+  const datas = planejadas.map((s) => s.data).filter((d): d is string => !!d && d >= hoje && !bloqueado.has(d));
   if (pendentes.length > 0) {
     let ini = hoje;
     while (bloqueado.has(ini)) ini = somaDias(ini, 1);
@@ -63,8 +76,11 @@ export function agendaEfetiva(
     while (bloqueado.has(d)) d = somaDias(d, 1);
     slots.push(d);
   }
+  // Ritmo da semana: conta também os dias de treino que já passaram (quando a fila inteira anda).
+  const historico = [...new Set(state.sessoes.map((s) => s.data).filter((d): d is string => !!d && d < slots[0]!))].sort();
   while (slots.length < fila.length) {
-    const ref = slots[slots.length - porSemana];
+    const ritmo = [...historico, ...slots];
+    const ref = ritmo[ritmo.length - porSemana];
     const ultimo = slots[slots.length - 1]!;
     let novo = ref ? somaDias(ref, 7) : somaDias(ultimo, 1);
     if (novo <= ultimo) novo = somaDias(ultimo, 1);
@@ -73,9 +89,17 @@ export function agendaEfetiva(
   }
   const nova = new Map<string, string>();
   fila.forEach((s, i) => nova.set(s.id, slots[i]!));
+  const volta = new Set(voltam.map((s) => s.id));
   return {
-    sessoes: state.sessoes.map((s) => (nova.has(s.id) && nova.get(s.id) !== s.data ? { ...s, data: nova.get(s.id)! } : s)),
+    sessoes: state.sessoes.map((s) =>
+      volta.has(s.id)
+        ? { ...s, data: nova.get(s.id)!, status: "planejada" as const, data_manual: undefined }
+        : nova.has(s.id) && nova.get(s.id) !== s.data
+          ? { ...s, data: nova.get(s.id)! }
+          : s,
+    ),
     pendentes: pendentes.map((s) => ({ sessao_id: s.id, nome: s.nome, data_original: s.data! })),
+    pulos: voltam.map((s) => ({ ...s, id: `${s.id}#pulo-${s.data}` })),
   };
 }
 

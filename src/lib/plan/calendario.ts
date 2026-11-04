@@ -245,16 +245,47 @@ export function semanaDoCalendario(sessoes: Sessao[], hoje: string, diasLimpos: 
   return derivarDias(sessoes, datas, diasLimpos).map((d, i) => ({ iso: d.data, label: L[i]!, st: d.status, nome: d.nome, hoje: d.data === hoje }));
 }
 
-export type AcaoDia = "pular" | "planejar" | "feito" | "desfazer" | "trazer";
+export type AcaoDia = "pular" | "planejar" | "feito" | "desfazer" | "trazer" | "trocar";
+
+/** Próximo treino da fila (planejado, sem data marcada à mão), na ordem do plano. */
+export function proximoDaFila(state: AppState, agenda: Sessao[]): Sessao | undefined {
+  const fixo = new Set(state.sessoes.filter((x) => x.data_manual && x.data).map((x) => x.id));
+  return [...agenda]
+    .filter((x) => x.status === "planejada" && !fixo.has(x.id))
+    .sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999") || (a.ordem ?? 0) - (b.ordem ?? 0))[0];
+}
+
+/** Treinos do plano que podem ir para um dia (não feitos e não em andamento), na ordem do plano. */
+export function treinosParaEscolher(state: AppState): Sessao[] {
+  const ids = state.plano?.sessoes ?? [];
+  const doPlano = ids.length ? state.sessoes.filter((s) => ids.includes(s.id)) : state.sessoes;
+  return doPlano
+    .filter((s) => s.status !== "concluida" && s.status !== "parcial" && s.status !== "em_andamento" && s.prescricoes?.length)
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+}
+
+export type AcaoPainel = "feito" | "pular" | "trocar" | "limpar" | "desfazer" | "corrigir";
 
 /**
- * Ação do calendário (ou dos chips da semana) num dia. O dia pode vir da data salva ou da agenda
- * calculada (pendente): a ação vale para o treino mostrado naquele dia e fixa esse dia
- * ("à mão"), para a agenda não mover de novo.
+ * Ações que o painel do dia mostra (calendário e faixa de Hoje). De hoje em diante, todo dia
+ * não feito tem o conjunto completo, mesmo vazio ou limpo. Dia feito: só Corrigir registro.
+ */
+export function acoesDoDia(dia: CalendarioDiaView, hoje: string | null): AcaoPainel[] {
+  if (dia.status === "feito") return ["corrigir"];
+  if (dia.status === "em_andamento") return [];
+  if (!hoje || dia.data >= hoje || dia.sessao_id) return ["feito", "pular", "trocar", "limpar", "desfazer"];
+  return ["feito", "trocar", "limpar", "desfazer"];
+}
+
+/**
+ * Ação do calendário (ou da faixa de Hoje) num dia. O dia pode vir da data salva ou da agenda
+ * calculada (pendente): a ação vale para o treino mostrado naquele dia (ou o escolhido / o
+ * próximo da fila, se o dia está vazio) e fixa esse dia ("à mão"), para a agenda não mover de novo.
  * - pular / planejar: fixa o treino no dia, com o status pedido.
  * - feito: conclui com a data do dia mostrado (não a data antiga salva).
  * - desfazer: tira a marcação à mão; o treino volta a seguir a agenda (pulado vira planejado).
- * - trazer: dia vazio recebe o próximo treino da fila (planejado, ainda não fixo).
+ * - trazer: dia vazio recebe o próximo treino da fila.
+ * - trocar: o treino escolhido vai para o dia; o que estava ali volta para a fila.
  * Treino em andamento nunca muda. Treino feito só muda por "Corrigir registro" (aqui não).
  */
 export function marcarDia(
@@ -263,23 +294,23 @@ export function marcarDia(
   data: string,
   sessaoId: string | null,
   acao: AcaoDia,
+  escolhido?: string | null,
 ): AppState {
-  let alvoId = sessaoId;
-  if (acao === "trazer") {
-    if (sessaoId) return state;
-    const ocupado = new Set(state.sessoes.filter((x) => x.data_manual && x.data).map((x) => x.id));
-    const prox = [...agenda]
-      .filter((x) => x.status === "planejada" && !ocupado.has(x.id))
-      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))[0];
-    if (!prox) return state;
-    alvoId = prox.id;
-  }
+  if (sessaoId?.includes("#")) sessaoId = null; // marca de pulo de dia passado: não é o treino em si
+  let alvoId = escolhido ?? sessaoId;
+  if (acao === "trazer" && sessaoId && !escolhido) return state;
+  if (!alvoId && acao !== "desfazer") alvoId = proximoDaFila(state, agenda)?.id ?? null;
+  if (acao === "trocar") acao = "planejar";
   if (!alvoId) return state;
   const atual = state.sessoes.find((x) => x.id === alvoId);
   if (!atual || atual.status === "em_andamento") return state;
   const feito = atual.status === "concluida" || atual.status === "parcial";
   if (feito && acao !== "feito") return state;
+  // Outro treino que ocupava o dia sai dele e volta para a fila (nunca um feito).
+  const sai = sessaoId && sessaoId !== alvoId && acao !== "desfazer" ? state.sessoes.find((x) => x.id === sessaoId) : undefined;
+  const liberar = sai && sai.status !== "concluida" && sai.status !== "parcial" && sai.status !== "em_andamento" ? sai.id : null;
   const sessoes = state.sessoes.map((x) => {
+    if (x.id === liberar) return { ...x, data: null, data_manual: undefined, status: "planejada" as const };
     if (x.id !== alvoId) return x;
     switch (acao) {
       case "pular":
@@ -297,10 +328,9 @@ export function marcarDia(
           data: feito ? x.data : data,
         };
     }
+    return x;
   });
   // O dia deixa de ser limpo se o usuário pôs um treino nele.
-  const limpos = acao === "planejar" || acao === "trazer" || acao === "pular"
-    ? (state.dias_limpos ?? []).filter((d) => d !== data)
-    : state.dias_limpos;
+  const limpos = acao === "desfazer" ? state.dias_limpos : (state.dias_limpos ?? []).filter((d) => d !== data);
   return { ...state, sessoes, ...(limpos !== undefined ? { dias_limpos: limpos } : {}) };
 }
