@@ -1,7 +1,7 @@
 "use client";
 
 import { labelSplit, humanizarSplits } from "@/lib/plan/split-label";
-import { acentuar, labelEquipamento, labelFoco, labelGrupo, labelObjetivo } from "@/lib/labels";
+import { acentuar, fmtKg, labelEquipamento, labelFoco, labelGrupo, labelObjetivo } from "@/lib/labels";
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
@@ -263,7 +263,7 @@ export default function PlanoPage() {
                     <li key={p.id} className="flex items-center justify-between gap-2">
                       <span>
                         {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
-                        {carga} kg
+                        {fmtKg(carga)} kg
                         {rotuloOrdemSeries(p) ? ` · ${rotuloOrdemSeries(p)}` : ""}
                         {preparatoriasDaSessao(s!.prescricoes, state.exercicios)[i] ? (
                           <span className="text-accent"> · aquece + aproximação antes</span>
