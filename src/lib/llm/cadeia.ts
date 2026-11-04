@@ -24,17 +24,13 @@ export type PedidoLlm = {
   validar?: (texto: string) => boolean;
   /** Rótulo do ponto de uso, só pro log. */
   ponto?: string;
-  /** TEMPORÁRIO (diagnóstico de uso único): usa só esta etapa; "nenhuma" = nenhuma IA. */
-  forcarEtapa?: EtapaLlm | "nenhuma";
-  /** TEMPORÁRIO (diagnóstico): modelo da etapa forçada. */
-  forcarModelo?: string;
   /** Só pra testes. */
   fetchImpl?: typeof fetch;
 };
 
 export type RespostaLlm = { texto: string; etapa: EtapaLlm; modelo: string };
 
-export type TentativaLlm = { etapa: EtapaLlm; resultado: "ok" | FalhaLlm; status?: number; ms?: number; modelo?: string; detalhe?: string };
+export type TentativaLlm = { etapa: EtapaLlm; resultado: "ok" | FalhaLlm; status?: number; ms?: number };
 
 export const GROQ_MODEL_PADRAO = "llama-3.3-70b-versatile";
 export const GEMINI_MODEL_PADRAO = "gemini-flash-latest";
@@ -77,8 +73,6 @@ function etapas(p: PedidoLlm): Etapa[] {
       timeoutMs: TIMEOUT_GRATIS_MS,
       tentativas: 2,
     });
-  if (p.forcarEtapa)
-    return out.filter((e) => e.etapa === p.forcarEtapa).map((e) => (p.forcarModelo ? { ...e, modelo: p.forcarModelo, tentativas: 1 } : e));
   return out;
 }
 
@@ -126,7 +120,6 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
       const t0 = Date.now();
       let falha: FalhaLlm = "erro";
       let status = 0;
-      let detalhe: string | undefined;
       try {
         const res = await (p.fetchImpl ?? fetch)(e.url, {
           method: "POST",
@@ -142,10 +135,7 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
         });
         status = res.status;
         if (!res.ok) {
-          const corpo = await res.text().catch(() => "");
-          falha = classificarStatus(res.status, corpo);
-          // TEMPORÁRIO (diagnóstico): trecho do erro, sem chave
-          if (p.forcarEtapa) detalhe = corpo.split(e.key).join("***").replace(/AIza[\w-]+|gsk_\w+/g, "***").slice(0, 300);
+          falha = classificarStatus(res.status, await res.text().catch(() => ""));
         } else {
           const j = (await res.json().catch(() => null)) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
           const texto = textoDe(j?.choices?.[0]?.message?.content);
@@ -155,7 +145,7 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
       } catch {
         falha = "erro";
       }
-      log.push({ etapa: e.etapa, resultado: resp ? "ok" : falha, status, ms: Date.now() - t0, ...(p.forcarEtapa ? { modelo: e.modelo, detalhe } : {}) });
+      log.push({ etapa: e.etapa, resultado: resp ? "ok" : falha, status, ms: Date.now() - t0 });
       // cota ou resposta inválida: não adianta repetir a mesma etapa
       if (resp || falha === "cota" || falha === "invalido") break;
     }
@@ -164,15 +154,4 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
   ultimaCadeia = log;
   console.info("[llm/cadeia]", JSON.stringify({ ponto: p.ponto ?? "?", respondeu: resp?.etapa ?? "pronta", tentativas: log }));
   return resp;
-}
-
-/** TEMPORÁRIO (diagnóstico): ids de modelo que a chave enxerga (sem custo de tokens). */
-export async function listarModelosDiag(etapa: "groq" | "gemini"): Promise<{ status: number; ids: string[] }> {
-  const k = (etapa === "groq" ? process.env.GROQ_API_KEY : process.env.GEMINI_API_KEY)?.trim();
-  if (!k) return { status: 0, ids: [] };
-  const url = etapa === "groq" ? "https://api.groq.com/openai/v1/models" : "https://generativelanguage.googleapis.com/v1beta/openai/models";
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(10_000) }).catch(() => null);
-  if (!r) return { status: 0, ids: [] };
-  const j = (await r.json().catch(() => null)) as { data?: Array<{ id?: string }> } | null;
-  return { status: r.status, ids: (j?.data ?? []).map((m) => String(m.id ?? "")).filter(Boolean) };
 }
