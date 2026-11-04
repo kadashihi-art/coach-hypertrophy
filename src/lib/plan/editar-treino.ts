@@ -94,7 +94,7 @@ export function motivoNaoEditavel(state: AppState, sessaoId: string): string | n
   if (!s) return "Não achei esse treino.";
   if (s.status === "concluida") return "Esse treino já foi feito, então fica como está no seu histórico.";
   if (s.status === "em_andamento" || state.active_sessao_id === s.id)
-    return "Esse treino está em andamento. Termine ou encerre antes de editar.";
+    return "Esse treino está em andamento. Para mudar algo agora, use o botão Editar na tela do treino.";
   return null;
 }
 
@@ -140,7 +140,7 @@ export function ajustarReps(r: Rascunho, idx: number, min: number, max: number):
 }
 
 /** Faixa/séries padrão para um exercício novo (mesma regra do gerador: composto × isolado). */
-function padraoParaNovo(state: AppState, ex: Exercicio): { series: number; faixa_reps: [number, number] } {
+export function padraoParaNovo(state: AppState, ex: Exercicio): { series: number; faixa_reps: [number, number] } {
   const sessoes = state.sessoes.filter((s) => state.plano?.sessoes.includes(s.id));
   const catalog = state.exercicios;
   for (const s of sessoes)
@@ -227,7 +227,7 @@ function aplicarSnapshot(s: Sessao, snap: SnapshotSessao): Sessao {
   return { ...s, data: snap.data, grupos: [...snap.grupos], duracao_estimada_min: snap.duracao_estimada_min, prescricoes: snap.prescricoes.map((p) => ({ ...p })) };
 }
 
-function novoEstado(exId: string, carga: number, faixa: [number, number], rir: number): EstadoExercicio {
+export function novoEstado(exId: string, carga: number, faixa: [number, number], rir: number): EstadoExercicio {
   return {
     exercicio_id: exId,
     carga_atual_kg: carga,
@@ -250,13 +250,60 @@ function novoEstado(exId: string, carga: number, faixa: [number, number], rir: n
 }
 
 /**
+ * Prescrição nova para um exercício (mesma regra do editor e do gerador): kg vem da memória de carga
+ * (estado calibrado → histórico → mesmo padrão → estimativa conservadora). Nunca do usuário.
+ */
+export function novaPrescricao(
+  state: AppState,
+  sessao: Sessao,
+  ex: Exercicio,
+  o: { id: string; ordem: number; series: number; faixa: [number, number]; rir: number; excluirIds: string[] },
+): { prescricao: Prescricao; estadoNovo: EstadoExercicio | null } {
+  const catalog = state.exercicios;
+  const equips = equipsDoPerfil(state.perfil);
+  const restr = parseRestricoes(state.perfil?.restricoes ?? []);
+  const estimativa = state.perfil
+    ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, ex.padrao, ex.composto, ex.equipamento, {
+        sexo: state.perfil.sexo,
+        idade: state.perfil.idade,
+        grupo: ex.grupo_primario,
+      })
+    : 0;
+  const carga = cargaParaExercicio(state, ex.id, estimativa).carga_kg;
+  const estadoNovo = state.estados.some((e) => e.exercicio_id === ex.id) ? null : novoEstado(ex.id, carga, o.faixa, o.rir);
+  const molde = sessao.prescricoes.find((p) => catalog.find((e) => e.id === p.exercicio_id)?.composto === ex.composto);
+  return {
+    estadoNovo,
+    prescricao: {
+      id: o.id,
+      sessao_id: sessao.id,
+      exercicio_id: ex.id,
+      padrao: ex.padrao,
+      ordem: o.ordem,
+      series: o.series,
+      faixa_reps: o.faixa,
+      rir_alvo: o.rir,
+      descanso_seg: molde?.descanso_seg ?? (ex.composto ? 150 : 90),
+      cadencia: "2-0-1-0",
+      tecnica: "padrao",
+      carga: { trabalho_kg: carga, top_set_kg: null, origem: "estimativa_conservadora" },
+      alternativa_equipamento_ocupado: findAlt(catalog, ex.padrao, equips, ex.id, {
+        restr,
+        excludeIds: o.excluirIds,
+        grupo: ex.grupo_primario,
+      }),
+      guia_id: ex.guia_id ?? null,
+      evidencia: ex.composto ? "forte" : "moderado",
+    },
+  };
+}
+
+/**
  * Monta a sessão a partir do rascunho. Prescrições existentes mantêm tudo (kg, RIR, descanso, técnica, id),
  * só mudam ordem/séries/faixa. Exercícios novos herdam kg do EstadoExercicio (ou estimativa do gerador).
  */
 export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { sessao: Sessao; estadosNovos: EstadoExercicio[] } {
   const catalog = state.exercicios;
-  const equips = equipsDoPerfil(state.perfil);
-  const restr = parseRestricoes(state.perfil?.restricoes ?? []);
   const rirBase = sessao.prescricoes[0]?.rir_alvo ?? 2;
   const estadosNovos: EstadoExercicio[] = [];
   const prescricoes: Prescricao[] = r.itens.map((it, i) => {
@@ -264,37 +311,16 @@ export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { se
     const faixa: [number, number] = [it.faixa_reps[0], it.faixa_reps[1]];
     if (atual) return { ...atual, ordem: i + 1, series: it.series, faixa_reps: faixa };
     const ex = catalog.find((e) => e.id === it.exercicio_id)!;
-    const estimativa = state.perfil
-      ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, ex.padrao, ex.composto, ex.equipamento, {
-          sexo: state.perfil.sexo,
-          idade: state.perfil.idade,
-          grupo: ex.grupo_primario,
-        })
-      : 0;
-    const carga = cargaParaExercicio(state, ex.id, estimativa).carga_kg;
-    if (!state.estados.some((e) => e.exercicio_id === ex.id)) estadosNovos.push(novoEstado(ex.id, carga, faixa, rirBase));
-    const molde = sessao.prescricoes.find((p) => catalog.find((e) => e.id === p.exercicio_id)?.composto === ex.composto);
-    return {
+    const { prescricao, estadoNovo } = novaPrescricao(state, sessao, ex, {
       id: `presc-${sessao.id}-${ex.id}`,
-      sessao_id: sessao.id,
-      exercicio_id: ex.id,
-      padrao: ex.padrao,
       ordem: i + 1,
       series: it.series,
-      faixa_reps: faixa,
-      rir_alvo: rirBase,
-      descanso_seg: molde?.descanso_seg ?? (ex.composto ? 150 : 90),
-      cadencia: "2-0-1-0",
-      tecnica: "padrao",
-      carga: { trabalho_kg: carga, top_set_kg: null, origem: "estimativa_conservadora" },
-      alternativa_equipamento_ocupado: findAlt(catalog, ex.padrao, equips, ex.id, {
-        restr,
-        excludeIds: r.itens.map((it) => it.exercicio_id),
-        grupo: ex.grupo_primario,
-      }),
-      guia_id: ex.guia_id ?? null,
-      evidencia: ex.composto ? "forte" : "moderado",
-    };
+      faixa,
+      rir: rirBase,
+      excluirIds: r.itens.map((x) => x.exercicio_id),
+    });
+    if (estadoNovo) estadosNovos.push(estadoNovo);
+    return prescricao;
   });
   const grupos = [...new Set(prescricoes.map((p) => catalog.find((e) => e.id === p.exercicio_id)?.grupo_primario).filter((g): g is NonNullable<typeof g> => !!g))];
   // Duração: mantém a proporção por tempo de execução do treino original.

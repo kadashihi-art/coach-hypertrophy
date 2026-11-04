@@ -18,6 +18,8 @@ import type { TipoSerie } from "@/lib/domain";
 import { incrementoCargaKg } from "@/lib/domain";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
+import { EditarDuranteTreinoSheet } from "@/components/EditarDuranteTreinoSheet";
+import { podeDesfazerAoVivo } from "@/lib/treino/editar-durante-treino";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
 import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
 
@@ -71,6 +73,7 @@ export default function TreinoPage() {
     setLoggerPrescricao,
     logSerie,
     finishSession,
+    desfazerAoVivo,
   } = useApp();
   const router = useRouter();
 
@@ -163,6 +166,10 @@ export default function TreinoPage() {
   const [cargasToast, setCargasToast] = useState<string | null>(null);
   const [anchorPulse, setAnchorPulse] = useState(false);
   const [hitFlash, setHitFlash] = useState(false);
+  const [editarAberto, setEditarAberto] = useState(false);
+  const [avisoEdicao, setAvisoEdicao] = useState<string | null>(null);
+  /** Exercício (prescrição) que disparou o descanso atual: se ele sair do treino, o descanso é cancelado. */
+  const timerPresc = useRef<string | null>(null);
   const anchorTimer = useRef<number | null>(null);
   const hitTimer = useRef<number | null>(null);
 
@@ -315,6 +322,7 @@ export default function TreinoPage() {
       if (hitTimer.current) window.clearTimeout(hitTimer.current);
       hitTimer.current = window.setTimeout(() => setHitFlash(false), 300);
     }
+    timerPresc.current = presc.id;
     rt.iniciar(descansoSugerido({ fase: tipo, composto: exercicioAtivo?.composto ?? true, prescritoSeg: presc.descanso_seg }), tipo);
     // Avanço automático: próxima fase já com o kg sugerido (back-off sai do top que você fez).
     setTipo(null);
@@ -358,6 +366,42 @@ export default function TreinoPage() {
         <div className="motion-swap mx-4 mt-2 rounded-xl border border-accent/40 bg-accent/15 px-3 py-2 text-center text-xs font-semibold text-accent">
           {cargasToast}
         </div>
+      ) : null}
+      {avisoEdicao ? (
+        <div data-testid="aovivo-toast" className="motion-swap mx-4 mt-2 flex items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent/15 px-3 py-2 text-xs font-semibold text-accent">
+          <span>{avisoEdicao}</span>
+          <span className="flex shrink-0 gap-3">
+            {podeDesfazerAoVivo(state) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const res = desfazerAoVivo();
+                  setAvisoEdicao(res.ok ? null : res.erro);
+                  if (res.ok) {
+                    setCargasToast("Edição desfeita. O treino voltou como estava.");
+                    window.setTimeout(() => setCargasToast(null), 2200);
+                  }
+                }}
+                className="underline"
+              >
+                Desfazer
+              </button>
+            ) : null}
+            <button type="button" aria-label="Fechar aviso" onClick={() => setAvisoEdicao(null)}>✕</button>
+          </span>
+        </div>
+      ) : null}
+      {editarAberto ? (
+        <EditarDuranteTreinoSheet
+          onClose={() => setEditarAberto(false)}
+          onSalvo={({ removidas }) => {
+            if (rt.timer && timerPresc.current && removidas.includes(timerPresc.current)) {
+              rt.pular();
+              timerPresc.current = null;
+            }
+            setAvisoEdicao("Treino atualizado.");
+          }}
+        />
       ) : null}
       <div className="px-4 pt-4">
         <div className="mb-2 flex items-center justify-between">
@@ -419,6 +463,14 @@ export default function TreinoPage() {
             } disabled:opacity-40`}
           >
             {ocupado ? "Usando alternativa" : "Ocupado"}
+          </button>
+          <button
+            type="button"
+            data-testid="logger-editar"
+            onClick={() => setEditarAberto(true)}
+            className="rounded-[14px] border border-border px-3 py-2.5 text-xs text-muted"
+          >
+            Editar
           </button>
           <button
             type="button"

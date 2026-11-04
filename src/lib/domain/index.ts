@@ -57,6 +57,21 @@ export const CorrecaoConcluidaSchema = z.object({
 });
 export type CorrecaoConcluida = z.infer<typeof CorrecaoConcluidaSchema>;
 
+/** Editar durante o treino: versão anterior (para Desfazer enquanto nada novo foi registrado). */
+export const EdicaoAoVivoSchema = z.object({
+  sessao_id: z.string(),
+  editado_em: z.string(),
+  /** Prescrições da sessão antes da edição. */
+  prescricoes: z.array(PrescricaoSchema),
+  logger_prescricao_id: z.string().nullable().default(null),
+  /** Estados criados pela edição (exercício nunca feito); saem ao desfazer. */
+  estados_criados: z.array(z.string()).default([]),
+  /** Nº de registros da sessão no momento da edição: Desfazer só vale enquanto não muda. */
+  registros_n: z.number().int().nonnegative(),
+  resumo: z.array(z.string()).default([]),
+});
+export type EdicaoAoVivo = z.infer<typeof EdicaoAoVivoSchema>;
+
 export const AppStateSchema = z.object({
   perfil: PerfilSchema.nullable(),
   exercicios: z.array(ExercicioSchema).default([]),
@@ -75,5 +90,7 @@ export const AppStateSchema = z.object({
   edicoes_sessao: z.array(EdicaoSessaoSchema).optional(),
   /** Corrigir registro de treino concluído: última versão anterior por sessão. */
   correcoes_concluidas: z.array(CorrecaoConcluidaSchema).optional(),
+  /** Última edição feita durante o treino (para Desfazer). */
+  edicao_ao_vivo: EdicaoAoVivoSchema.nullable().optional(),
 });
 export type AppState = z.infer<typeof AppStateSchema>;
