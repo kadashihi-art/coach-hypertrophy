@@ -1,6 +1,7 @@
 "use client";
 
 import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
+import { parseRestricoes } from "@/lib/plan/restricoes";
 import { resumirExercicio, textoUltimaVez, textoTendencia } from "@/lib/engine/memoria-carga";
 import { guiaPorPadrao } from "@/lib/plan/guia-por-padrao";
 import { useEffect, useRef, useState } from "react";
@@ -89,7 +90,12 @@ export default function TreinoPage() {
   const estado = state.estados.find(
     (e) => e.exercicio_id === presc?.exercicio_id,
   );
-  const altEx = presc ? resolverAlternativa(presc, state.exercicios) : null;
+  const altEx = presc
+    ? resolverAlternativa(presc, state.exercicios, {
+        restr: parseRestricoes(state.perfil?.restricoes ?? []),
+        excludeIds: prescricoes.map((p) => p.exercicio_id),
+      })
+    : null;
   const guiaSeed = state.guias.find((g) => g.id === presc?.guia_id);
   const guia =
     guiaSeed ??
