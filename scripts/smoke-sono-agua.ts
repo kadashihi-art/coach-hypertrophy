@@ -17,6 +17,8 @@ function problemas(t: string): string[] {
   if (RE_SEM_ACENTO.test(t)) out.push("músculo sem acento");
   if (/\bR(?:1[0-2]|[1-9])\b/.test(t)) out.push("código de regra");
   if (/\b[a-z]+_[a-z_]+\b/.test(t)) out.push("id snake_case");
+  if (/\b([02-9]|\d\d) noites ficou\b|\b1 noite ficaram\b/.test(t)) out.push("concordância");
+  if (/\d,\d\d L por dia/.test(t)) out.push("média com 2 casas");
   if (/\b1 (noites|dias|check-ins)\b|\b([02-9]|\d\d) (noite|dia)\b/.test(t)) out.push("plural errado");
   return out;
 }
@@ -77,6 +79,11 @@ const agR = avaliarAgua(sr, 2750, 7)!;
 ok(agR.titulo === "Água abaixo da meta" && /1 de 5 dias/.test(agR.porque), `água ruim: ${agR.porque}`);
 ok(resumirAgua(sr, 2750).batidos === 1, "1 dia com meta batida");
 
+// boa com algumas noites curtas (concordância)
+const quase = [ck(0, "23:00", "07:30"), ck(1, "23:50", "06:30"), ck(2, "23:50", "06:40"), ck(3, "23:00", "07:30"), ck(4, "23:00", "07:30"), ck(5, "23:00", "07:30")];
+const aQ = avaliarSono(serieDias(quase, HOJE, 7), 7)!;
+ok(aQ.titulo === "Sono na faixa boa" && /só 2 noites ficaram abaixo de 7 h/.test(aQ.porque), `concordância: ${aQ.porque}`);
+
 // irregular com boa duração
 const irr = [ck(0, "22:00", "06:30"), ck(1, "01:00", "09:30"), ck(2, "22:30", "07:00"), ck(3, "01:30", "09:30"), ck(4, "22:00", "06:00")];
 const aI = avaliarSono(serieDias(irr, HOJE, 7), 7)!;
@@ -93,7 +100,7 @@ ok(estadoVazio(serieDias(q.slice(0, 4), HOJE, 14), 14)?.titulo === "Quase lá", 
 
 // textos sem código
 const textos: string[] = [];
-for (const a of [aBoa, agB, aR, agR, aI, a14]) textos.push(a.titulo, a.porque, a.dica ?? "", a.acao?.rotulo ?? "");
+for (const a of [aBoa, agB, aR, agR, aI, a14, aQ]) textos.push(a.titulo, a.porque, a.dica ?? "", a.acao?.rotulo ?? "");
 for (const h of [4, 6.5, 8, 10]) { const f = feedbackSono(h, [5, 8, 9]); textos.push(f.titulo, f.dica); }
 textos.push(estadoVazio(vazio, 7)!.texto, v2!.texto);
 for (const t of textos) {
