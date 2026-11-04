@@ -18,7 +18,9 @@ function assertBlob() {
 
 export async function blobGetJson<T>(pathname: string): Promise<T | null> {
   assertBlob();
-  const result = await get(pathname, { access: "private" });
+  // useCache:false — lê direto da origem; evita estado velho logo após um put
+  // (ex.: salvar logo depois de um recálculo desfazia o recálculo).
+  const result = await get(pathname, { access: "private", useCache: false });
   if (!result || result.statusCode !== 200 || !result.stream) return null;
   const text = await new Response(result.stream).text();
   return JSON.parse(text) as T;
