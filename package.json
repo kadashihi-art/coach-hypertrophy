@@ -32,7 +32,8 @@
     "smoke:alternativa": "npx --yes tsx scripts/smoke-alternativa.ts",
     "smoke:progresso": "npx --yes tsx scripts/smoke-progresso.ts",
     "smoke:editar-durante-treino": "npx --yes tsx scripts/smoke-editar-durante-treino.ts",
-    "smoke:carga-real": "npx --yes tsx scripts/smoke-carga-real.ts"
+    "smoke:carga-real": "npx --yes tsx scripts/smoke-carga-real.ts",
+    "smoke:variacoes": "npx --yes tsx scripts/smoke-variacoes.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

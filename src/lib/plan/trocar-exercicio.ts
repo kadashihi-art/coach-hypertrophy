@@ -84,8 +84,16 @@ function mesmoConjunto(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((x) => b.includes(x));
 }
 
+export function mesmaFamilia(a: Exercicio, b: Exercicio): boolean {
+  return (a.base_id ?? a.id) === (b.base_id ?? b.id);
+}
+
 function explicar(de: Exercicio, para: Exercicio, perfil: Perfil | null | undefined): string {
   const alvo = labelGrupo(para.grupo_primario).toLowerCase();
+  if (mesmaFamilia(de, para)) {
+    const qual = para.variacao ? `Versão ${para.variacao} do mesmo exercício` : "Versão principal do mesmo exercício";
+    return `${qual}, continua focando ${alvo}. A carga dessa versão fica guardada separada, então eu lembro o que você usa em cada uma.`;
+  }
   const partes: string[] = [];
   if (para.equipamento !== de.equipamento) {
     partes.push(`Mesmo movimento, trocando ${EQUIP_TXT[de.equipamento] ?? "o equipamento atual"} ${EQUIP_POR[para.equipamento] ?? "por outra opção"}`);
@@ -129,8 +137,12 @@ export function listarAlternativasTroca(args: {
       explicacao: explicar(de, e, args.perfil),
       secundarios_mudam: !mesmoConjunto(e.grupos_secundarios, de.grupos_secundarios),
     }));
-  // mesmos auxiliares primeiro (volume idêntico em todos os músculos), depois o resto
-  return lista.sort((a, b) => Number(a.secundarios_mudam) - Number(b.secundarios_mudam));
+  // variações do mesmo exercício primeiro, depois mesmos auxiliares (volume idêntico), depois o resto
+  return lista.sort(
+    (a, b) =>
+      Number(!mesmaFamilia(de, a.exercicio)) - Number(!mesmaFamilia(de, b.exercicio)) ||
+      Number(a.secundarios_mudam) - Number(b.secundarios_mudam),
+  );
 }
 
 /** Volume semanal planejado por músculo (diretas + 0,5×indiretas), a partir das prescrições. */

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useApp } from "@/components/AppProvider";
+import { VariacaoInfo } from "@/components/VariacaoInfo";
 import { Button } from "@/components/ui";
 import { labelGrupo } from "@/lib/labels";
 import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
@@ -149,6 +150,7 @@ function CorrigirRegistro({ sessaoId, onClose, onSalvo }: { sessaoId: string; on
           {cands.map((e) => (
             <button key={e.id} type="button" data-testid="corr-add-ex" onClick={() => { setR(adicionarExercicioCorrecao(r, e.id)); setModo("corrigir"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
               <span className="font-semibold text-bone-50">{e.nome}</span>
+              <VariacaoInfo ex={e} state={state} />
               <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento] ?? ""}</span>
             </button>
           ))}
@@ -168,6 +170,7 @@ function CorrigirRegistro({ sessaoId, onClose, onSalvo }: { sessaoId: string; on
           {alts.map((e) => (
             <button key={e.id} type="button" onClick={() => { setR(trocarExercicioCorrecao(r, idx, e.id)); setModo("corrigir"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
               <span className="font-semibold text-bone-50">{e.nome}</span>
+              <VariacaoInfo ex={e} state={state} />
             </button>
           ))}
           {alts.length === 0 ? <p className="text-sm text-muted">Não achei outra opção com o mesmo movimento.</p> : null}
@@ -287,6 +290,7 @@ function EditarPlanejado({ sessaoId, onClose, onSalvo }: { sessaoId: string; onC
           {cands.map((e) => (
             <button key={e.id} type="button" data-testid="add-ex" onClick={() => { setR(adicionarItem(state, r, e.id)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
               <span className="font-semibold text-bone-50">{e.nome}</span>
+              <VariacaoInfo ex={e} state={state} />
               <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento] ?? ""}{e.composto ? " · multiarticular" : ""}</span>
             </button>
           ))}
@@ -310,6 +314,7 @@ function EditarPlanejado({ sessaoId, onClose, onSalvo }: { sessaoId: string; onC
             {alts.map((e) => (
               <button key={e.id} type="button" onClick={() => { setR(trocarItem(state, r, idx, e.id)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
                 <span className="font-semibold text-bone-50">{e.nome}</span>
+              <VariacaoInfo ex={e} state={state} />
                 <span className="block text-[11px] text-muted">{EQUIP[e.equipamento] ?? ""}</span>
               </button>
             ))}

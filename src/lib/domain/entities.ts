@@ -78,6 +78,10 @@ export const ExercicioSchema = z.object({
   composto: z.boolean().default(true),
   unilateral: z.boolean().default(false),
   guia_id: z.string().optional(),
+  /** Variação: aponta pro exercício-base (mesmo padrão e músculo). Memória de carga é própria (por id). */
+  base_id: z.string().optional(),
+  /** Rótulo curto da variação, ex.: "45°", "articulado". */
+  variacao: z.string().optional(),
 });
 export type Exercicio = z.infer<typeof ExercicioSchema>;
 
