@@ -17,7 +17,7 @@ import {
 } from "@/lib/engine/progression";
 import {
   acumularVolumeSemanal,
-  currentIsoWeek,
+  isoWeekDe,
   mergeVolumeSessao,
   volumeSessaoPorGrupo,
 } from "@/lib/engine/volume";
@@ -29,12 +29,16 @@ import {
 
 export function concluirSessao(
   s: AppState,
-  opts: { gravarSnapshot: boolean } = { gravarSnapshot: true },
+  opts: { gravarSnapshot: boolean; /** Relógio explícito (testes/replay). Padrão: agora. */ agora?: string } = {
+    gravarSnapshot: true,
+  },
 ): { state: AppState; decisoes: DecisaoProgressao[] } {
       const sid = s.active_sessao_id;
       if (!sid) return { state: s, decisoes: [] };
       const sess = s.sessoes.find((x) => x.id === sid);
       if (!sess) return { state: s, decisoes: [] };
+      const agoraIso = opts.agora ?? new Date().toISOString();
+      const dataDecisao = agoraIso.slice(0, 10);
       const ck = s.checkins.find(
         (c) => c.data === (sess.data ?? new Date().toISOString().slice(0, 10)),
       );
@@ -42,7 +46,7 @@ export function concluirSessao(
       const novasDecisoes: DecisaoProgressao[] = [];
       let estados = [...s.estados];
       const estadosAntes: EstadoExercicio[] = [];
-      const semanaVolume = currentIsoWeek();
+      const semanaVolume = isoWeekDe(new Date(agoraIso));
 
       for (const presc of sess.prescricoes) {
         const series = seriesSessao.filter((r) => r.prescricao_id === presc.id);
@@ -75,17 +79,21 @@ export function concluirSessao(
         const vols = s.volumes_semanais
           .filter((v) => v.grupo === (ex?.grupo_primario ?? "peito"))
           .sort((a, b) => b.semana_iso.localeCompare(a.semana_iso));
-        const d = decidirProgressao({
-          exercicio_id: presc.exercicio_id,
-          sessao_id: sid,
-          grupo_primario: ex?.grupo_primario ?? "peito",
-          series,
-          estado,
-          checkin: ck,
-          volume_semanal_grupo: vols,
-          mesociclo: s.plano?.mesociclo,
-          tecnica: presc.tecnica,
-        });
+        const d = {
+          ...decidirProgressao({
+            exercicio_id: presc.exercicio_id,
+            sessao_id: sid,
+            grupo_primario: ex?.grupo_primario ?? "peito",
+            series,
+            estado,
+            checkin: ck,
+            volume_semanal_grupo: vols,
+            mesociclo: s.plano?.mesociclo,
+            tecnica: presc.tecnica,
+          }),
+          // Data da sessão, não do relógio: o replay usa a mesma referência.
+          data: dataDecisao,
+        };
         novasDecisoes.push(d);
         if (!estadosAntes.some((e) => e.exercicio_id === estado.exercicio_id)) {
           estadosAntes.push(estado);
@@ -142,7 +150,7 @@ export function concluirSessao(
       );
 
       // —— (4) Alertas de volume muscular (R10/R11 globais) ——
-      const semanaIso = currentIsoWeek();
+      const semanaIso = semanaVolume;
       const markersAtivos = extractVolumeMarkers(
         alertas.filter((a) => !a.resolvido).map((a) => a.motivo),
       );
@@ -192,7 +200,7 @@ export function concluirSessao(
             volume_por_grupo: volumeFinal,
             status: "concluida" as const,
             ...(opts.gravarSnapshot ? { snapshot_conclusao: snapshot } : {}),
-            finalizada_em: new Date().toISOString(),
+            finalizada_em: agoraIso,
             rest_timer: {
               status: "idle" as const,
               segundos_totais: 0,
