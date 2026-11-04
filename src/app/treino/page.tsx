@@ -1,5 +1,6 @@
 "use client";
 
+import { ExercicioImagem } from "@/components/ExercicioImagem";
 import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
 import { fmtKg } from "@/lib/labels";
 import { parseRestricoes } from "@/lib/plan/restricoes";
@@ -459,7 +460,8 @@ export default function TreinoPage() {
         </div>
 
         <div className="mb-1 flex items-start justify-between gap-2">
-          <h1 className="text-xl font-bold leading-tight">
+          <ExercicioImagem ex={exercicioAtivo} size={44} />
+          <h1 className="flex-1 text-xl font-bold leading-tight">
             {exercicioAtivo.nome}
             {ocupado && (
               <span className="ml-2 text-xs font-normal text-accent">
@@ -539,6 +541,10 @@ export default function TreinoPage() {
 
         {showGuia && guia && (
           <Card className="mb-3 text-sm">
+            <div className="mb-3 flex items-center gap-3">
+              <ExercicioImagem ex={exercicioAtivo} size={88} />
+              <p className="text-[11px] text-muted">Toque na imagem para ampliar.</p>
+            </div>
             {guia.setup?.length > 0 && (
               <>
                 <p className="mb-1 text-xs font-bold uppercase text-accent">Posição</p>

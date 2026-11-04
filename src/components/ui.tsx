@@ -254,7 +254,7 @@ export function NumStepper({
 
   function startEdit() {
     setDraft(
-      Number.isInteger(value) ? String(value) : value.toFixed(1),
+      Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ","),
     );
     setEditing(true);
   }
@@ -310,7 +310,7 @@ export function NumStepper({
               aria-label={`Editar ${label ?? "valor"}`}
             >
               <span key={value} className={tick}>
-                {Number.isInteger(value) ? value : value.toFixed(1)}
+                {Number.isInteger(value) ? value : value.toFixed(1).replace(".", ",")}
               </span>
               {unit && <span className="ml-1 text-sm text-muted">{unit}</span>}
             </button>
