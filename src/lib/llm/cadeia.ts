@@ -26,6 +26,8 @@ export type PedidoLlm = {
   ponto?: string;
   /** TEMPORÁRIO (diagnóstico de uso único): usa só esta etapa; "nenhuma" = nenhuma IA. */
   forcarEtapa?: EtapaLlm | "nenhuma";
+  /** TEMPORÁRIO (diagnóstico): modelo da etapa forçada. */
+  forcarModelo?: string;
   /** Só pra testes. */
   fetchImpl?: typeof fetch;
 };
@@ -75,7 +77,8 @@ function etapas(p: PedidoLlm): Etapa[] {
       timeoutMs: TIMEOUT_GRATIS_MS,
       tentativas: 2,
     });
-  if (p.forcarEtapa) return out.filter((e) => e.etapa === p.forcarEtapa);
+  if (p.forcarEtapa)
+    return out.filter((e) => e.etapa === p.forcarEtapa).map((e) => (p.forcarModelo ? { ...e, modelo: p.forcarModelo, tentativas: 1 } : e));
   return out;
 }
 
@@ -161,4 +164,15 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
   ultimaCadeia = log;
   console.info("[llm/cadeia]", JSON.stringify({ ponto: p.ponto ?? "?", respondeu: resp?.etapa ?? "pronta", tentativas: log }));
   return resp;
+}
+
+/** TEMPORÁRIO (diagnóstico): ids de modelo que a chave enxerga (sem custo de tokens). */
+export async function listarModelosDiag(etapa: "groq" | "gemini"): Promise<{ status: number; ids: string[] }> {
+  const k = (etapa === "groq" ? process.env.GROQ_API_KEY : process.env.GEMINI_API_KEY)?.trim();
+  if (!k) return { status: 0, ids: [] };
+  const url = etapa === "groq" ? "https://api.groq.com/openai/v1/models" : "https://generativelanguage.googleapis.com/v1beta/openai/models";
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${k}` }, signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  if (!r) return { status: 0, ids: [] };
+  const j = (await r.json().catch(() => null)) as { data?: Array<{ id?: string }> } | null;
+  return { status: r.status, ids: (j?.data ?? []).map((m) => String(m.id ?? "")).filter(Boolean) };
 }
