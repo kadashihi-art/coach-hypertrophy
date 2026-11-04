@@ -1,5 +1,6 @@
 "use client";
 
+import { LIMITES_ENTRADA as LE, validarAltura, validarPeso } from "@/lib/domain/limites";
 import { VolumeBar } from "@/components/VolumeBar";
 import { labelGrupo } from "@/lib/labels";
 import { useState, type ReactNode } from "react";
@@ -323,8 +324,8 @@ export default function OnboardingPage() {
           onFallback={(m) => { setAvisoFallback(m === "usuario" ? null : "O coach não respondeu agora — segue pelo formulário rápido."); setModo("form"); }}
           onPronto={(r) => {
             const c = r.perfil;
-            if (c.peso_kg) setPeso(c.peso_kg);
-            if (c.altura_cm) setAltura(c.altura_cm);
+            if (c.peso_kg && !validarPeso(c.peso_kg)) setPeso(c.peso_kg);
+            if (c.altura_cm && !validarAltura(c.altura_cm)) setAltura(c.altura_cm);
             if (c.experiencia) setExp(c.experiencia);
             if (c.dias_por_semana) setDias(c.dias_por_semana);
             if (c.minutos_por_sessao) setMins(c.minutos_por_sessao);
@@ -397,9 +398,9 @@ export default function OnboardingPage() {
                 Base para volume e progressão. Sem milagre — só biologia.
               </p>
             </div>
-            <NumStepper value={peso} onChange={setPeso} step={0.5} unit="kg" label="Peso" />
+            <NumStepper value={peso} onChange={setPeso} step={0.5} unit="kg" label="Peso" min={LE.peso_min_kg} max={LE.peso_max_kg} validar={validarPeso} />
             <div className="my-6" />
-            <NumStepper value={altura} onChange={setAltura} step={1} unit="cm" label="Altura" />
+            <NumStepper value={altura} onChange={setAltura} step={1} unit="cm" label="Altura" min={LE.altura_min_cm} max={LE.altura_max_cm} validar={validarAltura} />
             <div className="mt-6">
               <p className="mb-2 text-xs text-muted">
                 Sexo <span className="text-muted/70">(opcional — só afina a carga inicial)</span>

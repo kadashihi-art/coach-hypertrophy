@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import type { TipoSerie } from "@/lib/domain";
 import { incrementoCargaKg } from "@/lib/domain";
+import { avisoSaltoCarga, cargaMaxKg, LIMITES_ENTRADA, validarCarga, validarReps } from "@/lib/domain/limites";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
 import { EditarDuranteTreinoSheet } from "@/components/EditarDuranteTreinoSheet";
@@ -171,6 +172,9 @@ export default function TreinoPage() {
   const e1rmRef = exercise ? e1rmReferencia(state.registros, sess?.id)[exercise.id] ?? null : null;
 
   const [carga, setCarga] = useState(prefillCarga);
+  /** Salto de carga > +40%: valor já confirmado pelo usuário nesta série (null = nenhum). */
+  const [saltoConfirmado, setSaltoConfirmado] = useState<number | null>(null);
+  const [saltoPendente, setSaltoPendente] = useState<string | null>(null);
   const [reps, setReps] = useState(prefillReps);
   const [rir, setRir] = useState(alvoRir);
   // Fase automática pela estrutura (1º exercício: aquece → aproximação → trabalho; demais: só trabalho).
@@ -356,11 +360,30 @@ export default function TreinoPage() {
 
   function handleCargaChange(n: number) {
     setCarga(n);
+    setSaltoPendente(null);
     pulseAnchor();
   }
 
   function concluirSerie() {
     if (!sess || !presc) return;
+    // Limites de entrada: valores impossíveis não viram registro.
+    const erroLimite = validarCarga(carga, exercicioAtivo?.padrao) ?? validarReps(reps);
+    if (erroLimite) {
+      setSaltoPendente(null);
+      setCargasToast(erroLimite);
+      window.setTimeout(() => setCargasToast(null), 3200);
+      return;
+    }
+    const ultimaReal = exercicioAtivo
+      ? resumirExercicio(state.registros, exercicioAtivo.id, { stepKg, excluirSessaoId: sess.id })?.ultima_carga_kg ?? null
+      : null;
+    const aviso = avisoSaltoCarga(carga, ultimaReal);
+    if (aviso && saltoConfirmado !== carga) {
+      setSaltoPendente(aviso);
+      return;
+    }
+    setSaltoPendente(null);
+    setSaltoConfirmado(null);
     const numero = seriesDone.length + 1;
     const inReps =
       reps >= presc.faixa_reps[0] && reps <= presc.faixa_reps[1];
@@ -758,6 +781,8 @@ export default function TreinoPage() {
                   step={stepKg}
                   unit="kg"
                   min={0}
+                  max={cargaMaxKg(exercicioAtivo?.padrao)}
+                  validar={(n) => validarCarga(n, exercicioAtivo?.padrao)}
                   label={`Carga (kg) · ±${stepKg}`}
                   flash="load"
                 />
@@ -786,6 +811,9 @@ export default function TreinoPage() {
                 onChange={setReps}
                 step={1}
                 min={1}
+                max={LIMITES_ENTRADA.reps_max}
+                inteiro
+                validar={(n) => validarReps(n)}
                 label="Reps"
                 flash="num"
                 hint={`Sugestão de reps: ${prefillReps}`}
@@ -866,6 +894,19 @@ export default function TreinoPage() {
       {rt.timer ? <div aria-hidden className="rt-spacer-logger" /> : null}
       {exercicioPendente && (
         <div className="thumb-zone mt-auto">
+          {saltoPendente ? (
+            <div role="alertdialog" data-testid="salto-carga" className="mb-2 rounded-2xl border border-accent/40 bg-ink-900 p-3 text-sm">
+              <p className="mb-2 text-bone-50">{saltoPendente}</p>
+              <div className="flex gap-2">
+                <button type="button" className="min-h-11 flex-1 rounded-full border border-border px-3 text-sm font-semibold" onClick={() => setSaltoPendente(null)}>
+                  Corrigir
+                </button>
+                <button type="button" data-testid="salto-confirmar" className="min-h-11 flex-1 rounded-full bg-accent px-3 text-sm font-semibold text-ink-950" onClick={() => { setSaltoConfirmado(carga); setSaltoPendente(null); }}>
+                  Confirmo, está certo
+                </button>
+              </div>
+            </div>
+          ) : null}
           <Button onClick={concluirSerie} className="motion-press motion-cta-glow min-h-14 text-base">
             Concluir série
           </Button>

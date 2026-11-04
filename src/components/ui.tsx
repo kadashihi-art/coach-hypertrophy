@@ -214,6 +214,9 @@ export function NumStepper({
   label,
   flash,
   min = 0,
+  max,
+  validar,
+  inteiro = false,
   hint,
   className = "",
 }: {
@@ -226,11 +229,18 @@ export function NumStepper({
   flash?: "load" | "num";
   /** mínimo ao confirmar (kg ≥ 0, reps ≥ 1) */
   min?: number;
+  /** teto dos botões ± (o digitado acima disso é bloqueado com mensagem) */
+  max?: number;
+  /** valida o número digitado: string = mensagem de bloqueio (o valor anterior fica). */
+  validar?: (n: number) => string | null;
+  /** só inteiros (reps) */
+  inteiro?: boolean;
   /** linha auxiliar sob o valor (ex.: sugestão de reps) */
   hint?: string;
   className?: string;
 }) {
   const [editing, setEditing] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -240,13 +250,20 @@ export function NumStepper({
 
   function clamp(n: number) {
     const rounded = Math.round(n * 10) / 10;
-    return Math.max(min, rounded);
+    const lo = Math.max(min, rounded);
+    return typeof max === "number" ? Math.min(max, lo) : lo;
   }
 
   function commitDraft() {
     const raw = draft.replace(",", ".").trim();
-    const parsed = Number(raw);
-    if (Number.isFinite(parsed)) {
+    const parsed = raw === "" ? NaN : Number(raw);
+    let msg: string | null = null;
+    if (!Number.isFinite(parsed)) msg = raw === "" ? null : "Digite só números.";
+    else if (inteiro && !Number.isInteger(parsed)) msg = "Use um número inteiro.";
+    else msg = validar ? validar(parsed) : typeof max === "number" && parsed > max ? `O limite é ${max}${unit ? ` ${unit}` : ""}.` : null;
+    if (msg) setErro(msg);
+    else if (Number.isFinite(parsed)) {
+      setErro(null);
       onChange(clamp(parsed));
     }
     setEditing(false);
@@ -285,7 +302,7 @@ export function NumStepper({
           type="button"
           aria-label="diminuir"
           className="btn motion-press flex h-14 w-14 items-center justify-center rounded-[14px] border border-border bg-transparent text-2xl font-semibold text-bone-50"
-          onClick={() => onChange(clamp(value - step))}
+          onClick={() => { setErro(null); onChange(clamp(value - step)); }}
         >
           −
         </button>
@@ -320,11 +337,16 @@ export function NumStepper({
           type="button"
           aria-label="aumentar"
           className="btn motion-press flex h-14 w-14 items-center justify-center rounded-[14px] border border-border bg-transparent text-2xl font-semibold text-bone-50"
-          onClick={() => onChange(clamp(value + step))}
+          onClick={() => { setErro(null); onChange(clamp(value + step)); }}
         >
           +
         </button>
       </div>
+      {erro ? (
+        <span role="alert" data-testid="num-erro" className="mt-1 max-w-[280px] text-center text-xs font-medium text-danger">
+          {erro}
+        </span>
+      ) : null}
       {hint ? (
         <span className="mt-1 text-[10px] font-medium text-accent/80">
           {hint}
