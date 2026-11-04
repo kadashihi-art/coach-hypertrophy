@@ -52,6 +52,12 @@ export const PerfilSchema = z.object({
    */
   sexo: z.enum(["masculino", "feminino"]).optional(),
   idade: z.number().int().min(14).max(100).optional(),
+  /** Tempo de treino declarado (meses). Opcional; só entra na reavaliação de nível. */
+  tempo_treino_meses: z.number().int().min(0).max(600).optional(),
+  /** Reavaliação de nível: "Agora não" silencia até esta data (ISO). */
+  nivel_silenciado_ate: z.string().nullable().optional(),
+  /** Reavaliação de nível: quando o nível foi mudado pelo cartão (ISO). */
+  nivel_mudado_em: z.string().nullable().optional(),
   onboarding_concluido: z.boolean().default(false),
   /** PAR-Q+ screening (7 perguntas clássicas). Qualquer SIM → parq_liberado=false. */
   parq_respostas: z.array(z.boolean()).optional(),

@@ -24,6 +24,7 @@ import {
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { alvoEditarHoje } from "@/lib/plan/hoje-editar";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
+import { ReavaliacaoNivelCard } from "@/components/ReavaliacaoNivelCard";
 import {
   avaliarCheckinDeload,
   resumoAjusteDeload,
@@ -284,6 +285,8 @@ export default function HojePage() {
           ) : null}
         </div>
       ) : null}
+
+      <ReavaliacaoNivelCard />
 
       {/* Hero: Treino do dia */}
       {sess && (
