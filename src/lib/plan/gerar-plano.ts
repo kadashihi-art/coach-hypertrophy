@@ -645,7 +645,7 @@ function buildJustificativa(args: {
     );
   }
   parts.push(
-    `Experiência ${args.experiencia}: cargas iniciais conservadoras (estimativa) e primeira_sessao=true para calibrar.`,
+    `Experiência ${args.experiencia}: cargas iniciais conservadoras (estimativa), e a primeira sessão serve para calibrar.`,
   );
   return parts.join(" ");
 }
