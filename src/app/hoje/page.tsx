@@ -448,15 +448,21 @@ export default function HojePage() {
 
       {/* Semana strip → calendário */}
       {semana.length ? (
-        <Link href="/plano/calendario" className="motion-press mb-4 block">
+        <div className="mb-4 block">
           <Card>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs uppercase text-muted">Semana</p>
-              <span className="text-xs font-semibold text-accent">Calendário →</span>
+              <Link href="/plano/calendario" className="text-xs font-semibold text-accent">Calendário →</Link>
             </div>
             <div className="grid grid-cols-7 gap-1">
               {semana.map((d) => (
-                <div key={d.iso} className="flex flex-col items-center gap-1">
+                <Link
+                  key={d.iso}
+                  href={`/plano/calendario?dia=${d.iso}`}
+                  data-testid={`chip-${d.iso}`}
+                  aria-label={`${d.iso.slice(8)}/${d.iso.slice(5, 7)}${d.nome ? ` · ${d.nome}` : ""}: abrir no calendário`}
+                  className="motion-press flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg"
+                >
                   <span className={`text-[10px] ${d.hoje ? "font-bold text-accent" : "text-faint"}`}>{d.label}</span>
                   <span
                     data-status={d.st}
@@ -475,7 +481,7 @@ export default function HojePage() {
                                 : "bg-ink-800"
                     } ${d.hoje ? "ring-2 ring-accent/40 ring-offset-1 ring-offset-transparent" : ""}`}
                   />
-                </div>
+                </Link>
               ))}
             </div>
             {consistencia ? (
@@ -486,7 +492,7 @@ export default function HojePage() {
               <p className="mt-2 text-xs text-muted">Defina a data de início em Plano › Ajustar pra agendar a semana.</p>
             ) : null}
           </Card>
-        </Link>
+        </div>
       ) : null}
 
       {/* Atalho coach contextual */}

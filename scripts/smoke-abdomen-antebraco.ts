@@ -52,7 +52,18 @@ ok(alto.length === 1 && alto[0]!.regra === "R11", "antebraço 14: alerta de exce
 const ap = apresentarAlerta(alto[0]!);
 const txt = [ap.titulo, ap.porque, ap.dica, ap.acao?.rotulo].join(" ");
 ok(/Antebraço/.test(txt) && !/antebracos|R11|N1|2026-W/.test(txt), `alerta humano: ${ap.titulo}`);
-ok(avaliarAlertasVolume({ volumes_semanais: vols("quadriceps", 7, 5), semana_iso }).length === 1, "quadríceps 7→5 continua alertando (regra 10–20 intacta)");
+// Regra do primeiro registro: R10 olha as 2 últimas semanas FECHADAS (W43 e W44 quando a atual é W45).
+// W45 ainda está em andamento, então 7→5 em W44→W45 não alerta.
+ok(avaliarAlertasVolume({ volumes_semanais: vols("quadriceps", 7, 5), semana_iso }).length === 0, "quadríceps 7→5 com a semana atual em andamento: sem alerta (semana não fechada)");
+// Caso equivalente com semanas cheias e fechadas: 7→5 em W43→W44, início antes de W43 → alerta.
+const quadFechadas: VolumeSemanal[] = [
+  { semana_iso: "2026-W43", grupo: "quadriceps", series_diretas: 7, series_indiretas: 0, series_efetivas: 7 },
+  { semana_iso: "2026-W44", grupo: "quadriceps", series_diretas: 5, series_indiretas: 0, series_efetivas: 5 },
+];
+const quadAlerta = avaliarAlertasVolume({ volumes_semanais: quadFechadas, semana_iso, inicio: "2026-10-12" });
+ok(quadAlerta.length === 1 && quadAlerta[0]!.regra === "R10", "quadríceps 7→5 em 2 semanas cheias e fechadas continua alertando (regra 10–20 intacta)");
+// Mesmo volume, mas a primeira semana é parcial (início no meio de W43): não alerta.
+ok(avaliarAlertasVolume({ volumes_semanais: quadFechadas, semana_iso, inicio: "2026-10-22" }).length === 0, "quadríceps 7→5 com a 1ª semana parcial: sem alerta");
 
 // 5) Troca e adicionar
 const altPunho = listarAlternativasTroca({ exercicioId: "rosca_punho", catalog: CATALOG_EXERCICIOS, perfil: null });

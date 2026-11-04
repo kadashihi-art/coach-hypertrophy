@@ -47,7 +47,8 @@
     "smoke:llm-cadeia": "npx --yes tsx scripts/smoke-llm-cadeia.ts",
     "smoke:inicio": "npx --yes tsx scripts/smoke-inicio.ts",
     "smoke:pendente": "npx --yes tsx scripts/smoke-pendente.ts",
-    "smoke:limpar-dia": "npx --yes tsx scripts/smoke-limpar-dia.ts"
+    "smoke:limpar-dia": "npx --yes tsx scripts/smoke-limpar-dia.ts",
+    "smoke:acoes-dias": "npx --yes tsx scripts/smoke-acoes-dias.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

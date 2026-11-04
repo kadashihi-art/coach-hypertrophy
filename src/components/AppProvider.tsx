@@ -34,7 +34,10 @@ import {
   agendarSessoes,
   desfazerLimpeza,
   limparDia,
+  marcarDia,
+  type AcaoDia,
 } from "@/lib/plan/calendario";
+import { agendaEfetiva } from "@/lib/plan/pendente";
 import { remountPlano } from "@/lib/plan/remount-plano";
 import {
   PARQ_BLOQUEIO_MSG,
@@ -97,10 +100,10 @@ type Ctx = {
   setDataInicio: (isoDate: string) => void;
   /** Mark session pulada / restore planejada / sync feito */
   markCalendario: (
-    sessaoId: string,
-    action: "pular" | "planejar" | "feito",
-    /** Dia da célula tocada: planejar/pular fixam o treino nesse dia (marcação manual). */
-    dataDia?: string,
+    sessaoId: string | null,
+    action: AcaoDia,
+    /** Dia tocado (data salva ou da agenda calculada): a ação fixa o treino nesse dia. */
+    dataDia: string,
   ) => void;
   /** Limpar dia no calendário (só após o usuário confirmar). */
   limparDiaCalendario: (data: string, sessaoId: string | null) => { ok: boolean; motivo?: "feito" | "em_andamento"; tirado?: string | null };
@@ -905,27 +908,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const markCalendario = useCallback(
-    (sessaoId: string, action: "pular" | "planejar" | "feito", dataDia?: string) => {
-      setState((s) => {
-        // Calendário é a fonte do usuário: permite trocar o status de qualquer
-        // dia (inclusive um já "feito"). Só a sessão em andamento fica intocada.
-        return {
-          ...s,
-          sessoes: s.sessoes.map((x) => {
-            if (x.id !== sessaoId || x.status === "em_andamento") return x;
-            const fixar = dataDia ? { data: dataDia, data_manual: true } : {};
-            if (action === "pular") return { ...x, ...fixar, status: "pulada" as const };
-            if (action === "planejar")
-              return { ...x, ...fixar, status: "planejada" as const };
-            return {
-              ...x,
-              status: "concluida" as const,
-              finalizada_em: x.finalizada_em ?? new Date().toISOString(),
-              data: x.data ?? hojeIsoSaoPaulo(),
-            };
-          }),
-        };
-      });
+    (sessaoId: string | null, action: AcaoDia, dataDia: string) => {
+      setState((s) => marcarDia(s, agendaEfetiva(s, hojeIsoSaoPaulo()).sessoes, dataDia, sessaoId, action));
     },
     [],
   );
