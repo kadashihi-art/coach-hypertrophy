@@ -26,6 +26,7 @@ import {
   avaliarAlertasVolume,
   extractVolumeMarkers,
 } from "@/lib/engine/alertas-volume";
+import { calcularDuracaoTreino } from "@/lib/engine/duracao-treino";
 import { aplicarRecordes, registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
 
 export function concluirSessao(
@@ -210,6 +211,9 @@ export function concluirSessao(
             status: "concluida" as const,
             ...(opts.gravarSnapshot ? { snapshot_conclusao: snapshot } : {}),
             finalizada_em: agoraIso,
+            // Duração derivada dos horários das séries (não afeta progressão).
+            duracao_real_min:
+              calcularDuracaoTreino(seriesSessao)?.duracao_min ?? x.duracao_real_min ?? null,
             rest_timer: {
               status: "idle" as const,
               segundos_totais: 0,
