@@ -22,6 +22,7 @@ import {
   parseRestricoes,
   patternBlocked,
 } from "@/lib/plan/gerar-plano";
+import type { RestricaoKey } from "@/lib/plan/restricoes";
 import { labelGrupo } from "@/lib/labels";
 
 const EQUIP_TXT: Record<string, string> = {
@@ -163,7 +164,14 @@ function trocavel(s: Sessao): boolean {
   return s.status !== "em_andamento";
 }
 
-function substituir(p: Prescricao, para: Exercicio, catalog: Exercicio[], equips: Set<string> | null, carga: number): Prescricao {
+function substituir(
+  p: Prescricao,
+  para: Exercicio,
+  catalog: Exercicio[],
+  equips: Set<string> | null,
+  carga: number,
+  opts: { restr: Set<RestricaoKey>; excludeIds: Iterable<string> },
+): Prescricao {
   return {
     ...p,
     id: p.id.replace(p.exercicio_id, para.id),
@@ -171,7 +179,7 @@ function substituir(p: Prescricao, para: Exercicio, catalog: Exercicio[], equips
     padrao: para.padrao,
     // números: herdados da prescrição atual (séries/reps/RIR/descanso/técnica); kg do estado do novo exercício
     carga: { trabalho_kg: carga, top_set_kg: p.carga.top_set_kg != null ? carga : null, origem: p.carga.origem },
-    alternativa_equipamento_ocupado: findAlt(catalog, para.padrao, equips, para.id),
+    alternativa_equipamento_ocupado: findAlt(catalog, para.padrao, equips, para.id, opts),
     guia_id: para.guia_id ?? null,
   };
 }
@@ -237,6 +245,7 @@ export function aplicarTroca(state: AppState, deId: string, paraId: string): App
     : 0;
   const carga = cargaParaExercicio(state, paraId, estimativa).carga_kg;
   const equips = equipsDoPerfil(state.perfil);
+  const restr = parseRestricoes(state.perfil?.restricoes ?? []);
   const ids = new Set(state.plano.sessoes);
   const conflito = state.sessoes.some(
     (s) => ids.has(s.id) && trocavel(s) && s.prescricoes.some((p) => p.exercicio_id === deId) && s.prescricoes.some((p) => p.exercicio_id === paraId),
@@ -248,12 +257,16 @@ export function aplicarTroca(state: AppState, deId: string, paraId: string): App
     if (!ids.has(s.id) || !trocavel(s)) return s;
     if (!s.prescricoes.some((p) => p.exercicio_id === deId)) return s;
     mudou = true;
+    const outros = s.prescricoes.map((p) => p.exercicio_id);
     return {
       ...s,
       prescricoes: s.prescricoes.map((p) => {
         if (p.exercicio_id !== deId) return p;
         ref = ref ?? p;
-        return substituir(p, para, catalog, equips, carga);
+        return substituir(p, para, catalog, equips, carga, {
+          restr,
+          excludeIds: outros,
+        });
       }),
     };
   });

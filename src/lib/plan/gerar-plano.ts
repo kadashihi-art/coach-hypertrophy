@@ -25,6 +25,16 @@ import { derivarRacional } from "./racional";
 import { findAlt } from "./alternativa";
 import { incrementoCargaKg } from "@/lib/domain";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao } from "./parq";
+import {
+  exerciseAllowed,
+  parseRestricoes,
+  patternBlocked,
+  type RestricaoKey,
+} from "./restricoes";
+
+// Reexporta a régua de restrições para quem já importava daqui.
+export { BAN_IDS, exerciseAllowed, parseRestricoes, patternBlocked } from "./restricoes";
+export type { RestricaoKey } from "./restricoes";
 
 export type PlanoGerado = {
   plano: Plano;
@@ -32,8 +42,6 @@ export type PlanoGerado = {
   estados: EstadoExercicio[];
   volumes_semanais: VolumeSemanal[];
 };
-
-export type RestricaoKey = "ombro" | "lombar" | "joelho" | "punho";
 
 type Slot = {
   padrao: Padrao;
@@ -59,18 +67,6 @@ type ObjetivoParams = {
   descansoComp: number;
   descansoIso: number;
 };
-
-export function parseRestricoes(restricoes: string[]): Set<RestricaoKey> {
-  const out = new Set<RestricaoKey>();
-  const keys: RestricaoKey[] = ["ombro", "lombar", "joelho", "punho"];
-  for (const raw of restricoes) {
-    const s = raw.toLowerCase();
-    for (const k of keys) {
-      if (s.includes(k)) out.add(k);
-    }
-  }
-  return out;
-}
 
 function objetivoParams(obj: Objetivo): ObjetivoParams {
   switch (obj) {
@@ -400,37 +396,6 @@ function legsSlots(variant: "a" | "b"): Slot[] {
   ];
 }
 
-/** Exercises banned outright for a restriction (id match). */
-const BAN_IDS: Record<RestricaoKey, string[]> = {
-  ombro: ["mergulho_paralelas"],
-  lombar: ["remada_curvada", "stiff_rdl", "rdl_halteres", "rdl_unilateral", "bom_dia", "agachamento_barra"],
-  joelho: ["agachamento_barra", "afundo_bulgaro", "passada_caminhando", "step_up"],
-  punho: [],
-};
-
-/** Patterns skipped / demoted under restriction */
-export function patternBlocked(padrao: Padrao, r: Set<RestricaoKey>): boolean {
-  if (r.has("ombro") && (padrao === "empurrar_vertical" || padrao === "flexao_ombro")) {
-    return true; // skip vertical press for shoulder injury
-  }
-  return false;
-}
-
-export function exerciseAllowed(
-  ex: Exercicio,
-  equips: Set<string>,
-  restr: Set<RestricaoKey>,
-): boolean {
-  if (!equips.has(ex.equipamento)) return false;
-  for (const k of restr) {
-    if (BAN_IDS[k].includes(ex.id)) return false;
-  }
-  // ombro: skip aggressive lateral? keep light elevacao_lateral but demote vertical
-  if (restr.has("ombro") && ex.padrao === "empurrar_vertical") return false;
-  // punho: prefer máquina/cabo — soft filter applied in scoring, still allow
-  return true;
-}
-
 function scoreExercise(
   ex: Exercicio,
   slot: Slot,
@@ -600,10 +565,20 @@ export function estimarCargaKg(
 }
 
 
-function estimateDurationMin(prescs: Prescricao[]): number {
+/**
+ * Minutos estimados da sessão.
+ * Unilateral conta o outro lado: ~35 s extras por série de trabalho além dos
+ * 45 s de execução bilateral — o descanso continua igual.
+ */
+export function estimateDurationMin(
+  prescs: Prescricao[],
+  catalog: Exercicio[] = [],
+): number {
+  const porId = new Map(catalog.map((e) => [e.id, e]));
   let sec = 0;
   for (const p of prescs) {
-    sec += p.series * (p.descanso_seg + 45);
+    const execucao = porId.get(p.exercicio_id)?.unilateral ? 80 : 45;
+    sec += p.series * (p.descanso_seg + execucao);
   }
   return Math.max(20, Math.round(sec / 60));
 }
@@ -744,7 +719,11 @@ export function gerarPlanoFromPerfil(
           grupo: ex.grupo_primario,
         },
       );
-      const alt = findAlt(catalog, ex.padrao, equips, ex.id);
+      const alt = findAlt(catalog, ex.padrao, equips, ex.id, {
+        restr,
+        excludeIds: used,
+        grupo: ex.grupo_primario,
+      });
 
       const pid = `presc-${tpl.id}-${ex.id}`;
       prescricoes.push({
@@ -826,7 +805,7 @@ export function gerarPlanoFromPerfil(
         planejado,
         realizado: 0,
       })),
-      duracao_estimada_min: estimateDurationMin(prescricoes),
+      duracao_estimada_min: estimateDurationMin(prescricoes, catalog),
       duracao_real_min: null,
     });
   });
