@@ -19,6 +19,8 @@ import {
   sessoesDoPlano,
 } from "@/lib/plan/proxima-sessao";
 import { faseAtiva } from "@/lib/plan/estrutura";
+import { alvoEditarHoje } from "@/lib/plan/hoje-editar";
+import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 import {
   avaliarCheckinDeload,
   resumoAjusteDeload,
@@ -39,6 +41,8 @@ export default function HojePage() {
   // escolha manual vale só enquanto a sugerida não muda (ex.: acabou de concluir)
   const [picked, setPicked] = useState<{ id: string; sug: string | null } | null>(null);
   const [alertaFechado, setAlertaFechado] = useState(false);
+  const [editar, setEditar] = useState<string | null>(null);
+  const [avisoEdicao, setAvisoEdicao] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -138,8 +142,8 @@ export default function HojePage() {
         : temAgenda && hoje && !sessHoje
           ? "descanso"
           : "novo";
-  const proxData = sugerida?.data
-    ? new Date(`${sugerida.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
+  const proxData = sess?.data
+    ? new Date(`${sess.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
     : null;
 
   // Semana strip (seg→dom da semana atual, fuso SP)
@@ -178,6 +182,21 @@ export default function HojePage() {
         ? "deload"
         : null;
 
+  const alvoEdicao = alvoEditarHoje(state, sess?.id);
+  const botaoEdicao = alvoEdicao ? (
+    <button
+      type="button"
+      data-testid="hoje-editar-treino"
+      onClick={() => {
+        if (alvoEdicao.modo === "bloqueado") setAvisoEdicao(alvoEdicao.motivo);
+        else { setAvisoEdicao(null); setEditar(alvoEdicao.sessaoId); }
+      }}
+      className="motion-press mt-2 min-h-11 w-full rounded-2xl border border-accent/40 text-sm font-semibold text-accent"
+    >
+      {alvoEdicao.label}
+    </button>
+  ) : null;
+
   const ctaDisabled = !sess || !!plano?.bloqueado || sess.prescricoes.length === 0 || parqBloqueado;
   const coachPergunta = sess
     ? `Por que ${sess.nome} hoje com esse volume?`
@@ -185,6 +204,9 @@ export default function HojePage() {
 
   return (
     <main className="motion-fade-up motion-stagger px-5 pb-28 pt-8">
+      {editar ? (
+        <EditarTreinoSheet sessaoId={editar} onClose={() => setEditar(null)} onSalvo={(m) => setAvisoEdicao(m)} />
+      ) : null}
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-wide text-muted capitalize">
@@ -265,7 +287,7 @@ export default function HojePage() {
             <>
               <h2 className="text-3xl font-bold tracking-tight">Descanso</h2>
               <p className="mt-2 text-sm text-bone-300">
-                Próximo: <span className="font-semibold">{sess.nome}</span>
+                {sess.id === sugerida?.id ? "Próximo" : sess.status === "concluida" ? "Feito" : "Escolhido"}: <span className="font-semibold">{sess.nome}</span>
                 {proxData ? <span className="capitalize"> · {proxData}</span> : null}
               </p>
             </>
@@ -333,6 +355,10 @@ export default function HojePage() {
                   : `Começar · ${sess.nome} · ~${sess.duracao_estimada_min} min`}
               </Button>
             )}
+            {botaoEdicao}
+            {avisoEdicao ? (
+              <p role="status" className="mt-2 text-xs text-muted">{avisoEdicao}</p>
+            ) : null}
           </div>
         </Card>
       )}
@@ -348,7 +374,7 @@ export default function HojePage() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setPickedId(s.id)}
+                onClick={() => { setPickedId(s.id); setAvisoEdicao(null); }}
                 className={`chip-motion shrink-0 rounded-[14px] border px-3 py-2 text-left ${
                   on ? "on border-accent bg-[rgba(184,255,60,.12)]" : "border-border bg-surface"
                 }`}
