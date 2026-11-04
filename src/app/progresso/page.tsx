@@ -7,7 +7,7 @@ import { apresentarAlerta } from "@/lib/alertas/apresentar";
 import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 import { SonoAguaSection } from "@/components/SonoAgua";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
 import {
@@ -23,6 +23,8 @@ import { useClientValue } from "@/lib/use-client-value";
 import { faixaVolume, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { currentIsoWeek } from "@/lib/engine/volume";
 import { seriesEfetivasSemana } from "@/lib/engine/proximidade-falha";
+import { alertaVolumeValido } from "@/lib/engine/alertas-volume";
+import { desdeInicio, inicioDeUso, semanaAntesDoInicio } from "@/lib/inicio";
 
 /** T7 — e1RM, PRs, volume 10–20, consistência. ZERO fake — só registros reais. */
 /** 32.5 → "32,5" */
@@ -32,7 +34,10 @@ function fmtKg(n: number): string {
 
 export default function ProgressoPage() {
   const { state } = useApp();
-  const temHistorico = state.registros.length > 0;
+  // Tudo conta a partir do primeiro treino ou check-in registrado (dados antigos ficam salvos, fora da conta).
+  const inicio = inicioDeUso(state);
+  const registros = state.registros.filter((r) => desdeInicio(r.executado_em, inicio));
+  const temHistorico = registros.length > 0;
 
   // Semana ISO do relógio do aparelho (no servidor usa um valor fixo até hidratar).
   const semanaAtual = useClientValue(currentIsoWeek, "2026-W44");
@@ -44,17 +49,17 @@ export default function ProgressoPage() {
   }, []);
 
   const vols = temHistorico
-    ? state.volumes_semanais.filter((v) => v.semana_iso === semanaAtual)
+    ? state.volumes_semanais.filter((v) => v.semana_iso === semanaAtual && !semanaAntesDoInicio(v.semana_iso, inicio))
     : [];
 
-  const alertasVolume = useMemo(() => {
-    if (!temHistorico) return [];
-    return state.alertas.filter(
+  const alertasVolume = !temHistorico
+    ? []
+    : state.alertas.filter(
       (a) =>
         !a.resolvido &&
-        (a.motivo.includes("[R10:") || a.motivo.includes("[R11:")),
-    );
-  }, [state.alertas, temHistorico]);
+        (a.motivo.includes("[R10:") || a.motivo.includes("[R11:")) &&
+        alertaVolumeValido(a.motivo, inicio),
+      );
 
   // e1RM/PR só com sessão real ancorada
   const estadosReais = temHistorico
@@ -62,18 +67,18 @@ export default function ProgressoPage() {
         (e) =>
           e.ultima_sessao_em != null ||
           (e.pr_reps > 0 && e.origem_carga === "historico") ||
-          state.registros.some((r) => r.exercicio_id === e.exercicio_id),
+          registros.some((r) => r.exercicio_id === e.exercicio_id),
       )
     : [];
 
   // Séries que chegaram perto da falha (até 3 reps sobrando, já calibradas) por músculo nesta semana.
   const efetivas = temHistorico
-    ? seriesEfetivasSemana(state.registros, state.exercicios, semanaAtual)
+    ? seriesEfetivasSemana(registros, state.exercicios, semanaAtual)
     : [];
   const totEf = efetivas.reduce((a, g) => a + g.efetivas, 0);
   const totSeries = efetivas.reduce((a, g) => a + g.total, 0);
 
-  const concluidas = state.sessoes.filter((s) => s.status === "concluida").length;
+  const concluidas = state.sessoes.filter((s) => s.status === "concluida" && desdeInicio(s.data ?? s.iniciada_em, inicio)).length;
   const planejadas4sem = (state.plano?.dias_por_semana ?? 4) * 4;
   const consistenciaPct = temHistorico
     ? Math.min(

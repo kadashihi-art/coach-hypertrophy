@@ -12,6 +12,7 @@ import type {
 import { faixaVolume } from "@/lib/domain";
 import { currentIsoWeek } from "@/lib/engine/volume";
 import { labelGrupo } from "@/lib/labels";
+import { semanaAntesDoInicio, semanaCheia } from "@/lib/inicio";
 
 const nomeG = (g: string) => labelGrupo(g).toLowerCase();
 const series = (n: number) => `${n} ${n === 1 ? "série" : "séries"}`;
@@ -39,6 +40,8 @@ export type AvaliarAlertasVolumeInput = {
   rir_alvo?: number;
   /** Markers já presentes em alertas não resolvidos (evita spam). */
   markers_ativos?: string[];
+  /** Primeiro dia de uso (inicioDeUso). Semanas antes dele não alertam; a parcial não conta como cheia. */
+  inicio?: string | null;
 };
 
 /** Semana ISO anterior no mesmo formato YYYY-Www. */
@@ -76,40 +79,47 @@ export function avaliarAlertasVolume(
 ): AlertaVolume[] {
   const semana = input.semana_iso ?? currentIsoWeek();
   const prev = previousIsoWeek(semana);
+  const prev2 = previousIsoWeek(prev);
+  const inicio = input.inicio ?? null;
+  // R10 olha as 2 últimas semanas FECHADAS, ambas cheias desde o início (semana em andamento é incompleta).
+  const r10Pode = semanaCheia(prev2, inicio) && semanaCheia(prev, inicio);
+  const r11Pode = !semanaAntesDoInicio(semana, inicio);
   const ativos = new Set(input.markers_ativos ?? []);
   const rirAlvo = input.rir_alvo ?? 2;
   const out: AlertaVolume[] = [];
 
   const grupos = new Set<GrupoMuscular>();
   for (const v of input.volumes_semanais) {
-    if (v.semana_iso === semana || v.semana_iso === prev) {
+    if (v.semana_iso === semana || v.semana_iso === prev || v.semana_iso === prev2) {
       grupos.add(v.grupo);
     }
   }
 
   for (const grupo of grupos) {
     const cur = volFor(input.volumes_semanais, semana, grupo);
-    const ant = volFor(input.volumes_semanais, prev, grupo);
+    const fech = volFor(input.volumes_semanais, prev, grupo);
+    const ant = volFor(input.volumes_semanais, prev2, grupo);
     const { min: VMIN, max: VMAX } = faixaVolume(grupo);
 
     // —— R10: 2 semanas consecutivas abaixo do mínimo ——
     // Exige registro nas duas semanas (evita falso positivo em plano novo).
     if (
-      cur !== null &&
+      r10Pode &&
+      fech !== null &&
       ant !== null &&
-      cur < VMIN &&
+      fech < VMIN &&
       ant < VMIN
     ) {
       const m = markerOf("R10", grupo, semana);
       if (!ativos.has(m)) {
-        const delta = cur < 8 ? 2 : 1;
+        const delta = fech < 8 ? 2 : 1;
         out.push({
           grupo,
           regra: "R10",
           nivel: "N1",
-          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} abaixo de ${VMIN} por 2 semanas (${ant} → ${cur} séries).`,
+          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} abaixo de ${VMIN} por 2 semanas (${ant} → ${fech} séries).`,
           recomendacao: `Adicionar ${series(delta)} de ${nomeG(grupo)} nos próximos treinos.`,
-          series_efetivas: cur,
+          series_efetivas: fech,
           acao: "adicionar_series",
           delta_series: delta,
           marker: m,
@@ -120,7 +130,7 @@ export function avaliarAlertasVolume(
     }
 
     // —— R11: semana atual acima do máximo ——
-    if (cur !== null && cur > VMAX) {
+    if (r11Pode && cur !== null && cur > VMAX) {
       const rir = input.rir_medio_por_grupo?.[grupo];
       const rirCaindo = rir !== undefined && rir < rirAlvo;
       // Sem RIR: ainda alerta N1; com RIR caindo: reforça o motivo
@@ -245,4 +255,17 @@ export function aplicarAjusteVolumeNasSessoes(
 
     return changed ? { ...sess, prescricoes } : sess;
   });
+}
+
+/**
+ * Alerta de volume já salvo continua válido pelas regras de início?
+ * (Só filtra a exibição; não altera nada gravado.) Alertas que não são de volume: sempre válidos.
+ */
+export function alertaVolumeValido(motivo: string, inicio: string | null): boolean {
+  const hit = /\[(R10|R11):[a-z_]+:(\d{4}-W\d{2})\]/.exec(motivo);
+  if (!hit) return true;
+  const semana = hit[2]!;
+  if (hit[1] === "R11") return !semanaAntesDoInicio(semana, inicio);
+  const prev = previousIsoWeek(semana);
+  return semanaCheia(previousIsoWeek(prev), inicio) && semanaCheia(prev, inicio);
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { ehSeriePreparatoria } from "@/lib/domain/enums";
+import { alertaVolumeValido } from "@/lib/engine/alertas-volume";
+import { inicioDeUso } from "@/lib/inicio";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { labelGrupo } from "@/lib/labels";
 import Link from "next/link";
@@ -155,7 +157,8 @@ export default function FeedbackPage() {
             !a.resolvido &&
             lastSess &&
             a.origem_sessao_id === lastSess.id &&
-            (a.motivo.includes("[R10:") || a.motivo.includes("[R11:")),
+            (a.motivo.includes("[R10:") || a.motivo.includes("[R11:")) &&
+            alertaVolumeValido(a.motivo, inicioDeUso(state)),
         );
         if (volAlerts.length === 0) return null;
         const r10 = volAlerts.filter((a) => a.motivo.includes("[R10:")).length;

@@ -1,6 +1,8 @@
 "use client";
 
 import { VolumeBar } from "@/components/VolumeBar";
+import { alertaVolumeValido } from "@/lib/engine/alertas-volume";
+import { inicioDeUso } from "@/lib/inicio";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { apresentarAlerta } from "@/lib/alertas/apresentar";
 import { fmtKg, labelGrupo } from "@/lib/labels";
@@ -80,10 +82,12 @@ export default function HojePage() {
         timeZone: "America/Sao_Paulo",
       })
     : "";
+  const inicioUso = inicioDeUso(state);
+  const alertasVisiveis = state.alertas.filter((a) => alertaVolumeValido(a.motivo, inicioUso));
   const alerta =
-    state.alertas.find((a) => !a.resolvido) ??
-    state.alertas.find((a) => a.nivel !== "N0") ??
-    state.alertas[0];
+    alertasVisiveis.find((a) => !a.resolvido) ??
+    alertasVisiveis.find((a) => a.nivel !== "N0") ??
+    alertasVisiveis[0];
   const ck = hojeIso
     ? state.checkins.find((c) => c.data === hojeIso)
     : undefined;

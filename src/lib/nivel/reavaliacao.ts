@@ -5,6 +5,7 @@
  * depois que o usuário confirma. Critérios e fontes: docs/reavaliacao-nivel.md.
  */
 import type { AppState, Experiencia, Exercicio, Perfil, Sessao } from "@/lib/domain";
+import { desdeInicio, inicioDeUso } from "@/lib/inicio";
 import { e1rmEpley } from "@/lib/engine/e1rm";
 import { ehSeriePreparatoria } from "@/lib/domain/enums";
 
@@ -103,10 +104,13 @@ export function avaliarNivel(state: Pick<AppState, "perfil" | "sessoes" | "regis
   const declarado = perfil.experiencia;
   const D = NIVEIS.indexOf(declarado);
 
+  // Conta só a partir do primeiro treino ou check-in registrado.
+  const inicioUso = inicioDeUso(state);
   const concluidas = state.sessoes
     .filter((s) => s.status === "concluida" || s.status === "parcial")
     .map((s) => ({ s, t: dataSessao(s) }))
     .filter((x): x is { s: Sessao; t: number } => x.t != null && x.t <= agoraMs + DIA)
+    .filter((x) => desdeInicio(x.s.data ?? x.s.iniciada_em ?? x.s.finalizada_em, inicioUso))
     .sort((a, b) => a.t - b.t);
   const desdeMudanca = perfil.nivel_mudado_em ? Date.parse(perfil.nivel_mudado_em) : null;
   if (desdeMudanca && agoraMs - desdeMudanca < ESPERA_APOS_MUDAR_DIAS * DIA) return vazio("mudou_recente");
