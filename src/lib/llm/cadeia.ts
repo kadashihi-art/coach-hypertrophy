@@ -32,7 +32,7 @@ export type PedidoLlm = {
 
 export type RespostaLlm = { texto: string; etapa: EtapaLlm; modelo: string };
 
-export type TentativaLlm = { etapa: EtapaLlm; resultado: "ok" | FalhaLlm; status?: number; ms?: number };
+export type TentativaLlm = { etapa: EtapaLlm; resultado: "ok" | FalhaLlm; status?: number; ms?: number; modelo?: string; detalhe?: string };
 
 export const GROQ_MODEL_PADRAO = "llama-3.3-70b-versatile";
 export const GEMINI_MODEL_PADRAO = "gemini-flash-latest";
@@ -123,6 +123,7 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
       const t0 = Date.now();
       let falha: FalhaLlm = "erro";
       let status = 0;
+      let detalhe: string | undefined;
       try {
         const res = await (p.fetchImpl ?? fetch)(e.url, {
           method: "POST",
@@ -138,7 +139,10 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
         });
         status = res.status;
         if (!res.ok) {
-          falha = classificarStatus(res.status, await res.text().catch(() => ""));
+          const corpo = await res.text().catch(() => "");
+          falha = classificarStatus(res.status, corpo);
+          // TEMPORÁRIO (diagnóstico): trecho do erro, sem chave
+          if (p.forcarEtapa) detalhe = corpo.split(e.key).join("***").replace(/AIza[\w-]+|gsk_\w+/g, "***").slice(0, 300);
         } else {
           const j = (await res.json().catch(() => null)) as { choices?: Array<{ message?: { content?: unknown } }> } | null;
           const texto = textoDe(j?.choices?.[0]?.message?.content);
@@ -148,7 +152,7 @@ export async function chamarCadeia(p: PedidoLlm): Promise<RespostaLlm | null> {
       } catch {
         falha = "erro";
       }
-      log.push({ etapa: e.etapa, resultado: resp ? "ok" : falha, status, ms: Date.now() - t0 });
+      log.push({ etapa: e.etapa, resultado: resp ? "ok" : falha, status, ms: Date.now() - t0, ...(p.forcarEtapa ? { modelo: e.modelo, detalhe } : {}) });
       // cota ou resposta inválida: não adianta repetir a mesma etapa
       if (resp || falha === "cota" || falha === "invalido") break;
     }
