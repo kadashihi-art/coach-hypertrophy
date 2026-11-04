@@ -22,7 +22,7 @@ import {
 import { useClientValue } from "@/lib/use-client-value";
 import { faixaVolume, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { currentIsoWeek } from "@/lib/engine/volume";
-import { e1rmReferencia, seriesEfetivasSemana } from "@/lib/engine/proximidade-falha";
+import { seriesEfetivasSemana } from "@/lib/engine/proximidade-falha";
 
 /** T7 — e1RM, PRs, volume 10–20, consistência. ZERO fake — só registros reais. */
 /** 32.5 → "32,5" */
@@ -68,7 +68,7 @@ export default function ProgressoPage() {
 
   // Séries que chegaram perto da falha (até 3 reps sobrando, já calibradas) por músculo nesta semana.
   const efetivas = temHistorico
-    ? seriesEfetivasSemana(state.registros, state.exercicios, semanaAtual, e1rmReferencia(state.registros))
+    ? seriesEfetivasSemana(state.registros, state.exercicios, semanaAtual)
     : [];
   const totEf = efetivas.reduce((a, g) => a + g.efetivas, 0);
   const totSeries = efetivas.reduce((a, g) => a + g.total, 0);
