@@ -98,7 +98,9 @@ export async function POST(req: Request) {
   const novo: Raw = JSON.parse(JSON.stringify(raw));
   if (novo.state.plano?.mesociclo) novo.state.plano.mesociclo.data_inicio = NOVA_DATA;
   novo.state.checkins = novo.state.checkins.filter((c) => !CHECKINS_APAGAR.includes(c.data));
-  for (const s of novo.state.sessoes) for (const p of s.prescricoes) if (series.has(p.id)) p.series = series.get(p.id)!;
+  // Item 3: na simulação as séries planejadas já estavam no padrão do plano (compostos 3, isolados 2),
+  // então não há extra para tirar. Só aplica com ?series=1 (não usado).
+  if (url.searchParams.get("series") === "1") for (const s of novo.state.sessoes) for (const p of s.prescricoes) if (series.has(p.id)) p.series = series.get(p.id)!;
   novo.updated_at = new Date().toISOString();
   const valido = AppStateSchema.safeParse(novo.state).success;
   const base = { path, updated_at: raw.updated_at, antes, mudancas_series: mudancas, valido, impressoes_antes: impressoes(raw.state), impressoes_depois: impressoes(novo.state) };
