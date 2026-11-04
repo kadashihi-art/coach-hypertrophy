@@ -8,6 +8,7 @@
  * Não altera kg/reps/RIR (motor continua dono dos números) — só a sequência de fases.
  */
 import type { Exercicio, Prescricao, TipoSerie } from "@/lib/domain";
+import { textoCarga } from "@/lib/catalog/tipo-carga";
 import { ehSeriePreparatoria } from "@/lib/domain/enums";
 
 const TECNICAS_FORA_DA_ORDEM = new Set<string>(["drop_set", "rest_pause"]);
@@ -96,9 +97,14 @@ export function cargaAquecimento(cargaHojeKg: number, stepKg: number): number {
   return arredondarStep(cargaHojeKg * PCT_AQUECIMENTO, stepKg);
 }
 
-export function textoAquecimento(cargaHojeKg: number, stepKg: number): string {
+export function textoAquecimento(
+  cargaHojeKg: number,
+  stepKg: number,
+  ex?: Parameters<typeof textoCarga>[1],
+  alternado = false,
+): string {
   const kg = cargaAquecimento(cargaHojeKg, stepKg);
-  return `Aquecimento: ${String(kg).replace(".", ",")} kg (cerca de 60% da carga de hoje)`;
+  return `Aquecimento: ${textoCarga(kg, ex, alternado)} (cerca de 60% da carga de hoje)`;
 }
 
 /** % da aproximação sobre a PRIMEIRA série de trabalho efetiva (1ª não preparatória). */

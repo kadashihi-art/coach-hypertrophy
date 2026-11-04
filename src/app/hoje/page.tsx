@@ -5,7 +5,7 @@ import { alertaVolumeValido } from "@/lib/engine/alertas-volume";
 import { inicioDeUso } from "@/lib/inicio";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { apresentarAlerta } from "@/lib/alertas/apresentar";
-import { fmtKg, labelGrupo } from "@/lib/labels";
+import { labelGrupo } from "@/lib/labels";
 import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -43,6 +43,8 @@ import {
   precisaResponderParq,
   parqBloqueiaPrescricao,
 } from "@/lib/plan/parq";
+import { textoCarga } from "@/lib/catalog/tipo-carga";
+import { useModoCarga } from "@/lib/use-modo-carga";
 
 const COR_STATUS: Record<StatusFaixa, string> = {
   feito: "text-go",
@@ -56,6 +58,7 @@ const COR_STATUS: Record<StatusFaixa, string> = {
 
 export default function HojePage() {
   const { state, ready, startSession } = useApp();
+  const { alternado } = useModoCarga();
   const router = useRouter();
   // escolha manual vale só enquanto a sugerida não muda (ex.: acabou de concluir)
   const [picked, setPicked] = useState<{ id: string; sug: string | null } | null>(null);
@@ -368,7 +371,7 @@ export default function HojePage() {
                   <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
                     <span className="truncate">{ex?.nome ?? "Exercício"}</span>
                     <span className="load-num shrink-0 text-muted">
-                      {fmtKg(carga)} kg · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]}
+                      {textoCarga(carga, ex, alternado(ex?.id))} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]}
                     </span>
                   </li>
                 );

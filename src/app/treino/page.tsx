@@ -2,9 +2,11 @@
 
 import { ExercicioImagem } from "@/components/ExercicioImagem";
 import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
-import { fmtKg, labelPadrao } from "@/lib/labels";
+import { labelPadrao } from "@/lib/labels";
 import { parseRestricoes } from "@/lib/plan/restricoes";
 import { resumirExercicio, textoUltimaVez, textoTendencia } from "@/lib/engine/memoria-carga";
+import { alternativaCarga, rotuloCarga, textoCarga } from "@/lib/catalog/tipo-carga";
+import { useModoCarga } from "@/lib/use-modo-carga";
 import { guiaPorPadrao } from "@/lib/plan/guia-por-padrao";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -85,6 +87,8 @@ export default function TreinoPage() {
     desfazerAoVivo,
   } = useApp();
   const router = useRouter();
+  const { alternado, alternar } = useModoCarga();
+  const exPorId = (id: string | undefined) => state.exercicios.find((e) => e.id === id);
 
   const sess =
     state.sessoes.find((s) => s.id === state.active_sessao_id) ??
@@ -135,7 +139,7 @@ export default function TreinoPage() {
         excluirSessaoId: sess?.id,
       })
     : null;
-  const linhaUltimaVez = textoUltimaVez(memoriaExercicio);
+  const linhaUltimaVez = textoUltimaVez(memoriaExercicio, exercise, alternado(exercise?.id));
   const linhaTendencia = textoTendencia(memoriaExercicio);
 
   // Aquecimento por grupo muscular (primeiro exercício de cada músculo ainda não aquecido).
@@ -708,7 +712,7 @@ export default function TreinoPage() {
                 {s.tecnica ? <span className="text-[10px] font-semibold text-accent">{nomeTecnica(s.tecnica.tipo)}</span> : null}
               </div>
               <span className="num text-sm font-bold">
-                {fmtKg(s.carga_kg)} kg · {s.reps} reps · RIR {s.rir_percebido}
+                {textoCarga(s.carga_kg, exPorId(s.exercicio_id), alternado(s.exercicio_id))} · {s.reps} reps · RIR {s.rir_percebido}
                 {s.tecnica?.reps_extra.length ? ` + ${s.tecnica.carga_extra_kg ? `${String(s.tecnica.carga_extra_kg).replace(".", ",")} kg × ` : ""}${s.tecnica.reps_extra.join("+")}` : ""}
               </span>
             </div>
@@ -739,7 +743,7 @@ export default function TreinoPage() {
             >
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-faint">Aq.</span>
-                <span className="text-sm text-muted">{textoAquecimento(carga, stepKg)}</span>
+                <span className="text-sm text-muted">{textoAquecimento(carga, stepKg, exercicioAtivo, alternado(exercicioAtivo?.id))}</span>
               </div>
             </div>
           )}
@@ -783,9 +787,21 @@ export default function TreinoPage() {
                   min={0}
                   max={cargaMaxKg(exercicioAtivo?.padrao)}
                   validar={(n) => validarCarga(n, exercicioAtivo?.padrao)}
-                  label={`Carga (kg) · ±${stepKg}`}
+                  label={`Carga (kg${rotuloCarga(exercicioAtivo) ? ` ${rotuloCarga(exercicioAtivo)}` : ""}) · ±${stepKg}`}
                   flash="load"
                 />
+                {exercicioAtivo && alternativaCarga(exercicioAtivo) ? (
+                  <button
+                    type="button"
+                    data-testid="alternar-carga"
+                    className="mx-auto mt-1 block text-[11px] text-muted underline decoration-dotted underline-offset-2"
+                    onClick={() => alternar(exercicioAtivo.id)}
+                  >
+                    {alternado(exercicioAtivo.id)
+                      ? `Na tela: ${textoCarga(carga, exercicioAtivo, true)} · voltar para ${rotuloCarga(exercicioAtivo)}`
+                      : `= ${textoCarga(carga, exercicioAtivo, true)} · mostrar assim`}
+                  </button>
+                ) : null}
               </div>
               {(linhaUltimaVez || linhaTendencia) && (
                 <p className="mt-2 text-center text-[11px] leading-snug text-muted">

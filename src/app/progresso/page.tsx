@@ -25,6 +25,8 @@ import { currentIsoWeek } from "@/lib/engine/volume";
 import { seriesEfetivasSemana } from "@/lib/engine/proximidade-falha";
 import { alertaVolumeValido } from "@/lib/engine/alertas-volume";
 import { desdeInicio, inicioDeUso, semanaAntesDoInicio } from "@/lib/inicio";
+import { textoCarga } from "@/lib/catalog/tipo-carga";
+import { useModoCarga } from "@/lib/use-modo-carga";
 
 /** T7 — e1RM, PRs, volume 10–20, consistência. ZERO fake — só registros reais. */
 /** 32.5 → "32,5" */
@@ -34,6 +36,7 @@ function fmtKg(n: number): string {
 
 export default function ProgressoPage() {
   const { state } = useApp();
+  const { alternado } = useModoCarga();
   // Tudo conta a partir do primeiro treino ou check-in registrado (dados antigos ficam salvos, fora da conta).
   const inicio = inicioDeUso(state);
   const registros = state.registros.filter((r) => desdeInicio(r.executado_em, inicio));
@@ -250,9 +253,9 @@ export default function ProgressoPage() {
                 <p className="font-semibold">{ex?.nome ?? "Exercício"}</p>
                 <p className="text-xs text-muted">
                   {e.pr_reps > 0
-                    ? `Recorde ${fmtKg(e.pr_carga_kg)} kg × ${e.pr_reps}`
+                    ? `Recorde ${textoCarga(e.pr_carga_kg, ex, alternado(ex?.id))} × ${e.pr_reps}`
                     : "Recorde: sem dados ainda"}{" "}
-                  · carga atual {fmtKg(e.carga_atual_kg)} kg
+                  · carga atual {textoCarga(e.carga_atual_kg, ex, alternado(ex?.id))}
                 </p>
               </div>
               <Stat label="e1RM" value={e.pr_reps > 0 && e.e1rm_estimado_kg > 0 ? `${e.e1rm_estimado_kg}` : "—"} mono />
@@ -295,7 +298,7 @@ export default function ProgressoPage() {
               <p className="text-sm">
                 {ex?.nome ?? "Exercício"} ·{" "}
                 <span className="load-num">
-                  {fmtKg(d.carga_anterior_kg)} → {fmtKg(d.nova_carga_kg)} kg
+                  {fmtKg(d.carga_anterior_kg)} → {textoCarga(d.nova_carga_kg, ex, alternado(ex?.id))}
                 </span>
               </p>
               <p className="mt-1 text-xs text-muted">{semCodigoRegra(d.motivo)}</p>

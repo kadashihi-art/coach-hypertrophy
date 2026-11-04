@@ -1,7 +1,7 @@
 "use client";
 
 import { labelSplit, humanizarSplits } from "@/lib/plan/split-label";
-import { acentuar, fmtKg, labelEquipamento, labelFoco, labelGrupo, labelObjetivo } from "@/lib/labels";
+import { acentuar, labelEquipamento, labelFoco, labelGrupo, labelObjetivo } from "@/lib/labels";
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
@@ -23,10 +23,13 @@ import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 import { edicaoDa, podeDesfazer, podeVoltarAoCoach, sessaoEditavel } from "@/lib/plan/editar-treino";
 import { podeDesfazerCorrecao, sessaoCorrigivel } from "@/lib/plan/corrigir-concluida";
 import { preparatoriasDaSessao, rotuloOrdemSeries } from "@/lib/treino/estrutura-series";
+import { textoCarga } from "@/lib/catalog/tipo-carga";
+import { useModoCarga } from "@/lib/use-modo-carga";
 
 /** T8 — Split visual + mesociclo · plano gerado do perfil */
 export default function PlanoPage() {
   const { state, startSession, desfazerEdicaoSessao, voltarSessaoAoCoach, desfazerCorrecaoSessao } = useApp();
+  const { alternado } = useModoCarga();
   const [editar, setEditar] = useState<string | null>(null);
   const [confirmaCoach, setConfirmaCoach] = useState<string | null>(null);
   const router = useRouter();
@@ -263,7 +266,7 @@ export default function PlanoPage() {
                     <li key={p.id} className="flex items-center justify-between gap-2">
                       <span>
                         {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
-                        {fmtKg(carga)} kg
+                        {textoCarga(carga, ex, alternado(ex?.id))}
                         {rotuloOrdemSeries(p) ? ` · ${rotuloOrdemSeries(p)}` : ""}
                         {preparatoriasDaSessao(s!.prescricoes, state.exercicios)[i] ? (
                           <span className="text-accent"> · aquece + aproximação antes</span>

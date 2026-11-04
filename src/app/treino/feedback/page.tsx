@@ -18,10 +18,13 @@ import {
 } from "@/components/ui";
 import { comparacaoMeta, duracaoDaSessao, formatarDescanso } from "@/lib/engine/duracao-treino";
 import type { LlmResponseEnvelope } from "@/lib/llm/contract";
+import { textoCarga } from "@/lib/catalog/tipo-carga";
+import { useModoCarga } from "@/lib/use-modo-carga";
 
 /** T6 — Análise pós-treino com evidência, R# e volume vs planejado */
 export default function FeedbackPage() {
   const { state } = useApp();
+  const { alternado } = useModoCarga();
   const lastSess = [...state.sessoes]
     .filter((s) => s.status === "concluida")
     .sort((a, b) =>
@@ -232,7 +235,7 @@ export default function FeedbackPage() {
               </div>
               <p className="font-semibold">{ex?.nome ?? d.exercicio_id}</p>
               <p className="load-num mt-1 text-lg">
-                {d.carga_anterior_kg} → {d.nova_carga_kg} kg
+                {String(d.carga_anterior_kg).replace(".", ",")} → {textoCarga(d.nova_carga_kg, ex, alternado(ex?.id))}
                 {d.faixa_reps_reiniciada ? " · faixa reiniciada" : ""}
               </p>
               <p className="mt-2 text-sm text-muted">{semCodigoRegra(d.motivo)}</p>
@@ -276,7 +279,7 @@ export default function FeedbackPage() {
                   );
                   return (
                     <li key={d.id}>
-                      {ex?.nome}: {d.carga_anterior_kg}→{d.nova_carga_kg} kg (
+                      {ex?.nome}: {String(d.carga_anterior_kg).replace(".", ",")}→{textoCarga(d.nova_carga_kg, ex, alternado(ex?.id))} (
                       {d.regra})
                     </li>
                   );
