@@ -205,11 +205,11 @@ export function feedbackSerie(args: {
   }
   if (r > RIR_EFETIVO_MAX || r >= a + 2) {
     const d = r - a;
-    const dTxt = d >= 2 ? `${d - 1}–${d}` : String(d);
+    const dTxt = d >= 2 ? `${d - 1}–${d} reps` : "1 rep";
     const extraFaixa = serie.reps >= faixa[1] ? " Se passar do topo da faixa, a carga sobe na próxima sessão." : "";
     return {
       zona: "longe",
-      texto: `Dava mais ${dTxt} reps. ${Prox}, vai até sentir que ${sobraria(a)}.${extraFaixa}`,
+      texto: `Dava mais ${dTxt}. ${Prox}, vai até sentir que ${sobraria(a)}.${extraFaixa}`,
       calibracao,
     };
   }
@@ -260,7 +260,7 @@ export function liberacaoTecnicas(args: {
   let perto = 0;
   for (const [, ss] of porGrupo) {
     const ord = [...ss].sort((a, b) => a.numero - b.numero);
-    const cals = calibrarSessao(ord, args.e1rmPorExercicio?.[ord[0]!.exercicio_id]);
+    const cals = calibrarSessao(ord, (args.e1rmPorExercicio ?? e1rmReferencia(args.registros, ord[0]!.sessao_id))[ord[0]!.exercicio_id]);
     for (const c of cals) {
       total++;
       if (c.rir_interpretado <= 2) perto++;
@@ -300,7 +300,8 @@ export function seriesEfetivasSemana(
     const ex = exercicios.find((e) => e.id === ss[0]!.exercicio_id);
     if (!ex) continue;
     const ord = [...ss].sort((a, b) => a.numero - b.numero);
-    const cals = calibrarSessao(ord, e1rmPorExercicio?.[ex.id]);
+    // Referência só de outras sessões: a própria sessão não calibra a si mesma.
+    const cals = calibrarSessao(ord, (e1rmPorExercicio ?? e1rmReferencia(registros, ord[0]!.sessao_id))[ex.id]);
     const cur = out.get(ex.grupo_primario) ?? { grupo: ex.grupo_primario, efetivas: 0, total: 0 };
     for (const c of cals) {
       cur.total++;

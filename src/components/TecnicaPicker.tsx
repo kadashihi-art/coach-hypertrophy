@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { TecnicaFinal } from "@/lib/domain";
 import { useApp } from "@/components/AppProvider";
-import { e1rmReferencia, liberacaoTecnicas } from "@/lib/engine/proximidade-falha";
+import { liberacaoTecnicas } from "@/lib/engine/proximidade-falha";
 import { useClientValue } from "@/lib/use-client-value";
 import { LIMITE_TECNICAS_SESSAO, TECNICAS, infoTecnica, nomeTecnica } from "@/lib/engine/tecnicas";
 
@@ -38,7 +38,6 @@ export function TecnicaPicker({
     hojeIso,
     checkin: state.checkins.find((c) => c.data === hojeIso) ?? null,
     deload: state.plano?.mesociclo.foco === "deload",
-    e1rmPorExercicio: e1rmReferencia(state.registros),
   });
   const atual = valor ?? null;
   const cheio = !atual && usadas >= LIMITE_TECNICAS_SESSAO;

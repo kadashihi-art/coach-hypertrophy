@@ -59,13 +59,23 @@ ok(!!f4.calibracao && /mais perto/.test(f4.calibracao), `calibração: ${f4.cali
 const f5 = feedbackSerie({ serie: { carga_kg: 40, reps: 10, rir_percebido: 2, tipo_serie: "aquecimento" }, faixa: [6, 10], alvo: alvoLivre, cal: rel(2), ultima: false });
 ok(f5.zona === "aquecimento", "aquecimento não é cobrado");
 
+const f6 = feedbackSerie({ serie: { carga_kg: 100, reps: 8, rir_percebido: 4, tipo_serie: "trabalho" }, faixa: [6, 10], alvo: { ...alvoLivre, alvo: 3 }, cal: rel(4), ultima: false });
+ok(/Dava mais 1 rep\./.test(f6.texto), `singular: ${f6.texto}`);
+// mesma sessão não calibra a si mesma
+const s1: RegistroSerie[] = [4, 1].map((rir, i) => ({ ...mkBase(i), carga_kg: 60, reps: 8, rir_percebido: rir }));
+const efS = seriesEfetivasSemana(s1, [{ id: "rosca", grupo_primario: "biceps" }], isoWeekDe(new Date("2026-11-03T12:00:00Z")));
+ok(efS[0]?.efetivas === 1, `RIR 4 não vira efetiva usando a própria sessão: ${efS[0]?.efetivas}/${efS[0]?.total}`);
+
 // 4) Técnicas
+function mkBase(i: number): RegistroSerie {
+  return { id: `b${i}`, sessao_id: "sx", prescricao_id: "px", exercicio_id: "rosca", numero: i + 1, tipo_serie: "trabalho", carga_kg: 60, reps: 8, rir_percebido: 2, dor: false, executado_em: "2026-11-03T12:00:00.000Z" };
+}
 const mk = (i: number, rir: number, dia = "2026-11-03"): RegistroSerie => ({
   id: `r${i}`, sessao_id: `s${Math.floor(i / 3)}`, prescricao_id: `p${Math.floor(i / 3)}`, exercicio_id: "rosca", numero: (i % 3) + 1,
   tipo_serie: "trabalho", carga_kg: 14, reps: 10, rir_percebido: rir, dor: false, executado_em: `${dia}T12:00:00.000Z`,
 });
 const perto = Array.from({ length: 9 }, (_, i) => mk(i, i % 3 === 2 ? 2 : 1));
-const longe = Array.from({ length: 9 }, (_, i) => mk(i, 4));
+const longe = Array.from({ length: 9 }, (_, i) => ({ ...mk(i, 4), carga_kg: 8 }));
 ok(!liberacaoTecnicas({ registros: perto.slice(0, 3), hojeIso: "2026-11-04" }).liberado, "poucas séries: técnicas ainda não");
 ok(!liberacaoTecnicas({ registros: longe, hojeIso: "2026-11-04" }).liberado, "longe da falha: técnicas não");
 ok(liberacaoTecnicas({ registros: perto, hojeIso: "2026-11-04" }).liberado, "perto da falha e recuperado: libera");
