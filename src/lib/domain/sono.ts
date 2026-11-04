@@ -75,28 +75,28 @@ export function feedbackSono(
     base = {
       nivel: "baixo",
       titulo: "Sono curto",
-      dica: "Menos de 6h — o coach pode cortar 1 série nos compostos hoje (R9). Tente antecipar a hora de dormir.",
+      dica: "Menos de 6 h: o treino de hoje fica mais leve, com 1 série a menos nos exercícios principais. Tente deitar mais cedo hoje.",
       r9_sono,
     };
   } else if (duracaoH < 7) {
     base = {
       nivel: "ok_leve",
       titulo: "Sono ok, com ressalva",
-      dica: "Entre 6–7h funciona, mas o ideal pra recuperação fica perto de 7–9h.",
+      dica: "Entre 6 e 7 h funciona, mas o ideal pra recuperar fica entre 7 e 9 h.",
       r9_sono,
     };
   } else if (duracaoH <= 9) {
     base = {
       nivel: "ok",
       titulo: "Sono na faixa boa",
-      dica: "7–9h — boa janela pra recuperar e render no treino.",
+      dica: "De 7 a 9 h é a melhor faixa pra recuperar e render no treino.",
       r9_sono,
     };
   } else {
     base = {
       nivel: "longo",
       titulo: "Sono longo",
-      dica: "Mais de 9h — pode ser catch-up. Se for frequente, vale olhar a rotina (não é alerta de volume).",
+      dica: "Mais de 9 h pode ser o corpo compensando noites curtas. Se for frequente, vale olhar a rotina.",
       r9_sono,
     };
   }
@@ -111,10 +111,10 @@ export function feedbackSono(
     if (max - min >= 1.75) {
       return {
         nivel: "inconsistente",
-        titulo: base.titulo + " · horário irregular",
+        titulo: "Horário de sono irregular",
         dica:
           base.dica +
-          " Sua duração tem variado bastante noite a noite — tentar horários mais estáveis ajuda a prontidão.",
+          " Seu sono tem variado bastante de uma noite pra outra. Horários mais estáveis ajudam a acordar disposto.",
         r9_sono,
       };
     }
