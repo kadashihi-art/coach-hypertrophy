@@ -66,13 +66,13 @@ export default function CheckinPage() {
     () =>
       [...state.checkins]
         .sort((a, b) => b.data.localeCompare(a.data))
-        .slice(0, 5)
-        .map((c) => c.sono_h),
+        .filter((c) => c.data !== new Date().toISOString().slice(0, 10))
+        .slice(0, 6),
     [state.checkins],
   );
   const fb = useMemo(
-    () => feedbackSono(sonoH, historicoDuracoes),
-    [sonoH, historicoDuracoes],
+    () => feedbackSono(sonoH, historicoDuracoes, sonoInicio),
+    [sonoH, historicoDuracoes, sonoInicio],
   );
 
   function salvar() {

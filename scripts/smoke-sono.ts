@@ -22,8 +22,10 @@ const baixo = feedbackSono(5);
 ok(baixo.r9_sono && baixo.nivel === "baixo", "feedback <6h → baixo + r9");
 const bom = feedbackSono(8);
 ok(bom.nivel === "ok" && !bom.r9_sono, "feedback 8h → ok");
-const inconsistente = feedbackSono(8, [5, 9]);
-ok(inconsistente.nivel === "inconsistente", "variação grande → inconsistente");
+const inconsistente = feedbackSono(8, [{ sono_h: 8, sono_inicio: "21:30" }, { sono_h: 8, sono_inicio: "01:30" }], "23:00");
+ok(inconsistente.nivel === "inconsistente", "horário de dormir variando > 1 h → irregular");
+ok(feedbackSono(8, [5, 9]).nivel === "ok", "só a duração variando não marca irregular (regra do resumo semanal)");
+ok(feedbackSono(8, [{ sono_h: 8, sono_inicio: "23:00" }, { sono_h: 6, sono_inicio: "23:20" }], "23:10").nivel === "ok", "mesmo horário → faixa boa, igual ao resumo");
 
 ok(
   resumoSonoCheckin({

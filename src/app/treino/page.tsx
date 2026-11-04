@@ -26,6 +26,8 @@ import { TecnicaNaSerie } from "@/components/TecnicaPicker";
 import { exercicioAceitaTecnica, nomeTecnica, parceiroBiSet, planoTecnica } from "@/lib/engine/tecnicas";
 import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import { podeDesfazerAoVivo } from "@/lib/treino/editar-durante-treino";
+import { calibrarSessao, e1rmReferencia, feedbackSerie, rirAlvoDoDia } from "@/lib/engine/proximidade-falha";
+import { useClientValue } from "@/lib/use-client-value";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
 import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
 
@@ -154,9 +156,23 @@ export default function TreinoPage() {
     return f === "top_set" ? topKg : prefillCarga;
   };
 
+  // RIR alvo do dia: padrão de movimento, fase do bloco, nível, deload e recuperação (determinístico).
+  const hojeIso = useClientValue(() => new Date().toISOString().slice(0, 10), "");
+  const ckHoje = hojeIso ? state.checkins.find((c) => c.data === hojeIso) ?? null : null;
+  const rirDia = rirAlvoDoDia({
+    exercicio: exercise,
+    experiencia: state.perfil?.experiencia,
+    foco: state.plano?.mesociclo.foco,
+    semana_atual: state.plano?.mesociclo.semana_atual,
+    total_semanas: state.plano?.mesociclo.total_semanas,
+    checkin: ckHoje,
+  });
+  const alvoRir = rirDia.alvo;
+  const e1rmRef = exercise ? e1rmReferencia(state.registros, sess?.id)[exercise.id] ?? null : null;
+
   const [carga, setCarga] = useState(prefillCarga);
   const [reps, setReps] = useState(prefillReps);
-  const [rir, setRir] = useState(presc?.rir_alvo ?? 2);
+  const [rir, setRir] = useState(alvoRir);
   // Fase automática pela estrutura (1º exercício: aquece → aproximação → trabalho; demais: só trabalho).
   const [tipoManual, setTipoManual] = useState<TipoSerie | null>(null);
   const faseAuto = presc ? proximaFase(presc, prep, seriesDone) : null;
@@ -187,13 +203,13 @@ export default function TreinoPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia os campos do logger quando muda o exercício/fase; reescrever exigiria remontar o componente
     setCarga(cargaInicial);
     setReps(prefillReps);
-    setRir(presc?.rir_alvo ?? 2);
+    setRir(alvoRir);
     setTipoManual(null);
     setDor(false);
     setOcupado(false);
     setAnchorPulse(false);
     setHitFlash(false);
-  }, [presc?.id, cargaInicial, prefillReps, presc?.rir_alvo, presc?.tecnica]);
+  }, [presc?.id, cargaInicial, prefillReps, alvoRir, presc?.tecnica]);
 
   useEffect(() => {
     return () => {
@@ -225,7 +241,7 @@ export default function TreinoPage() {
   }, []);
 
   const alvoLabel = presc
-    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}${prep ? " · antes: aquecimento + aproximação" : ""}${presc.tecnica_final ? ` · última série: ${nomeTecnica(presc.tecnica_final)}` : ""}`
+    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${alvoRir}${prep ? " · antes: aquecimento + aproximação" : ""}${presc.tecnica_final ? ` · última série: ${nomeTecnica(presc.tecnica_final)}` : ""}`
     : "";
 
   if (!sess) {
@@ -293,6 +309,25 @@ export default function TreinoPage() {
           parBiSet ? state.exercicios.find((e) => e.id === parBiSet.exercicio_id)?.nome : undefined,
         )
       : null;
+  // Feedback da última série (só leitura: calibra o RIR relatado com e1RM e queda de reps).
+  const trabalhoSessao = seriesDone.filter((r) => !ehSeriePreparatoria(r.tipo_serie));
+  const calsSessao = calibrarSessao(seriesDone, e1rmRef);
+  const ultimaSerie = seriesDone[seriesDone.length - 1];
+  const fbSerie = ultimaSerie
+    ? (() => {
+        const ehTrab = !ehSeriePreparatoria(ultimaSerie.tipo_serie);
+        const cal = ehTrab ? calsSessao[calsSessao.length - 1]! : { rir_estimado: null, rir_interpretado: ultimaSerie.rir_percebido, desvio: 0, fonte: "relatado" as const };
+        const fb = feedbackSerie({ serie: ultimaSerie, faixa: presc.faixa_reps, alvo: rirDia, cal, ultima: !exercicioPendente });
+        // A queda de reps só aparece quando a série seguinte entra: avisa sobre a anterior.
+        const ant = calsSessao.length >= 2 ? calsSessao[calsSessao.length - 2]! : null;
+        const serieAnt = trabalhoSessao[trabalhoSessao.length - 2];
+        const calAnt =
+          ehTrab && !fb.calibracao && ant && serieAnt && ant.rir_estimado != null && Math.abs(ant.desvio) >= 2
+            ? feedbackSerie({ serie: serieAnt, faixa: presc.faixa_reps, alvo: rirDia, cal: ant, ultima: false }).calibracao
+            : null;
+        return { ...fb, calibracao: fb.calibracao ?? (calAnt ? calAnt.replace(/^Você marcou/, "Na série anterior você marcou") : null) };
+      })()
+    : null;
   const tecKey = planoTec ? `${presc.id}-${planoTec.tipo}-${planoTec.campos.length}` : "";
   // Sugestões do Coach como ponto de partida; o usuário ajusta pro que fez.
   const tecReps = planoTec ? (tecEdit.key === tecKey ? tecEdit.reps : planoTec.campos.map((c) => c.sugestao)) : [];
@@ -329,7 +364,7 @@ export default function TreinoPage() {
     const numero = seriesDone.length + 1;
     const inReps =
       reps >= presc.faixa_reps[0] && reps <= presc.faixa_reps[1];
-    const inRir = rir <= presc.rir_alvo;
+    const inRir = rir <= alvoRir + 1;
     const result = logSerie({
       sessao_id: sess.id,
       prescricao_id: presc.id,
@@ -482,6 +517,11 @@ export default function TreinoPage() {
           <div className="text-sm text-muted">{alvoLabel}</div>
           <EvidenciaBadge evidencia={presc.evidencia} />
         </div>
+        {rirDia.motivos.length > 0 ? (
+          <p data-testid="rir-do-dia" className="-mt-2 mb-3 text-[11px] leading-snug text-muted">
+            RIR {alvoRir} hoje: {rirDia.motivos.join(" ")}
+          </p>
+        ) : null}
 
         {altEx && (
           <div className="mb-2 flex items-center justify-between gap-2 rounded-[14px] border border-border px-3 py-2 text-xs text-muted">
@@ -650,6 +690,22 @@ export default function TreinoPage() {
               </span>
             </div>
           ))}
+
+          {fbSerie ? (
+            <div
+              data-testid="feedback-falha"
+              className={`motion-swap rounded-xl border px-3 py-2 text-xs leading-snug ${
+                fbSerie.zona === "efetiva"
+                  ? "border-go/40 bg-go/10 text-go"
+                  : fbSerie.zona === "aquecimento"
+                    ? "border-border text-muted"
+                    : "border-warn/40 bg-warn/10 text-warn"
+              }`}
+            >
+              <p className="font-semibold">{fbSerie.texto}</p>
+              {fbSerie.calibracao ? <p className="mt-1 text-bone-50/80">{fbSerie.calibracao}</p> : null}
+            </div>
+          ) : null}
 
           {/* Preview aquecimento — pulsa quando âncora muda; % math fica pro motor */}
           {exercicioPendente && prep && tipo !== "aquecimento" && !seriesDone.some((r) => r.tipo_serie === "aquecimento") && (

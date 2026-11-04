@@ -60,13 +60,37 @@ export type FeedbackSono = {
   r9_sono: boolean;
 };
 
+/** Noite anterior p/ regularidade: só o horário de dormir conta (mesma regra do resumo semanal). */
+export type NoiteHistorico = number | { sono_h: number; sono_inicio?: string | null };
+
+/** Mesma régua do resumo semanal (lote 8): desvio do horário de dormir > 60 min, com pelo menos 3 noites. */
+export const IRREGULAR_DORMIR_MIN = 60;
+export const NOITES_MIN_REGULARIDADE = 3;
+
+function eixoNoite(hhmm: string): number | null {
+  const m = minutosDesdeMeiaNoite(hhmm);
+  if (m == null) return null;
+  return m >= 12 * 60 ? m - 12 * 60 : m + 12 * 60;
+}
+
+/** Desvio padrão do horário de dormir (min) nas noites com horário; null se houver menos de 3. */
+export function variacaoHorarioDormir(inicios: Array<string | null | undefined>): number | null {
+  const xs = inicios.map((x) => (x ? eixoNoite(x) : null)).filter((x): x is number => x != null);
+  if (xs.length < NOITES_MIN_REGULARIDADE) return null;
+  const m = xs.reduce((a, b) => a + b, 0) / xs.length;
+  return Math.sqrt(xs.reduce((a, b) => a + (b - m) ** 2, 0) / xs.length);
+}
+
 /**
  * Feedback em PT a partir da duração (+ opcional histórico recente).
- * Não altera o motor — só copy de UI.
+ * Regularidade segue a regra do resumo semanal: só o horário de dormir conta
+ * (duração variando não marca "irregular"). Não altera o treino, só copy de UI.
+ * `inicioHoje` é o horário de dormir da noite avaliada.
  */
 export function feedbackSono(
   duracaoH: number,
-  historicoDuracoes?: number[],
+  historico?: NoiteHistorico[],
+  inicioHoje?: string | null,
 ): FeedbackSono {
   const r9_sono = duracaoH < 6;
   let base: FeedbackSono;
@@ -101,20 +125,20 @@ export function feedbackSono(
     };
   }
 
-  const hist = (historicoDuracoes ?? []).filter(
-    (h) => Number.isFinite(h) && h > 0,
-  );
-  if (hist.length >= 2) {
-    const recent = [...hist.slice(-3), duracaoH];
-    const min = Math.min(...recent);
-    const max = Math.max(...recent);
-    if (max - min >= 1.75) {
+  // Sono curto tem prioridade (muda o treino do dia). Só olha regularidade com duração ok.
+  if (base.nivel !== "baixo" && historico && historico.length) {
+    const inicios = [
+      ...historico.slice(0, 6).map((h) => (typeof h === "number" ? null : h.sono_inicio ?? null)),
+      inicioHoje ?? null,
+    ];
+    const v = variacaoHorarioDormir(inicios);
+    if (v != null && v > IRREGULAR_DORMIR_MIN) {
       return {
         nivel: "inconsistente",
-        titulo: "Horário de sono irregular",
+        titulo: "Horário de dormir irregular",
         dica:
           base.dica +
-          " Seu sono tem variado bastante de uma noite pra outra. Horários mais estáveis ajudam a acordar disposto.",
+          " O horário em que você deita tem variado mais de 1 hora entre as noites. Deitar sempre perto do mesmo horário ajuda a acordar disposto.",
         r9_sono,
       };
     }
