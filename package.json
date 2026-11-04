@@ -49,7 +49,8 @@
     "smoke:pendente": "npx --yes tsx scripts/smoke-pendente.ts",
     "smoke:limpar-dia": "npx --yes tsx scripts/smoke-limpar-dia.ts",
     "smoke:acoes-dias": "npx --yes tsx scripts/smoke-acoes-dias.ts",
-    "smoke:faixa": "npx --yes tsx scripts/smoke-faixa.ts"
+    "smoke:faixa": "npx --yes tsx scripts/smoke-faixa.ts",
+    "smoke:tipo-carga": "npx --yes tsx scripts/smoke-tipo-carga.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

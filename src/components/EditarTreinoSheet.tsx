@@ -44,6 +44,7 @@ import {
   type RascunhoCorrecao,
 } from "@/lib/plan/corrigir-concluida";
 import { alternativasParaItem as altsTroca } from "@/lib/plan/editar-treino";
+import { rotuloCarga } from "@/lib/catalog/tipo-carga";
 
 export const EQUIP: Record<string, string> = {
   barra: "Barra", halteres: "Halteres", maquina: "Máquina", cabo: "Cabo", kettlebell: "Kettlebell",
@@ -223,7 +224,7 @@ function CorrigirRegistro({ sessaoId, onClose, onSalvo }: { sessaoId: string; on
                   {it.series.map((sr, j) => (
                     <div key={j} className="flex items-end gap-2">
                       <span className="mb-2 w-14 text-[11px] text-muted">Série {j + 1}</span>
-                      <Num label="kg" valor={sr.carga_kg} step={0.5} min={0} max={1000} onChange={(v) => setR(editarSerie(r, i, j, { carga_kg: v }))} />
+                      <Num label={ex && rotuloCarga(ex) ? `kg ${rotuloCarga(ex)}` : "kg"} valor={sr.carga_kg} step={0.5} min={0} max={1000} onChange={(v) => setR(editarSerie(r, i, j, { carga_kg: v }))} />
                       <Num label="reps" valor={sr.reps} step={1} min={0} max={100} onChange={(v) => setR(editarSerie(r, i, j, { reps: Math.round(v) }))} />
                       <Num label="RIR" valor={sr.rir_percebido} step={1} min={0} max={RIR_MAX_REGISTRO} onChange={(v) => setR(editarSerie(r, i, j, { rir_percebido: Math.round(v) }))} />
                       <Mini label={`Remover série ${j + 1}`} onClick={() => setR(removerSerie(r, i, j))}>×</Mini>

@@ -36,6 +36,7 @@ import {
   podeMudarTecnicaAoVivo,
   type RascunhoAoVivo,
 } from "@/lib/treino/editar-durante-treino";
+import { rotuloCarga } from "@/lib/catalog/tipo-carga";
 
 const fmt = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
 
@@ -222,6 +223,7 @@ export function EditarDuranteTreinoSheet(props: {
                         <div className="flex items-center gap-1.5">
                           <Mini label="Menos carga" onClick={() => setR(ajustarCargaAoVivo(r, i, kg - step))} disabled={kg <= 0}>−</Mini>
                           <span className="min-w-12 text-center text-sm font-semibold tabular-nums">{fmt(kg)} kg</span>
+                          {efetivo && rotuloCarga(efetivo) ? <span className="text-[10px] text-muted">{rotuloCarga(efetivo)}</span> : null}
                           <Mini label="Mais carga" onClick={() => setR(ajustarCargaAoVivo(r, i, kg + step))}>+</Mini>
                         </div>
                       </div>

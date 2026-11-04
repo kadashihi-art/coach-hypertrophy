@@ -5,6 +5,7 @@
  *
  * Só lê dados. Quem decide progressão continua sendo o motor (R1–R12).
  */
+import { textoCarga } from "@/lib/catalog/tipo-carga";
 import type {
   Equipamento,
   EstadoExercicio,
@@ -193,11 +194,14 @@ export function resumirExercicios(
 }
 
 /** "40 kg × 10 reps @ RIR 2" (null quando nunca houve série válida). */
-export function textoUltimaVez(m: MemoriaExercicio | null | undefined): string | null {
+export function textoUltimaVez(
+  m: MemoriaExercicio | null | undefined,
+  ex?: Parameters<typeof textoCarga>[1],
+  alternado = false,
+): string | null {
   if (!m || m.ultima_carga_kg == null || m.ultimas_reps == null) return null;
-  const kg = String(m.ultima_carga_kg).replace(".", ",");
   const rir = m.ultimo_rir == null ? "" : ` @ RIR ${m.ultimo_rir}`;
-  return `${kg} kg × ${m.ultimas_reps} reps${rir}`;
+  return `${textoCarga(m.ultima_carga_kg, ex, alternado)} × ${m.ultimas_reps} reps${rir}`;
 }
 
 /** Texto curto da tendência (ex.: "+2,5% no e1RM"). */

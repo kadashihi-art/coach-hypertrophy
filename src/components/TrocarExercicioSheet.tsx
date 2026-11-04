@@ -14,6 +14,7 @@ import {
   listarAlternativasTroca,
   previaTroca,
 } from "@/lib/plan/trocar-exercicio";
+import { textoCarga } from "@/lib/catalog/tipo-carga";
 
 const EQUIP: Record<string, string> = {
   barra: "Barra", halteres: "Halteres", maquina: "Máquina", cabo: "Cabo", kettlebell: "Kettlebell",
@@ -158,7 +159,7 @@ export function TrocarExercicioSheet({
                 {previa.series} séries · {previa.faixa_reps[0]}–{previa.faixa_reps[1]} reps · {previa.rir_alvo} {previa.rir_alvo === 1 ? "rep" : "reps"} na reserva
               </p>
               <p className="mt-1 text-xs text-muted">
-                Carga inicial {previa.carga_kg} kg{" "}
+                Carga inicial {textoCarga(previa.carga_kg, previa.para)}{" "}
                 {previa.carga_origem === "historico"
                   ? "(do que você já fez nesse exercício)"
                   : previa.carga_origem === "mesmo_padrao"
