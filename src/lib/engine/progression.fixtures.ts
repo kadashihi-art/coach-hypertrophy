@@ -252,3 +252,196 @@ export function assertR8NaoBloqueiaR1(): { ok: boolean; msg: string } {
       : `R8 não bloqueia FAIL: ${d.regra}`,
   };
 }
+
+// ── R12 calibração inicial ───────────────────────────────────────────────
+
+function estadoEstimativa(over: Partial<EstadoExercicio> = {}): EstadoExercicio {
+  return {
+    ...estadoSupino60(),
+    carga_atual_kg: 30,
+    alvo_proxima_sessao: { carga_kg: 30, faixa_reps: [6, 10], rir_alvo: 2 },
+    // Estado recém-gerado: PR/e1RM ainda são a estimativa, não algo levantado.
+    pr_carga_kg: 30,
+    pr_reps: 0,
+    e1rm_estimado_kg: 40,
+    origem_carga: "estimativa_conservadora",
+    primeira_sessao: true,
+    ...over,
+  };
+}
+
+function seriesCalibracao(opts: {
+  cargaKg: number;
+  reps: number;
+  rir: number;
+  tipo_serie?: RegistroSerie["tipo_serie"];
+}): RegistroSerie[] {
+  const base = {
+    sessao_id: "sess-calib",
+    prescricao_id: "presc-supino",
+    exercicio_id: "supino_reto_convencional",
+    dor: false,
+    executado_em: "2026-10-21T18:00:00.000Z",
+  };
+  return [
+    {
+      ...base,
+      id: "c1",
+      numero: 1,
+      tipo_serie: opts.tipo_serie ?? ("trabalho" as const),
+      carga_kg: opts.cargaKg,
+      reps: opts.reps,
+      rir_percebido: opts.rir,
+    },
+  ];
+}
+
+/** Estimativa folgada + RIR alto → calibra subindo (mais que R1). */
+export function assertR12Subir(): { ok: boolean; msg: string } {
+  const series = seriesCalibracao({ cargaKg: 30, reps: 10, rir: 4 });
+  const d = decidirProgressao({ ...inputR1(), series, estado: estadoEstimativa() });
+  const ok =
+    d.regra === "R12" &&
+    d.acao === "subir_carga" &&
+    d.nova_carga_kg > 30 &&
+    d.nova_carga_kg <= 40;
+  return {
+    ok,
+    msg: ok
+      ? `R12 subir OK: 30→${d.nova_carga_kg} kg (RIR 4)`
+      : `R12 subir FAIL: ${d.regra} ${d.acao} ${d.nova_carga_kg}`,
+  };
+}
+
+/** Estimativa já no ponto (piso da faixa no RIR alvo) → mantém e calibra. */
+export function assertR12Manter(): { ok: boolean; msg: string } {
+  const series = seriesCalibracao({ cargaKg: 40, reps: 6, rir: 2 });
+  const estado = estadoEstimativa({ carga_atual_kg: 40 });
+  const d = decidirProgressao({ ...inputR1(), series, estado });
+  const depois = aplicarDecisao(estado, d, series);
+  const ok =
+    d.regra === "R12" &&
+    d.acao === "manter_carga" &&
+    d.nova_carga_kg === 40 &&
+    depois.origem_carga === "calibracao" &&
+    depois.primeira_sessao === false;
+  return {
+    ok,
+    msg: ok
+      ? `R12 manter OK: 40 kg; origem=${depois.origem_carga}`
+      : `R12 manter FAIL: ${d.regra} ${d.acao} ${d.nova_carga_kg} origem=${depois.origem_carga}`,
+  };
+}
+
+/** Estimativa otimista demais (falhou o piso) → calibra reduzindo. */
+export function assertR12Reduzir(): { ok: boolean; msg: string } {
+  const series = seriesCalibracao({ cargaKg: 60, reps: 4, rir: 0 });
+  const estado = estadoEstimativa({
+    carga_atual_kg: 60,
+    faixa_reps: [8, 12],
+    alvo_proxima_sessao: { carga_kg: 60, faixa_reps: [8, 12], rir_alvo: 2 },
+  });
+  const d = decidirProgressao({ ...inputR1(), series, estado });
+  const ok =
+    d.regra === "R12" &&
+    d.acao === "reduzir_carga" &&
+    d.nova_carga_kg < 60 &&
+    d.nova_carga_kg >= 50;
+  return {
+    ok,
+    msg: ok
+      ? `R12 reduzir OK: 60→${d.nova_carga_kg} kg (4 reps @ RIR 0)`
+      : `R12 reduzir FAIL: ${d.regra} ${d.acao} ${d.nova_carga_kg}`,
+  };
+}
+
+/** Peso corporal (0 kg) não inventa carga: mantém 0 e encerra a calibração. */
+export function assertR12SemCarga(): { ok: boolean; msg: string } {
+  const series = seriesCalibracao({ cargaKg: 0, reps: 20, rir: 1 });
+  const estado = estadoEstimativa({
+    carga_atual_kg: 0,
+    alvo_proxima_sessao: { carga_kg: 0, faixa_reps: [6, 10], rir_alvo: 2 },
+  });
+  const d = decidirProgressao({ ...inputR1(), series, estado });
+  const depois = aplicarDecisao(estado, d, series);
+  const ok =
+    d.regra === "R12" &&
+    d.acao === "manter_e_checar" &&
+    d.nova_carga_kg === 0 &&
+    depois.origem_carga === "calibracao";
+  return {
+    ok,
+    msg: ok
+      ? "R12 sem carga OK: 0 kg mantido"
+      : `R12 sem carga FAIL: ${d.regra} ${d.acao} ${d.nova_carga_kg}`,
+  };
+}
+
+/** Sem série válida (só aquecimento) → adia a calibração para a próxima. */
+export function assertR12Adiada(): { ok: boolean; msg: string } {
+  const series = seriesCalibracao({
+    cargaKg: 30,
+    reps: 10,
+    rir: 3,
+    tipo_serie: "aquecimento",
+  });
+  const estado = estadoEstimativa();
+  const d = decidirProgressao({ ...inputR1(), series, estado });
+  const depois = aplicarDecisao(estado, d, series);
+  const ok =
+    d.regra === "R12" &&
+    d.acao === "manter_e_checar" &&
+    depois.primeira_sessao === true &&
+    depois.origem_carga === "estimativa_conservadora";
+  return {
+    ok,
+    msg: ok
+      ? "R12 adiada OK: sem série válida, calibra na próxima"
+      : `R12 adiada FAIL: ${d.regra} ${d.acao} primeira=${depois.primeira_sessao}`,
+  };
+}
+
+/** Alvo logo acima do atual não pode "sumir" no arredondamento (10 → 12,5). */
+export function assertR12ArredondaPraCima(): { ok: boolean; msg: string } {
+  const series = seriesCalibracao({ cargaKg: 10, reps: 10, rir: 4 });
+  const estado = estadoEstimativa({
+    carga_atual_kg: 10,
+    faixa_reps: [8, 12],
+    alvo_proxima_sessao: { carga_kg: 10, faixa_reps: [8, 12], rir_alvo: 2 },
+  });
+  const d = decidirProgressao({ ...inputR1(), series, estado });
+  const ok =
+    d.regra === "R12" && d.acao === "subir_carga" && d.nova_carga_kg === 12.5;
+  return {
+    ok,
+    msg: ok
+      ? `R12 arredonda pra cima OK: 10→${d.nova_carga_kg} kg`
+      : `R12 arredonda pra cima FAIL: ${d.regra} ${d.acao} ${d.nova_carga_kg}`,
+  };
+}
+
+/** PR/e1RM da estimativa não podem sobreviver à 1ª sessão real. */
+export function assertR12PRReal(): { ok: boolean; msg: string } {
+  const series = seriesCalibracao({ cargaKg: 60, reps: 4, rir: 0 });
+  const estado = estadoEstimativa({
+    carga_atual_kg: 60,
+    faixa_reps: [8, 12],
+    alvo_proxima_sessao: { carga_kg: 60, faixa_reps: [8, 12], rir_alvo: 2 },
+    pr_carga_kg: 90,
+    pr_reps: 0,
+    e1rm_estimado_kg: 100,
+  });
+  const d = decidirProgressao({ ...inputR1(), series, estado });
+  const depois = aplicarDecisao(estado, d, series);
+  const e1rmReal = Math.round(60 * (1 + 4 / 30) * 10) / 10;
+  const ok =
+    d.regra === "R12" &&
+    depois.pr_carga_kg === 60 &&
+    depois.e1rm_estimado_kg === e1rmReal;
+  return {
+    ok,
+    msg: ok
+      ? `R12 PR real OK: PR=60 e1RM=${depois.e1rm_estimado_kg} (antes 90/100)`
+      : `R12 PR real FAIL: PR=${depois.pr_carga_kg} e1RM=${depois.e1rm_estimado_kg}`,
+  };
+}

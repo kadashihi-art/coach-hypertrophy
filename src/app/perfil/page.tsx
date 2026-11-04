@@ -21,6 +21,8 @@ import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao, precisaResponderParq } from 
 type Campo =
   | "peso"
   | "altura"
+  | "sexo"
+  | "idade"
   | "dias"
   | "minutos"
   | "experiencia"
@@ -32,6 +34,8 @@ type Campo =
 const MUDA_PLANO: Record<Campo, boolean> = {
   peso: false,
   altura: false,
+  sexo: false,
+  idade: false,
   cardio: false,
   dias: true,
   minutos: true,
@@ -44,6 +48,8 @@ const MUDA_PLANO: Record<Campo, boolean> = {
 const TITULO: Record<Campo, string> = {
   peso: "Peso",
   altura: "Altura",
+  sexo: "Sexo",
+  idade: "Idade",
   dias: "Dias por semana",
   minutos: "Minutos por sessão",
   experiencia: "Nível de experiência",
@@ -98,6 +104,8 @@ type Rascunho = Pick<
   Perfil,
   | "peso_kg"
   | "altura_cm"
+  | "sexo"
+  | "idade"
   | "dias_por_semana"
   | "minutos_por_sessao"
   | "experiencia"
@@ -113,6 +121,10 @@ function patchDoCampo(c: Campo, r: Rascunho): Partial<Perfil> {
       return { peso_kg: r.peso_kg };
     case "altura":
       return { altura_cm: r.altura_cm };
+    case "sexo":
+      return { sexo: r.sexo };
+    case "idade":
+      return { idade: r.idade };
     case "dias":
       return { dias_por_semana: r.dias_por_semana };
     case "minutos":
@@ -207,6 +219,8 @@ export default function PerfilPage() {
     setDraft({
       peso_kg: perfil.peso_kg,
       altura_cm: perfil.altura_cm,
+      sexo: perfil.sexo,
+      idade: perfil.idade,
       dias_por_semana: perfil.dias_por_semana,
       minutos_por_sessao: perfil.minutos_por_sessao,
       experiencia: perfil.experiencia,
@@ -307,6 +321,35 @@ export default function PerfilPage() {
         return <NumStepper value={d.peso_kg} step={0.5} unit="kg" onChange={(n) => set({ peso_kg: Math.min(200, Math.max(40, n)) })} />;
       case "altura":
         return <NumStepper value={d.altura_cm} step={1} unit="cm" onChange={(n) => set({ altura_cm: Math.min(220, Math.max(140, n)) })} />;
+      case "sexo":
+        return (
+          <div className="flex flex-wrap gap-2">
+            {(["masculino", "feminino"] as const).map((s) => (
+              <Chip key={s} selected={d.sexo === s} onClick={() => set({ sexo: d.sexo === s ? undefined : s })}>
+                {s === "masculino" ? "Masculino" : "Feminino"}
+              </Chip>
+            ))}
+            <Chip selected={!d.sexo} onClick={() => set({ sexo: undefined })}>
+              Não informar
+            </Chip>
+          </div>
+        );
+      case "idade":
+        return (
+          <div className="flex flex-col gap-3">
+            <NumStepper
+              value={d.idade ?? 30}
+              step={1}
+              unit="anos"
+              onChange={(n) => set({ idade: Math.round(Math.min(100, Math.max(14, n))) })}
+            />
+            {d.idade != null ? (
+              <button type="button" className="self-start text-xs text-muted underline" onClick={() => set({ idade: undefined })}>
+                Não informar
+              </button>
+            ) : null}
+          </div>
+        );
       case "dias":
         return (
           <div className="flex flex-wrap gap-2">
@@ -401,6 +444,18 @@ export default function PerfilPage() {
       <Card className="mb-4 !py-1">
         <Linha label="Peso" valor={`${perfil.peso_kg} kg`} onClick={() => abrir("peso")} flash={flash === "peso"} />
         <Linha label="Altura" valor={`${perfil.altura_cm} cm`} onClick={() => abrir("altura")} flash={flash === "altura"} />
+        <Linha
+          label="Sexo"
+          valor={perfil.sexo === "masculino" ? "masculino" : perfil.sexo === "feminino" ? "feminino" : "não informado"}
+          onClick={() => abrir("sexo")}
+          flash={flash === "sexo"}
+        />
+        <Linha
+          label="Idade"
+          valor={perfil.idade != null ? `${perfil.idade} anos` : "não informada"}
+          onClick={() => abrir("idade")}
+          flash={flash === "idade"}
+        />
       </Card>
 
       <SectionTitle title="Treino" />

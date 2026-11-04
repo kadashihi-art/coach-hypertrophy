@@ -11,12 +11,13 @@ import type {
   Exercicio,
   Perfil,
   Plano,
+  RegistroSerie,
   Sessao,
   VolumeSemanal,
 } from "@/lib/domain";
+import { cargaSugeridaParaExercicio } from "@/lib/engine/memoria-carga";
 import { gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import { derivarRacional } from "@/lib/plan/racional";
-import { mergeEstadosPreservados } from "@/lib/plan/calendario";
 import { parqBloqueiaPrescricao, PARQ_BLOQUEIO_MSG } from "@/lib/plan/parq";
 import { buildCoachSystemWithArsenal } from "@/lib/llm/research-arsenal";
 
@@ -204,6 +205,8 @@ export async function remountPlano(args: {
   perfil: Perfil;
   catalog: Exercicio[];
   estadosAnteriores: EstadoExercicio[];
+  /** Série registradas: memória de carga para exercícios novos/trocados. */
+  registros?: RegistroSerie[];
   /** Skip LLM even if configured (smoke / client offline) */
   skipLlm?: boolean;
 }): Promise<RemountResult> {
@@ -265,6 +268,28 @@ export async function remountPlano(args: {
     for (const p of s.prescricoes) needed.add(p.exercicio_id);
   }
   const baseNovos = motorEstados.filter((e) => needed.has(e.exercicio_id));
+
+  // Memória de carga: exercício sem estado anterior (novo no plano) herda o
+  // histórico exato ou o de um exercício equivalente (mesmo padrão/músculo).
+  const registros = args.registros ?? [];
+  const anterioresIds = new Set(args.estadosAnteriores.map((e) => e.exercicio_id));
+  for (const e of baseNovos) {
+    if (anterioresIds.has(e.exercicio_id)) continue;
+    const sugerida = cargaSugeridaParaExercicio(
+      { estados: [], registros, exercicios: args.catalog },
+      e.exercicio_id,
+      e.carga_atual_kg,
+    );
+    if (sugerida.origem !== "historico" && sugerida.origem !== "mesmo_padrao") continue;
+    if (!(sugerida.carga_kg > 0)) continue;
+    e.carga_atual_kg = sugerida.carga_kg;
+    e.alvo_proxima_sessao = { ...e.alvo_proxima_sessao, carga_kg: sugerida.carga_kg };
+    e.origem_carga = "historico";
+    e.primeira_sessao = false;
+    e.e1rm_estimado_kg =
+      Math.round(sugerida.carga_kg * (1 + e.faixa_reps[1] / 30) * 10) / 10;
+  }
+
   // Add placeholders for swapped-in exercises missing from motor estados
   const have = new Set(baseNovos.map((e) => e.exercicio_id));
   const agora = new Date().toISOString();
@@ -308,7 +333,43 @@ export async function remountPlano(args: {
     });
   }
 
-  const estados = mergeEstadosPreservados(args.estadosAnteriores, baseNovos);
+  // Placeholders também consultam a memória (troca sugerida pela LLM).
+  for (const e of baseNovos) {
+    if (anterioresIds.has(e.exercicio_id) || !e.primeira_sessao) continue;
+    const sugerida = cargaSugeridaParaExercicio(
+      { estados: [], registros, exercicios: args.catalog },
+      e.exercicio_id,
+      e.carga_atual_kg,
+    );
+    if (sugerida.origem !== "historico" && sugerida.origem !== "mesmo_padrao") continue;
+    if (!(sugerida.carga_kg > 0)) continue;
+    e.carga_atual_kg = sugerida.carga_kg;
+    e.alvo_proxima_sessao = { ...e.alvo_proxima_sessao, carga_kg: sugerida.carga_kg };
+    e.origem_carga = "historico";
+    e.primeira_sessao = false;
+    e.e1rm_estimado_kg =
+      Math.round(sugerida.carga_kg * (1 + e.faixa_reps[1] / 30) * 10) / 10;
+  }
+
+  // Memória de carga: preserva histórico, PRs e e1RM; adota faixa/RIR do plano novo.
+  const anterioresPorId = new Map(
+    args.estadosAnteriores.map((e) => [e.exercicio_id, e]),
+  );
+  const estados = baseNovos.map((novo) => {
+    const anterior = anterioresPorId.get(novo.exercicio_id);
+    if (!anterior) return novo;
+    return {
+      ...anterior,
+      faixa_reps: novo.faixa_reps,
+      rir_alvo: novo.rir_alvo,
+      alvo_proxima_sessao: {
+        carga_kg: anterior.alvo_proxima_sessao.carga_kg,
+        faixa_reps: novo.alvo_proxima_sessao.faixa_reps,
+        rir_alvo: novo.alvo_proxima_sessao.rir_alvo,
+      },
+      atualizado_em: novo.atualizado_em,
+    };
+  });
 
   // Preserve data_inicio if perfil remount shouldn't clear calendar — caller decides
   return {

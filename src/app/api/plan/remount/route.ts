@@ -1,6 +1,6 @@
 /**
  * POST /api/plan/remount — auth required.
- * Body: { perfil: Partial<Perfil> & required fields…, estados?: EstadoExercicio[] }
+ * Body: { perfil: Partial<Perfil> & required fields…, estados?: EstadoExercicio[], registros?: RegistroSerie[] }
  * Always runs motor; optionally LLM (COACH_LLM_* / COACH_LLM_PLAN_MODEL).
  * Returns { plano, sessoes, estados, volumes_semanais, justificativa_llm?, fonte }.
  * Does NOT write Blob — client applies via updatePerfilAndRemount.
@@ -13,6 +13,7 @@ import {
   ExperienciaSchema,
   ObjetivoSchema,
   EstadoExercicioSchema,
+  RegistroSerieSchema,
   PerfilSchema,
 } from "@/lib/domain";
 import { CATALOG_EXERCICIOS } from "@/lib/catalog/exercicios";
@@ -36,6 +37,8 @@ const PerfilPatchSchema = z.object({
   fase2_semanas: PerfilSchema.shape.fase2_semanas,
   dias_descanso_fixos: PerfilSchema.shape.dias_descanso_fixos,
   acordos_plano: PerfilSchema.shape.acordos_plano,
+  sexo: PerfilSchema.shape.sexo,
+  idade: PerfilSchema.shape.idade,
   onboarding_concluido: z.boolean().optional(),
   parq_respostas: z.array(z.boolean()).optional(),
   parq_liberado: z.boolean().optional(),
@@ -48,6 +51,7 @@ const BodySchema = z.object({
   /** Full perfil fallback for merge if patch is partial */
   perfil_base: PerfilSchema.optional(),
   estados: z.array(EstadoExercicioSchema).optional().default([]),
+  registros: z.array(RegistroSerieSchema).optional().default([]),
   skip_llm: z.boolean().optional().default(false),
 });
 
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { perfil: patch, perfil_base, estados, skip_llm } = parsed.data;
+  const { perfil: patch, perfil_base, estados, registros, skip_llm } = parsed.data;
   const base = perfil_base ?? {
     id: patch.id ?? session.user.id,
     peso_kg: patch.peso_kg ?? 80,
@@ -84,6 +88,8 @@ export async function POST(request: Request) {
     equipamentos: patch.equipamentos ?? ["halteres", "maquina"],
     restricoes: patch.restricoes ?? [],
     objetivo: patch.objetivo ?? "hipertrofia",
+    sexo: patch.sexo,
+    idade: patch.idade,
     onboarding_concluido: true,
     parq_liberado: patch.parq_liberado ?? false,
     parq_respondido_em: patch.parq_respondido_em ?? null,
@@ -105,6 +111,7 @@ export async function POST(request: Request) {
       perfil,
       catalog: CATALOG_EXERCICIOS,
       estadosAnteriores: estados,
+      registros,
       skipLlm: skip_llm,
     });
     return NextResponse.json({

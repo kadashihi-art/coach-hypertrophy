@@ -17,8 +17,9 @@ import type {
   SnapshotSessao,
 } from "@/lib/domain";
 import { VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
-import { cargaDoEstado, findAlt } from "@/lib/plan/alternativa";
+import { cargaParaExercicio, findAlt } from "@/lib/plan/alternativa";
 import { estimarCargaKg } from "@/lib/plan/gerar-plano";
+import { parseRestricoes } from "@/lib/plan/restricoes";
 import {
   equipsDoPerfil,
   listarAlternativasTroca,
@@ -255,6 +256,7 @@ function novoEstado(exId: string, carga: number, faixa: [number, number], rir: n
 export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { sessao: Sessao; estadosNovos: EstadoExercicio[] } {
   const catalog = state.exercicios;
   const equips = equipsDoPerfil(state.perfil);
+  const restr = parseRestricoes(state.perfil?.restricoes ?? []);
   const rirBase = sessao.prescricoes[0]?.rir_alvo ?? 2;
   const estadosNovos: EstadoExercicio[] = [];
   const prescricoes: Prescricao[] = r.itens.map((it, i) => {
@@ -263,9 +265,13 @@ export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { se
     if (atual) return { ...atual, ordem: i + 1, series: it.series, faixa_reps: faixa };
     const ex = catalog.find((e) => e.id === it.exercicio_id)!;
     const estimativa = state.perfil
-      ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, ex.padrao, ex.composto, ex.equipamento)
+      ? estimarCargaKg(state.perfil.peso_kg, state.perfil.experiencia, ex.padrao, ex.composto, ex.equipamento, {
+          sexo: state.perfil.sexo,
+          idade: state.perfil.idade,
+          grupo: ex.grupo_primario,
+        })
       : 0;
-    const carga = cargaDoEstado(state.estados, ex.id, estimativa);
+    const carga = cargaParaExercicio(state, ex.id, estimativa).carga_kg;
     if (!state.estados.some((e) => e.exercicio_id === ex.id)) estadosNovos.push(novoEstado(ex.id, carga, faixa, rirBase));
     const molde = sessao.prescricoes.find((p) => catalog.find((e) => e.id === p.exercicio_id)?.composto === ex.composto);
     return {
@@ -281,15 +287,22 @@ export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { se
       cadencia: "2-0-1-0",
       tecnica: "padrao",
       carga: { trabalho_kg: carga, top_set_kg: null, origem: "estimativa_conservadora" },
-      alternativa_equipamento_ocupado: findAlt(catalog, ex.padrao, equips, ex.id),
+      alternativa_equipamento_ocupado: findAlt(catalog, ex.padrao, equips, ex.id, {
+        restr,
+        excludeIds: r.itens.map((it) => it.exercicio_id),
+        grupo: ex.grupo_primario,
+      }),
       guia_id: ex.guia_id ?? null,
       evidencia: ex.composto ? "forte" : "moderado",
     };
   });
   const grupos = [...new Set(prescricoes.map((p) => catalog.find((e) => e.id === p.exercicio_id)?.grupo_primario).filter((g): g is NonNullable<typeof g> => !!g))];
-  // Duração: mantém a proporção por série de trabalho do treino original.
-  const seriesAntes = sessao.prescricoes.reduce((a, p) => a + p.series, 0) || 1;
-  const seriesDepois = prescricoes.reduce((a, p) => a + p.series, 0);
+  // Duração: mantém a proporção por tempo de execução do treino original.
+  // Unilateral conta o outro lado (~35 s extras por série), igual ao gerador.
+  const pesoSerie = (p: Prescricao) =>
+    p.series * (45 + (catalog.find((e) => e.id === p.exercicio_id)?.unilateral ? 35 : 0));
+  const seriesAntes = sessao.prescricoes.reduce((a, p) => a + pesoSerie(p), 0) || 1;
+  const seriesDepois = prescricoes.reduce((a, p) => a + pesoSerie(p), 0);
   const duracao = Math.max(15, Math.round((sessao.duracao_estimada_min * seriesDepois) / seriesAntes));
   return {
     sessao: { ...sessao, data: r.data, grupos, prescricoes, duracao_estimada_min: duracao },

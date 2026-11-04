@@ -6,6 +6,13 @@ import {
   assertR8Reduzir,
   assertR8Manter,
   assertR8NaoBloqueiaR1,
+  assertR12Subir,
+  assertR12Manter,
+  assertR12Reduzir,
+  assertR12SemCarga,
+  assertR12Adiada,
+  assertR12ArredondaPraCima,
+  assertR12PRReal,
 } from "../src/lib/engine/progression.fixtures";
 
 const results = [
@@ -16,6 +23,13 @@ const results = [
   assertR8Reduzir(),
   assertR8Manter(),
   assertR8NaoBloqueiaR1(),
+  assertR12Subir(),
+  assertR12Manter(),
+  assertR12Reduzir(),
+  assertR12SemCarga(),
+  assertR12Adiada(),
+  assertR12ArredondaPraCima(),
+  assertR12PRReal(),
 ];
 for (const r of results) {
   console.log(r.ok ? "✓" : "✗", r.msg);

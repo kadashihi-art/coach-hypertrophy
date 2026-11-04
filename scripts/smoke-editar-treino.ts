@@ -115,7 +115,17 @@ const mantidos = pv.depois.prescricoes.filter((p) => alvo.prescricoes.some((a) =
 ok(mantidos.every((p) => { const a = alvo.prescricoes.find((x) => x.exercicio_id === p.exercicio_id)!; return a.carga.trabalho_kg === p.carga.trabalho_kg && a.rir_alvo === p.rir_alvo && a.id === p.id; }), "kg/RIR/id preservados nos mantidos");
 const pAdd = pv.depois.prescricoes.find((p) => p.exercicio_id === novo.id)!;
 const est = s0.estados.find((e) => e.exercicio_id === novo.id);
-ok(pAdd.carga.trabalho_kg > 0 && (!est || pAdd.carga.trabalho_kg === (est.alvo_proxima_sessao.carga_kg ?? est.carga_atual_kg)), "kg do novo vem do estado/estimativa");
+const semCargaExterna =
+  novo.equipamento === "peso_corporal" || novo.padrao.startsWith("core_");
+ok(
+  semCargaExterna
+    ? pAdd.carga.trabalho_kg === 0
+    : pAdd.carga.trabalho_kg > 0 &&
+        (!est ||
+          pAdd.carga.trabalho_kg ===
+            (est.alvo_proxima_sessao.carga_kg ?? est.carga_atual_kg)),
+  "kg do novo vem do estado/estimativa",
+);
 ok(pv.depois.prescricoes.map((p) => p.ordem).join() === pv.depois.prescricoes.map((_, i) => i + 1).join(), "ordem renumerada");
 const prep = preparatoriasDaSessao(pv.depois.prescricoes, C);
 ok(prep[0] === true, "aquecimento no 1º da nova ordem (regra por grupo mantida)");

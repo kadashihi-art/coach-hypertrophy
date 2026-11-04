@@ -79,7 +79,7 @@ for (const a of alvoAlts) {
   ok(pd[0].carga.trabalho_kg === prev.carga_kg, "kg da prévia = kg gravado");
 }
 // kg vem do EstadoExercicio quando existe
-const comEstado = { ...state, estados: [...state.estados.filter((e) => e.exercicio_id !== alvoAlts[0].exercicio.id), { ...state.estados[0], exercicio_id: alvoAlts[0].exercicio.id, carga_atual_kg: 42.5, alvo_proxima_sessao: { ...state.estados[0].alvo_proxima_sessao, carga_kg: 47.5 } }] } as AppState;
+const comEstado = { ...state, estados: [...state.estados.filter((e) => e.exercicio_id !== alvoAlts[0].exercicio.id), { ...state.estados[0], exercicio_id: alvoAlts[0].exercicio.id, carga_atual_kg: 42.5, alvo_proxima_sessao: { ...state.estados[0].alvo_proxima_sessao, carga_kg: 47.5 }, origem_carga: "historico", primeira_sessao: false }] } as AppState;
 const pv = previaTroca(comEstado, alvoEx, alvoAlts[0].exercicio.id);
 ok(!pv || (pv.carga_kg === 47.5 && pv.carga_origem === "historico"), "kg inicial vem do estado salvo do novo exercício");
 ok(aplicarTroca(state, alvoEx, "prancha") === null, "troca inválida (outro padrão) recusada");

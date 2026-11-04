@@ -152,7 +152,11 @@ export function TrocarExercicioSheet({
               </p>
               <p className="mt-1 text-xs text-muted">
                 Carga inicial {previa.carga_kg} kg{" "}
-                {previa.carga_origem === "historico" ? "(do que você já fez nesse exercício)" : "(começo conservador; ajusto pelas suas séries)"}
+                {previa.carga_origem === "historico"
+                  ? "(do que você já fez nesse exercício)"
+                  : previa.carga_origem === "mesmo_padrao"
+                    ? "(do que você já fez num exercício parecido)"
+                    : "(começo conservador; ajusto pelas suas séries)"}
               </p>
               <p className="mt-2 text-xs text-muted">
                 Vale pra: {previa.sessoes_afetadas.map((s) => s.nome).join(", ")}. O que você já treinou fica salvo como está.

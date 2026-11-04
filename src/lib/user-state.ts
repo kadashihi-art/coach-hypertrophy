@@ -1,5 +1,6 @@
 import type { AppState } from "@/lib/domain";
 import { AppStateSchema } from "@/lib/domain";
+import { mergeCatalogoExercicios } from "@/lib/catalog/merge";
 import { blobGetJson, blobPutJson } from "@/lib/blob";
 
 export type StoredAppState = {
@@ -18,7 +19,13 @@ export async function readUserState(
   if (!raw?.state) return null;
   const parsed = AppStateSchema.safeParse(raw.state);
   if (!parsed.success) return null;
-  return { updated_at: raw.updated_at, state: parsed.data };
+  return {
+    updated_at: raw.updated_at,
+    state: {
+      ...parsed.data,
+      exercicios: mergeCatalogoExercicios(parsed.data.exercicios),
+    },
+  };
 }
 
 export async function writeUserState(

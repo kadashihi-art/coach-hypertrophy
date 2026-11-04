@@ -1,8 +1,10 @@
 "use client";
 
-import { cargaDoEstado, resolverAlternativa } from "@/lib/plan/alternativa"
+import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
+import { parseRestricoes } from "@/lib/plan/restricoes";
+import { resumirExercicio, textoUltimaVez, textoTendencia } from "@/lib/engine/memoria-carga";
 import { guiaPorPadrao } from "@/lib/plan/guia-por-padrao";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
@@ -88,7 +90,12 @@ export default function TreinoPage() {
   const estado = state.estados.find(
     (e) => e.exercicio_id === presc?.exercicio_id,
   );
-  const altEx = presc ? resolverAlternativa(presc, state.exercicios) : null;
+  const altEx = presc
+    ? resolverAlternativa(presc, state.exercicios, {
+        restr: parseRestricoes(state.perfil?.restricoes ?? []),
+        excludeIds: prescricoes.map((p) => p.exercicio_id),
+      })
+    : null;
   const guiaSeed = state.guias.find((g) => g.id === presc?.guia_id);
   const guia =
     guiaSeed ??
@@ -108,6 +115,16 @@ export default function TreinoPage() {
     0;
   const prefillReps =
     estado?.alvo_proxima_sessao.faixa_reps[0] ?? presc?.faixa_reps[0] ?? 8;
+
+  // Memória do exercício: última vez e tendência, ignorando a sessão em andamento.
+  const memoriaExercicio = exercise
+    ? resumirExercicio(state.registros, exercise.id, {
+        stepKg,
+        excluirSessaoId: sess?.id,
+      })
+    : null;
+  const linhaUltimaVez = textoUltimaVez(memoriaExercicio);
+  const linhaTendencia = textoTendencia(memoriaExercicio);
 
   // Aquecimento por grupo muscular (primeiro exercício de cada músculo ainda não aquecido).
   const prepFlags = preparatoriasDaSessao(prescricoes, state.exercicios);
@@ -253,11 +270,11 @@ export default function TreinoPage() {
     if (!presc || !exercise) return;
     if (!ocupado && altEx) {
       setOcupado(true);
-      setCarga(cargaDoEstado(state.estados, altEx.id, carga));
+      setCarga(cargaParaExercicio(state, altEx.id, carga).carga_kg);
       setCargasToast(`Usando ${altEx.nome} · carga do histórico da alternativa`);
     } else {
       setOcupado(false);
-      setCarga(cargaDoEstado(state.estados, exercise.id, prefillCarga));
+      setCarga(cargaParaExercicio(state, exercise.id, prefillCarga).carga_kg);
       setCargasToast(`De volta: ${exercise.nome}`);
     }
     window.setTimeout(() => setCargasToast(null), 2200);
@@ -587,6 +604,24 @@ export default function TreinoPage() {
                   flash="load"
                 />
               </div>
+              {(linhaUltimaVez || linhaTendencia) && (
+                <p className="mt-2 text-center text-[11px] leading-snug text-muted">
+                  {linhaUltimaVez ? (
+                    <>
+                      Última vez:{" "}
+                      <span className="text-bone-50/90">{linhaUltimaVez}</span>
+                    </>
+                  ) : (
+                    "Sem histórico ainda nesse exercício"
+                  )}
+                  {linhaTendencia ? (
+                    <>
+                      {" · "}
+                      <span className="text-bone-50/90">{linhaTendencia}</span>
+                    </>
+                  ) : null}
+                </p>
+              )}
               <div className="my-4" />
               <NumStepper
                 value={reps}
