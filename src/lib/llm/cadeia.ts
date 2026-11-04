@@ -24,6 +24,8 @@ export type PedidoLlm = {
   validar?: (texto: string) => boolean;
   /** Rótulo do ponto de uso, só pro log. */
   ponto?: string;
+  /** TEMPORÁRIO (diagnóstico de uso único): usa só esta etapa; "nenhuma" = nenhuma IA. */
+  forcarEtapa?: EtapaLlm | "nenhuma";
   /** Só pra testes. */
   fetchImpl?: typeof fetch;
 };
@@ -73,6 +75,7 @@ function etapas(p: PedidoLlm): Etapa[] {
       timeoutMs: TIMEOUT_GRATIS_MS,
       tentativas: 2,
     });
+  if (p.forcarEtapa) return out.filter((e) => e.etapa === p.forcarEtapa);
   return out;
 }
 
