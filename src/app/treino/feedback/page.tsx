@@ -45,6 +45,7 @@ export default function FeedbackPage() {
     : "";
 
   const [coach, setCoach] = useState<LlmResponseEnvelope | null>(null);
+  const [semIa, setSemIa] = useState(false);
   const [coachStatus, setCoachStatus] = useState<"idle" | "loading" | "ok" | "err">(
     "idle",
   );
@@ -78,6 +79,7 @@ export default function FeedbackPage() {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- estado de carregamento da busca ao Coach (sincroniza com a API externa)
     setCoachStatus("loading");
+    setSemIa(false);
     fetch("/api/coach/explain", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -85,11 +87,12 @@ export default function FeedbackPage() {
     })
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return (await res.json()) as LlmResponseEnvelope;
+        return (await res.json()) as LlmResponseEnvelope & { sem_ia?: boolean };
       })
       .then((data) => {
         if (cancelled) return;
         setCoach(data);
+        setSemIa(data.sem_ia === true);
         setCoachStatus("ok");
       })
       .catch(() => {
@@ -240,6 +243,9 @@ export default function FeedbackPage() {
         {coachStatus === "loading" && (
           <p className="mb-3 text-sm text-muted">Coach analisando a sessão…</p>
         )}
+        {semIa ? (
+          <p className="mb-3 text-xs text-muted">O Coach está sem IA agora; seus números seguem calculados normalmente.</p>
+        ) : null}
         {useApiCoach && coach?.mensagem_usuario ? (
           <p className="mb-3 text-sm leading-relaxed text-bone-50">
             {coach.mensagem_usuario}

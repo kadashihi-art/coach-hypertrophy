@@ -2,6 +2,7 @@
  * Camada coach explicativa — LLM read-only.
  * Narrativa sobre saída do motor. Nunca grava Blob/AppState.
  */
+import { algumaIaConfigurada, chamarCadeia, extrairJson } from "./cadeia";
 import { TOM_COACH, semIdsInternos } from "./tom";
 
 import { visaoHabilitada } from "@/lib/flags";
@@ -545,7 +546,7 @@ export function buildConversarStub(
 
 /** Mensagem humana quando a LLM não respondeu (erro/timeout/sem config). Nunca expõe stub nem ids. */
 export const COACH_FALLBACK_MSG =
-  "Tive um problema pra pensar agora. Tenta de novo em alguns segundos — seu plano e seu histórico continuam intactos.";
+  "O Coach está sem IA agora; seus números seguem calculados normalmente. Tenta de novo em alguns minutos — seu plano e seu histórico continuam intactos.";
 
 /** "triceps_halteres" → "triceps halteres": nunca mostra id snake_case cru. */
 export function nomeLegivel(id: string): string {
@@ -573,8 +574,8 @@ export class StubCoachProvider implements CoachProvider {
 }
 
 type HttpConfig = {
-  apiKey: string;
-  baseUrl: string;
+  apiKey?: string;
+  baseUrl?: string;
   model?: string;
   visionModel?: string;
 };
@@ -623,6 +624,8 @@ export const COACH_VISION_SYSTEM = [
  */
 export class HttpCoachProvider implements CoachProvider {
   private stub = new StubCoachProvider();
+  /** A última explicação veio de alguma IA? (false = texto pronto a partir dos dados) */
+  public ultimaIa: boolean | null = null;
 
   constructor(private cfg: HttpConfig) {}
 
@@ -630,37 +633,25 @@ export class HttpCoachProvider implements CoachProvider {
     system: string,
     user: string,
   ): Promise<LlmResponseEnvelope | null> {
-    try {
-      const url = this.cfg.baseUrl.replace(/\/$/, "");
-      const res = await fetch(`${url}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.cfg.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.cfg.model || "openrouter/anthropic/claude-opus-5",
-          temperature: 0.2,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
-          ],
-        }),
-        signal: AbortSignal.timeout(12_000),
-      });
-      if (!res.ok) return null;
-      const json = (await res.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const raw = json.choices?.[0]?.message?.content;
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as unknown;
-      const v = validarContratoLlm(parsed);
-      return v.ok ? v.data : null;
-    } catch {
-      return null;
-    }
+    const r = await chamarCadeia({
+      ponto: "coach/explicar",
+      json: true,
+      temperature: 0.2,
+      modeloTokia: this.cfg.model,
+      timeoutTokiaMs: 12_000,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      validar: (t) => {
+        const j = extrairJson(t);
+        return !!j && validarContratoLlm(j).ok;
+      },
+    });
+    this.ultimaIa = !!r;
+    if (!r) return null;
+    const v = validarContratoLlm(extrairJson(r.texto));
+    return v.ok ? v.data : null;
   }
 
   async explicarPosTreino(
@@ -708,7 +699,7 @@ export class HttpCoachProvider implements CoachProvider {
     apiKey?: string;
   }): Promise<{ text: string | null; status: number; erro?: string }> {
     try {
-      const url = (args.baseUrl ?? this.cfg.baseUrl).replace(/\/$/, "");
+      const url = (args.baseUrl ?? this.cfg.baseUrl ?? "").replace(/\/$/, "");
       const res = await fetch(`${url}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${args.apiKey ?? this.cfg.apiKey}` },
@@ -734,7 +725,7 @@ export class HttpCoachProvider implements CoachProvider {
   }
 
   /** Resultado da última chamada de texto (a rota usa pra decidir o fallback humano). */
-  public lastChat: { ok: boolean; status: number; erro?: string; ms?: number } | null = null;
+  public lastChat: { ok: boolean; status: number; erro?: string; ms?: number; etapa?: string } | null = null;
 
   /** Último diagnóstico de visão (exposto pela rota para debug). */
   public lastVision: { modelo: string; ok: boolean; status: number; erro?: string; tentativas?: string[] } | null = null;
@@ -782,7 +773,30 @@ export class HttpCoachProvider implements CoachProvider {
         this.lastVision = { modelo: "gateway", ok: false, status: 0, erro: `oidc_indisponivel:${e instanceof Error ? e.message.slice(0, 120) : ""}` };
       }
     }
-    const candidatos = vision ? (gw ? visionGatewayModels() : []) : [modelText];
+    if (!vision) {
+      const t0 = Date.now();
+      const rc = await chamarCadeia({
+        ponto: "coach/chat",
+        temperature: 0.3,
+        max_tokens: 1800,
+        modeloTokia: modelText,
+        timeoutTokiaMs: 55_000,
+        messages: [{ role: "system", content: system }, ...hist, { role: "user", content: input.mensagem }],
+      });
+      this.lastChat = { ok: !!rc, status: rc ? 200 : 0, ms: Date.now() - t0, ...(rc ? { etapa: rc.etapa } : { erro: "sem_ia" }) };
+      if (rc) {
+        const v = validarContratoLlm({
+          contrato_versao: CONTRATO_VERSAO,
+          tipo_resposta: "resposta_conversacional",
+          mensagem_usuario: rc.texto.slice(0, 12000),
+          analise_pos_treino: undefined,
+        });
+        if (v.ok) return v.data;
+        this.lastChat = { ...this.lastChat, ok: false };
+      }
+      return stub;
+    }
+    const candidatos = gw ? visionGatewayModels() : [];
     let r: { text: string | null; status: number; erro?: string } = { text: null, status: 0 };
     const t0 = Date.now();
     const tentativas: string[] = [];
@@ -827,14 +841,12 @@ export class HttpCoachProvider implements CoachProvider {
   }
 }
 
-/** Http se COACH_LLM_API_KEY + COACH_LLM_BASE_URL; senão stub. */
+/** Http se alguma etapa da cadeia (Tokia, Groq, Gemini) estiver configurada; senão stub. */
 export function getCoachProvider(): CoachProvider {
-  const apiKey = process.env.COACH_LLM_API_KEY?.trim();
-  const baseUrl = process.env.COACH_LLM_BASE_URL?.trim();
-  if (apiKey && baseUrl) {
+  if (algumaIaConfigurada()) {
     return new HttpCoachProvider({
-      apiKey,
-      baseUrl,
+      apiKey: process.env.COACH_LLM_API_KEY?.trim() || undefined,
+      baseUrl: process.env.COACH_LLM_BASE_URL?.trim() || undefined,
       model: process.env.COACH_LLM_MODEL?.trim() || undefined,
       visionModel: process.env.COACH_LLM_VISION_MODEL?.trim() || undefined,
     });

@@ -1,3 +1,4 @@
+import { algumaIaConfigurada, chamarCadeia, extrairJson } from "@/lib/llm/cadeia";
 import { mensagemApiValida } from "@/lib/chat-input";
 /**
  * POST /api/plan/negociar — negociação da proposta (read-only, nunca grava).
@@ -37,37 +38,24 @@ export async function POST(req: Request) {
   if (!mensagemApiValida(mensagem, true)) return NextResponse.json({ erro: "mensagem muito curta" }, { status: 400 });
 
   const heur = mensagem.trim() ? interpretarFeedbackHeuristico(mensagem) : { resposta: comAberturaSincera(apresentarStub(proposta)), ajustes: {}, condicoes: [] };
-  const apiKey = process.env.COACH_LLM_API_KEY?.trim();
-  const baseUrl = process.env.COACH_LLM_BASE_URL?.trim();
   const model = process.env.COACH_LLM_PLAN_MODEL?.trim() || process.env.COACH_LLM_MODEL?.trim() || "openrouter/anthropic/claude-opus-5";
-  if (!apiKey || !baseUrl) return NextResponse.json({ ...heur, fonte: "heuristica" });
+  if (!algumaIaConfigurada()) return NextResponse.json({ ...heur, fonte: "heuristica", sem_ia: true });
 
-  try {
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        max_tokens: 1200,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: NEGOCIAR_SYSTEM },
-          ...historico.slice(-10),
-          { role: "user", content: JSON.stringify({ modo: mensagem.trim() ? "feedback" : "apresentar", proposta, mensagem }) },
-        ],
-      }),
-      signal: AbortSignal.timeout(70_000),
-    });
-    if (!res.ok) return NextResponse.json({ ...heur, fonte: "heuristica", erro_llm: res.status });
-    const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    let raw = j.choices?.[0]?.message?.content ?? "";
-    raw = raw.replace(/^```(json)?/i, "").replace(/```$/, "").trim();
-    const m = raw.match(/\{[\s\S]*\}/);
-    const v = RespostaNegociacaoSchema.safeParse(m ? JSON.parse(m[0]) : null);
-    if (!v.success) return NextResponse.json({ ...heur, fonte: "heuristica", erro_llm: "schema" });
-    return NextResponse.json({ ...v.data, resposta: mensagem.trim() ? limparSaidaCoach(v.data.resposta).texto : comAberturaSincera(limparSaidaCoach(v.data.resposta).texto), fonte: "llm", modelo: model });
-  } catch {
-    return NextResponse.json({ ...heur, fonte: "heuristica", erro_llm: "timeout" });
-  }
+  const r = await chamarCadeia({
+    ponto: "plan/negociar",
+    json: true,
+    temperature: 0.2,
+    max_tokens: 1200,
+    modeloTokia: model,
+    timeoutTokiaMs: 45_000,
+    messages: [
+      { role: "system", content: NEGOCIAR_SYSTEM },
+      ...historico.slice(-10),
+      { role: "user", content: JSON.stringify({ modo: mensagem.trim() ? "feedback" : "apresentar", proposta, mensagem }) },
+    ],
+    validar: (t) => RespostaNegociacaoSchema.safeParse(extrairJson(t)).success,
+  });
+  if (!r) return NextResponse.json({ ...heur, fonte: "heuristica", sem_ia: true });
+  const v = RespostaNegociacaoSchema.parse(extrairJson(r.texto));
+  return NextResponse.json({ ...v, resposta: mensagem.trim() ? limparSaidaCoach(v.resposta).texto : comAberturaSincera(limparSaidaCoach(v.resposta).texto), fonte: "llm" });
 }

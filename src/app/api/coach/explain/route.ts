@@ -81,6 +81,11 @@ const BodySchema = z.object({
   estado: EstadoInSchema,
 });
 
+function semIa(c: unknown): boolean {
+  const x = c as { semLlm?: boolean; ultimaIa?: boolean | null };
+  return x.semLlm === true || x.ultimaIa === false;
+}
+
 export async function POST(request: Request) {
   let raw: unknown;
   try {
@@ -114,7 +119,7 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      return NextResponse.json({ ...v.data, mensagem_usuario: limparSaidaCoach(v.data.mensagem_usuario ?? "").texto });
+      return NextResponse.json({ ...v.data, mensagem_usuario: limparSaidaCoach(v.data.mensagem_usuario ?? "").texto, ...(semIa(coach) ? { sem_ia: true } : {}) });
     }
 
     if (!body.presc) {
@@ -154,7 +159,7 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    return NextResponse.json({ ...v.data, mensagem_usuario: limparSaidaCoach(v.data.mensagem_usuario ?? "").texto });
+    return NextResponse.json({ ...v.data, mensagem_usuario: limparSaidaCoach(v.data.mensagem_usuario ?? "").texto, ...(semIa(coach) ? { sem_ia: true } : {}) });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "coach_error";
     return NextResponse.json({ error: msg }, { status: 500 });
