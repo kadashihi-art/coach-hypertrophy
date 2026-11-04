@@ -95,6 +95,59 @@ function base(
 }
 
 /**
+ * R12 — calibração real da primeira sessão.
+ *
+ * A estimativa inicial é conservadora de propósito. Na 1ª sessão o usuário já
+ * entrega reps + RIR reais, então o motor converte isso em e1RM e calcula a
+ * carga que deixa o PISO da faixa no RIR alvo (ponto de partida com espaço
+ * para a dupla progressão). O salto é limitado por sessão para não inventar
+ * carga: RIR alto libera mais degraus, RIR apertado limita a subida.
+ *
+ * Retorna null quando não há série válida ou quando não existe carga externa
+ * (peso corporal/core): aí a calibração mantém 0 kg.
+ */
+export function calibrarCargaInicial(args: {
+  cargaAtualKg: number;
+  /** Séries de trabalho (preparatórias já filtradas). */
+  series: RegistroSerie[];
+  faixaReps: [number, number];
+  rirAlvo: number;
+  stepKg: number;
+}): { cargaKg: number; anchor: RegistroSerie } | null {
+  const { cargaAtualKg, faixaReps, rirAlvo } = args;
+  const step = args.stepKg > 0 ? args.stepKg : 2.5;
+  if (!(cargaAtualKg > 0)) return null;
+
+  const anchor = pickTopSetAnchor(args.series);
+  if (!anchor || !(anchor.carga_kg > 0) || anchor.reps <= 0) return null;
+
+  // Reps até a falha ≈ reps feitas + RIR percebido.
+  const repsNaFalha = anchor.reps + Math.max(0, anchor.rir_percebido);
+  const e1rmSessao = anchor.carga_kg * (1 + repsNaFalha / 30);
+
+  // Piso da faixa no RIR alvo: começa a faixa com margem para progredir reps.
+  const repsAlvo = faixaReps[0] + Math.max(0, rirAlvo);
+  const bruta = e1rmSessao / (1 + repsAlvo / 30);
+
+  // Limite de segurança por sessão. RIR ≥ 3 indica estimativa bem folgada.
+  const degrausSubida =
+    anchor.rir_percebido >= 3 ? 4 : anchor.rir_percebido >= 2 ? 3 : 2;
+  const maxSubida = degrausSubida * step;
+  const maxDescida = 3 * step;
+  const limitada = Math.min(
+    cargaAtualKg + maxSubida,
+    Math.max(cargaAtualKg - maxDescida, bruta),
+  );
+  // Subir arredonda pra cima: se a conta pede 11 kg e o step é 2,5, 10 kg ficaria parado.
+  const cargaKg =
+    bruta > cargaAtualKg + 0.01
+      ? Math.max(step, Math.ceil(limitada / step) * step)
+      : Math.max(step, roundToStep(limitada, step));
+
+  return { cargaKg, anchor };
+}
+
+/**
  * Avalia R1–R12 em ordem de prioridade de segurança → volume → progressão.
  * Retorna a primeira regra que dispara (uma decisão por exercício/sessão).
  */
@@ -121,19 +174,43 @@ export function decidirProgressao(
     );
   }
 
-  // —— R12 Calibração inicial ——
+  // —— R12 Calibração inicial (1ª sessão com estimativa conservadora) ——
   if (
     estado.origem_carga === "estimativa_conservadora" &&
     estado.primeira_sessao
   ) {
-    return base(
-      input,
-      "R12",
-      "manter_carga",
-      carga,
-      "Carga de origem estimativa_conservadora e primeira sessão. Ajustar pelo RIR percebido; próxima origem = calibracao.",
-      "pratica",
-    );
+    const calib = calibrarCargaInicial({
+      cargaAtualKg: carga,
+      series,
+      faixaReps: estado.faixa_reps,
+      rirAlvo: estado.rir_alvo,
+      stepKg: inc,
+    });
+
+    if (!calib) {
+      return base(
+        input,
+        "R12",
+        "manter_e_checar",
+        carga,
+        carga > 0
+          ? "Primeira sessão sem série de trabalho válida para calibrar. Mantém a estimativa e recalibra na próxima."
+          : "Exercício sem carga externa (peso corporal/core). Mantém 0 kg e progride por reps.",
+        "pratica",
+      );
+    }
+
+    const alvo = calib.cargaKg;
+    const delta = Math.round((alvo - carga) * 10) / 10;
+    const acao =
+      delta > 0 ? "subir_carga" : delta < 0 ? "reduzir_carga" : "manter_carga";
+    const { anchor } = calib;
+    const motivo =
+      `Primeira sessão: ${anchor.carga_kg} kg × ${anchor.reps} reps @ RIR ${anchor.rir_percebido}. ` +
+      `Calibrado para ~${estado.faixa_reps[0]} reps @ RIR ${estado.rir_alvo} → ${alvo} kg ` +
+      `(antes ${carga} kg).`;
+
+    return base(input, "R12", acao, alvo, motivo, "pratica", delta > 0);
   }
 
   // —— R9 Autoregulação por prontidão ——
@@ -428,10 +505,28 @@ export function aplicarDecisao(
       : e1rmEpley(decisao.nova_carga_kg, estado.faixa_reps[0]);
 
   const progrediu = decisao.acao === "subir_carga";
-  const prCarga = Math.max(estado.pr_carga_kg, decisao.nova_carga_kg);
-  const bestReps =
-    series?.reduce((m, s) => Math.max(m, s.reps), estado.pr_reps) ??
-    estado.pr_reps;
+  // R12 sem série válida não calibra de fato: mantém a pendência para a próxima
+  // sessão (só quando existe carga externa; peso corporal/core já está calibrado).
+  const calibracaoAdiada =
+    decisao.regra === "R12" &&
+    decisao.acao === "manter_e_checar" &&
+    estado.carga_atual_kg > 0;
+
+  const workSets = series?.filter((s) => !ehSeriePreparatoria(s.tipo_serie)) ?? [];
+  const cargaMaximaSessao = workSets.reduce((m, s) => Math.max(m, s.carga_kg), 0);
+  // PR/e1RM iniciais vinham da estimativa (nunca levantada). Na 1ª sessão real,
+  // eles passam a valer só o que o usuário fez de fato.
+  const prProvisorio =
+    estado.primeira_sessao &&
+    estado.origem_carga === "estimativa_conservadora" &&
+    estado.pr_reps === 0 &&
+    workSets.length > 0;
+  const prCarga = Math.max(
+    prProvisorio ? 0 : estado.pr_carga_kg,
+    cargaMaximaSessao,
+    decisao.nova_carga_kg,
+  );
+  const bestReps = workSets.reduce((m, s) => Math.max(m, s.reps), estado.pr_reps);
 
   const memoria = memoriaDaSessao(series, decisao.nova_carga_kg);
 
@@ -449,12 +544,14 @@ export function aplicarDecisao(
     ultima_progressao_em: progrediu
       ? decisao.data
       : estado.ultima_progressao_em,
-    e1rm_estimado_kg: Math.max(estado.e1rm_estimado_kg, e1rm),
+    e1rm_estimado_kg: Math.max(prProvisorio ? 0 : estado.e1rm_estimado_kg, e1rm),
     pr_carga_kg: prCarga,
     pr_reps: bestReps,
     origem_carga:
-      decisao.regra === "R12" ? "calibracao" : estado.origem_carga,
-    primeira_sessao: false,
+      decisao.regra === "R12" && !calibracaoAdiada
+        ? "calibracao"
+        : estado.origem_carga,
+    primeira_sessao: calibracaoAdiada ? estado.primeira_sessao : false,
     ...memoria,
     atualizado_em: new Date().toISOString(),
   };
