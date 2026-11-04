@@ -39,12 +39,12 @@ import {
 } from "@/lib/plan/corrigir-concluida";
 import { alternativasParaItem as altsTroca } from "@/lib/plan/editar-treino";
 
-const EQUIP: Record<string, string> = {
+export const EQUIP: Record<string, string> = {
   barra: "Barra", halteres: "Halteres", maquina: "Máquina", cabo: "Cabo", kettlebell: "Kettlebell",
   peso_corporal: "Peso do corpo", banco: "Banco", rack: "Rack", elastico: "Elástico", outros: "Outro",
 };
 
-function Mini({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+export function Mini({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -58,7 +58,7 @@ function Mini({ label, onClick, disabled, children }: { label: string; onClick: 
   );
 }
 
-function Passo({ label, valor, onMenos, onMais, min, max }: { label: string; valor: number; onMenos: () => void; onMais: () => void; min: number; max: number }) {
+export function Passo({ label, valor, onMenos, onMais, min, max }: { label: string; valor: number; onMenos: () => void; onMais: () => void; min: number; max: number }) {
   return (
     <div className="flex items-center gap-1.5">
       <Mini label={`Menos ${label}`} onClick={onMenos} disabled={valor <= min}>−</Mini>
@@ -75,7 +75,7 @@ export function EditarTreinoSheet(props: { sessaoId: string; onClose: () => void
   return st === "concluida" ? <CorrigirRegistro {...props} /> : <EditarPlanejado {...props} />;
 }
 
-function Casca({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+export function Casca({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
     document.body.classList.add("sheet-open");
     return () => document.body.classList.remove("sheet-open");
