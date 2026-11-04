@@ -25,6 +25,8 @@ export const CARGA_MAX_POR_PADRAO: Record<string, number> = {
   extensao_cotovelo: 120,
   flexao_ombro: 120,
   rotacao_externa: 60,
+  abducao_quadril: 250,
+  aducao_quadril: 250,
 };
 export const CARGA_MAX_PADRAO_DESCONHECIDO = 300;
 

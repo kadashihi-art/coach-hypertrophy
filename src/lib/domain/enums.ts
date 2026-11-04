@@ -49,6 +49,9 @@ export const PadraoSchema = z.enum([
   "core_antirotacao",
   /** Antebraço: flexão/extensão de punho, rosca inversa e carregadas (pegada). */
   "antebraco_pegada",
+  /** Quadril: abdução (cadeira abdutora, polia, miniband) e adução (cadeira adutora, polia, Copenhagen). */
+  "abducao_quadril",
+  "aducao_quadril",
 ]);
 export type Padrao = z.infer<typeof PadraoSchema>;
 
@@ -162,6 +165,8 @@ export const GrupoMuscularSchema = z.enum([
   "abdomen",
   "antebracos",
   "trapezio",
+  "abdutores",
+  "adutores",
 ]);
 export type GrupoMuscular = z.infer<typeof GrupoMuscularSchema>;
 
@@ -211,7 +216,14 @@ export function faixaVolume(grupo: string): { min: number; max: number } {
 }
 
 /** Grupos que o gerador só inclui se o usuário pedir (pontos fracos), em dose leve. */
-export const GRUPOS_OPCIONAIS: GrupoMuscular[] = ["abdomen", "antebracos"];
+export const GRUPOS_OPCIONAIS: GrupoMuscular[] = ["abdomen", "antebracos", "abdutores", "adutores"];
+
+/** Grupos opcionais que o perfil pode pedir como ponto fraco. */
+export const GruposOpcionaisSchema = z.enum(["abdomen", "antebracos", "abdutores", "adutores"]);
+export type GrupoOpcional = z.infer<typeof GruposOpcionaisSchema>;
+export function ehGrupoOpcional(g: string): g is GrupoOpcional {
+  return (GruposOpcionaisSchema.options as readonly string[]).includes(g);
+}
 
 export function incrementoCargaKg(grupoPrimario: GrupoMuscular): number {
   return GRUPOS_SUPERIORES.includes(grupoPrimario) ? 2.5 : 5.0;

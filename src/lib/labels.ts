@@ -7,6 +7,7 @@ export const GRUPO_LABEL: Record<string, string> = {
   isquiotibiais: "Isquiotibiais", gluteos: "Glúteos", panturrilha: "Panturrilha",
   panturrilhas: "Panturrilhas", biceps: "Bíceps", triceps: "Tríceps", abdomen: "Abdômen",
   core: "Core", trapezio: "Trapézio", antebraco: "Antebraço", antebracos: "Antebraço", lombar: "Lombar",
+  abdutores: "Abdutores", adutores: "Adutores",
 };
 export const EXP_LABEL_TXT: Record<string, string> = {
   iniciante: "iniciante", intermediario: "intermediário", avancado: "avançado",
@@ -80,4 +81,19 @@ export const FOCO_LABEL: Record<string, string> = {
 export function labelFoco(f?: string | null): string {
   if (!f) return "";
   return FOCO_LABEL[f] ?? acentuar(f.replace(/_/g, " "));
+}
+
+/** Padrão de movimento em texto de gente (sem id). */
+export const PADRAO_LABEL: Record<string, string> = {
+  empurrar_horizontal: "empurrar na horizontal", empurrar_inclinado: "empurrar inclinado",
+  empurrar_vertical: "empurrar na vertical", puxar_horizontal: "puxar na horizontal",
+  puxar_vertical: "puxar na vertical", agachamento: "agachamento", dobradica_quadril: "dobradiça de quadril",
+  extensao_joelho: "extensão de joelho", flexao_joelho: "flexão de joelho", flexao_plantar: "flexão plantar",
+  abducao_ombro: "abdução de ombro", flexao_cotovelo: "flexão de cotovelo", extensao_cotovelo: "extensão de cotovelo",
+  flexao_ombro: "flexão de ombro", rotacao_externa: "rotação externa", core_antiextensao: "core antiextensão",
+  core_antirotacao: "core antirrotação", antebraco_pegada: "antebraço e pegada",
+  abducao_quadril: "abdução de quadril", aducao_quadril: "adução de quadril",
+};
+export function labelPadrao(p: string): string {
+  return PADRAO_LABEL[p] ?? p.replace(/_/g, " ");
 }

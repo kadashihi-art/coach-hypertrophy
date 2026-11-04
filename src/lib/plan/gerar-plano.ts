@@ -23,7 +23,7 @@ import type {
 import { posicionarDescanso, microcicloTexto } from "./estrutura";
 import { derivarRacional } from "./racional";
 import { findAlt } from "./alternativa";
-import { incrementoCargaKg } from "@/lib/domain";
+import { incrementoCargaKg, type GrupoOpcional } from "@/lib/domain";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao } from "./parq";
 import {
   exerciseAllowed,
@@ -396,25 +396,30 @@ function legsSlots(variant: "a" | "b"): Slot[] {
   ];
 }
 
-/** Slots dos grupos opcionais (abdômen/antebraço). */
-const SLOT_OPCIONAL: Record<"abdomen" | "antebracos", Slot> = {
+/** Slots dos grupos opcionais (abdômen, antebraço, abdutores e adutores). */
+const SLOT_OPCIONAL: Record<GrupoOpcional, Slot> = {
   abdomen: { padrao: "core_antiextensao", prefer: ["abdominal_cabo", "crunch_maquina", "elevacao_pernas", "prancha"] },
   antebracos: { padrao: "antebraco_pegada", prefer: ["rosca_inversa", "rosca_punho", "farmer_walk", "rosca_punho_invertida"] },
+  abdutores: { padrao: "abducao_quadril", prefer: ["cadeira_abdutora", "abducao_quadril_polia", "abducao_deitado_lado", "monster_walk"] },
+  adutores: { padrao: "aducao_quadril", prefer: ["cadeira_adutora", "aducao_quadril_polia", "agachamento_sumo_adutores", "copenhagen_plank"] },
 };
 
 function faseDoTemplate(id: string): string {
   return id.startsWith("f2-") ? "f2" : "f1";
 }
 
-/** Abdômen entra em dia de pernas/full body; antebraço em dia de puxar/superior/full body. 1×/semana por fase. */
-function opcionaisPendentes(perfil: Perfil, tpl: SessaoTemplate, feitos: Set<string>): Array<"abdomen" | "antebracos"> {
+/** Abdômen, abdutores e adutores entram em dia de pernas/full body; antebraço em dia de puxar/superior/full body. 1×/semana por fase. */
+function opcionaisPendentes(perfil: Perfil, tpl: SessaoTemplate, feitos: Set<string>): GrupoOpcional[] {
   const pedidos = perfil.grupos_opcionais ?? [];
   if (!pedidos.length) return [];
   const tipo = tipoDoTemplate(tpl.id);
   const fase = faseDoTemplate(tpl.id);
-  const out: Array<"abdomen" | "antebracos"> = [];
+  const out: GrupoOpcional[] = [];
   if (pedidos.includes("abdomen") && !feitos.has(`${fase}:abdomen`) && (tipo === "lower" || tipo === "legs" || tipo === "full")) out.push("abdomen");
   if (pedidos.includes("antebracos") && !feitos.has(`${fase}:antebracos`) && (tipo === "pull" || tipo === "upper" || tipo === "full")) out.push("antebracos");
+  for (const g of ["abdutores", "adutores"] as const) {
+    if (pedidos.includes(g) && !feitos.has(`${fase}:${g}`) && (tipo === "lower" || tipo === "legs" || tipo === "full")) out.push(g);
+  }
   return out;
 }
 
@@ -575,6 +580,8 @@ export function estimarCargaKg(
     flexao_cotovelo: 0.22,
     extensao_cotovelo: 0.2,
     antebraco_pegada: 0.12,
+    abducao_quadril: 0.3,
+    aducao_quadril: 0.3,
   };
 
   let f = patternFactor[padrao] ?? (composto ? 0.4 : 0.2);

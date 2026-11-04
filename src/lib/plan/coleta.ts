@@ -4,7 +4,7 @@
  * PAR-Q é gate explícito à parte (a LLM nunca libera N2).
  */
 import { z } from "zod";
-import { ObjetivoSchema, ExperienciaSchema, EquipamentoSchema, GrupoMuscularSchema } from "@/lib/domain/enums";
+import { ObjetivoSchema, ExperienciaSchema, EquipamentoSchema, GrupoMuscularSchema, ehGrupoOpcional } from "@/lib/domain/enums";
 import type { Perfil } from "@/lib/domain";
 import { TOM_COACH } from "@/lib/llm/tom";
 
@@ -160,7 +160,7 @@ export function paraPerfil(base: Perfil, c: PerfilColeta, e: Estrategia, correco
     ...(e.dias_descanso_fixos?.length ? { dias_descanso_fixos: e.dias_descanso_fixos } : {}),
     acordos_plano: acordos,
     ...(() => {
-      const opc = (c.pontos_fracos ?? []).filter((g): g is "abdomen" | "antebracos" => g === "abdomen" || g === "antebracos");
+      const opc = (c.pontos_fracos ?? []).filter(ehGrupoOpcional);
       return opc.length ? { grupos_opcionais: [...new Set(opc)] } : {};
     })(),
   };
@@ -171,7 +171,7 @@ export const COLETA_SYSTEM = [
   TOM_COACH,
   "Faça UMA ou DUAS perguntas por vez, adaptando ao que a pessoa já disse (follow-ups). Cubra: objetivo, histórico/nível, dias e tempo REAIS, rotina/trabalho, sono e estresse, equipamento, lesões/limitações, o que curte e odeia, pontos fracos e fortes, cardio. Não repita o que já sabe.",
   "Responda SOMENTE JSON: {\"resposta\": string, \"chips\": string[] (até 5 respostas rápidas curtas para a sua pergunta), \"perfil\": {...só campos novos ou corrigidos}, \"estrategia\": {...}|null, \"pronto\": boolean}.",
-  "perfil (use exatamente estes nomes/valores): objetivo (hipertrofia|forca|recomposicao|saude), experiencia (iniciante|intermediario|avancado), peso_kg, altura_cm, dias_por_semana (2-6), minutos_por_sessao (20-180), cardio_min_semana, equipamentos (barra|halteres|maquina|cabo|kettlebell|peso_corporal|banco|rack|elastico|outros; academia completa = barra,halteres,maquina,cabo,banco,rack), restricoes (lista de ombro|lombar|joelho|punho; [] se não tem), rotina, sono_estresse, preferencias, nao_gosta (textos curtos), pontos_fracos, pontos_fortes (grupos: peito|costas|ombros|biceps|triceps|quadriceps|isquiotibiais|gluteos|panturrilhas|abdomen|antebracos|trapezio).",
+  "perfil (use exatamente estes nomes/valores): objetivo (hipertrofia|forca|recomposicao|saude), experiencia (iniciante|intermediario|avancado), peso_kg, altura_cm, dias_por_semana (2-6), minutos_por_sessao (20-180), cardio_min_semana, equipamentos (barra|halteres|maquina|cabo|kettlebell|peso_corporal|banco|rack|elastico|outros; academia completa = barra,halteres,maquina,cabo,banco,rack), restricoes (lista de ombro|lombar|joelho|punho; [] se não tem), rotina, sono_estresse, preferencias, nao_gosta (textos curtos), pontos_fracos, pontos_fortes (grupos: peito|costas|ombros|biceps|triceps|quadriceps|isquiotibiais|gluteos|panturrilhas|abdomen|antebracos|trapezio|abdutores|adutores).",
   "Quando tiver o essencial (objetivo, experiência, peso, altura, dias, minutos, equipamento, lesões) e um pouco de contexto, proponha a estratégia e marque pronto=true. Não arraste além de ~8 perguntas.",
   "NUNCA proponha híbridos (hibrido_*) por conta própria nem mencione que vai migrar pra híbrido; só use se a pessoa pedir explicitamente. Use estilo_split exatamente com um dos valores listados e prioridades_musculares com nomes de grupos válidos (ou []).",
   "estrategia: {estilo_split (full_body|upper_lower|ppl|hibrido_ppl_ul|hibrido_fb_ul), escolha_explicita_usuario (true só se a pessoa pediu esse estilo), fase2_estilo (ou null), fase1_semanas, fase2_semanas, dias_descanso_fixos (posições 0-6, opcional), prioridades_musculares (até 3 grupos), porque (2-4 frases curtas)}.",

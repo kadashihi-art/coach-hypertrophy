@@ -1,5 +1,6 @@
 "use client";
 
+import { ListaExerciciosOrdenada } from "@/components/ListaExerciciosOrdenada";
 import { ExercicioThumb } from "@/components/ExercicioImagem";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -151,14 +152,14 @@ function CorrigirRegistro({ sessaoId, onClose, onSalvo }: { sessaoId: string; on
         <p className="mb-1 text-xs uppercase tracking-wide text-accent">Adicionar exercício feito</p>
         <h2 className="mb-3 text-xl font-bold">O que mais você fez?</h2>
         <div className="space-y-2">
-          {cands.map((e) => (
+          <ListaExerciciosOrdenada itens={cands} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
             <button key={e.id} type="button" data-testid="corr-add-ex" onClick={() => { setR(adicionarExercicioCorrecao(r, e.id)); setModo("corrigir"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
               <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
               <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento] ?? ""}</span>
             </button>
-          ))}
+          )} />
         </div>
         <button type="button" onClick={() => setModo("corrigir")} className="mt-3 min-h-11 w-full text-sm text-muted">Voltar</button>
       </>
@@ -172,13 +173,13 @@ function CorrigirRegistro({ sessaoId, onClose, onSalvo }: { sessaoId: string; on
         <p className="mb-1 text-xs uppercase tracking-wide text-accent">Trocar exercício</p>
         <h2 className="mb-3 text-xl font-bold">No lugar de {nome(it?.exercicio_id ?? "")?.nome}</h2>
         <div className="space-y-2">
-          {alts.map((e) => (
+          <ListaExerciciosOrdenada itens={alts} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
             <button key={e.id} type="button" onClick={() => { setR(trocarExercicioCorrecao(r, idx, e.id)); setModo("corrigir"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
               <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
             </button>
-          ))}
+          )} />
           {alts.length === 0 ? <p className="text-sm text-muted">Não achei outra opção com o mesmo movimento.</p> : null}
         </div>
         <button type="button" onClick={() => setModo("corrigir")} className="mt-3 min-h-11 w-full text-sm text-muted">Voltar</button>
@@ -293,14 +294,14 @@ function EditarPlanejado({ sessaoId, onClose, onSalvo }: { sessaoId: string; onC
         <h2 className="mb-1 text-xl font-bold">O que entra no {sessao.nome}?</h2>
         <p className="mb-3 text-xs text-muted">Só aparece o que combina com seu equipamento e suas restrições.</p>
         <div className="space-y-2">
-          {cands.map((e) => (
+          <ListaExerciciosOrdenada itens={cands} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
             <button key={e.id} type="button" data-testid="add-ex" onClick={() => { setR(adicionarItem(state, r, e.id)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
               <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
               <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento] ?? ""}{e.composto ? " · multiarticular" : ""}</span>
             </button>
-          ))}
+          )} />
         </div>
         <button type="button" onClick={() => setModo("editar")} className="mt-3 min-h-11 w-full text-sm text-muted">Voltar</button>
       </>
@@ -318,14 +319,14 @@ function EditarPlanejado({ sessaoId, onClose, onSalvo }: { sessaoId: string; onC
           <p className="rounded-2xl border border-border bg-ink-900 p-4 text-sm text-muted">Não achei outra opção segura com o mesmo movimento pro seu equipamento.</p>
         ) : (
           <div className="space-y-2">
-            {alts.map((e) => (
+            <ListaExerciciosOrdenada itens={alts} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
               <button key={e.id} type="button" onClick={() => { setR(trocarItem(state, r, idx, e.id)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
                 <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
                 <span className="block text-[11px] text-muted">{EQUIP[e.equipamento] ?? ""}</span>
               </button>
-            ))}
+            )} />
           </div>
         )}
         <button type="button" onClick={() => setModo("editar")} className="mt-3 min-h-11 w-full text-sm text-muted">Voltar</button>

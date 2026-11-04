@@ -2,7 +2,7 @@
 
 import { ExercicioImagem } from "@/components/ExercicioImagem";
 import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
-import { fmtKg } from "@/lib/labels";
+import { fmtKg, labelPadrao } from "@/lib/labels";
 import { parseRestricoes } from "@/lib/plan/restricoes";
 import { resumirExercicio, textoUltimaVez, textoTendencia } from "@/lib/engine/memoria-carga";
 import { guiaPorPadrao } from "@/lib/plan/guia-por-padrao";
@@ -551,7 +551,7 @@ export default function TreinoPage() {
             <span>
               {ocupado ? "Usando" : "Sugestão"}:{" "}
               <b className="text-accent">{ocupado ? altEx.nome : altEx.nome}</b>{" "}
-              (mesmo padrão {altEx.padrao.replace(/_/g, " ")})
+              (mesmo padrão: {labelPadrao(altEx.padrao)})
             </span>
             <button type="button" onClick={toggleOcupado} className="shrink-0 text-accent">
               {ocupado ? "Voltar" : "Trocar"}

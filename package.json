@@ -43,6 +43,7 @@
     "smoke:falha": "npx --yes tsx scripts/smoke-falha.ts",
     "smoke:limites": "npx --yes tsx scripts/smoke-limites.ts",
     "smoke:duracao": "npx --yes tsx scripts/smoke-duracao.ts",
+    "smoke:catalogo-ordem": "npx --yes tsx scripts/smoke-catalogo-ordem.ts",
     "smoke:llm-cadeia": "npx --yes tsx scripts/smoke-llm-cadeia.ts"
   },
   "dependencies": {
