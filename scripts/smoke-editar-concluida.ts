@@ -9,6 +9,7 @@ import { gerarPlanoFromPerfil } from "../src/lib/plan/gerar-plano";
 import { CATALOG_EXERCICIOS } from "../src/lib/catalog/exercicios";
 import { AppStateSchema, type AppState, type Perfil, type RegistroSerie, type Sessao } from "../src/lib/domain";
 import { concluirSessao } from "../src/lib/engine/concluir-sessao";
+import { isoWeekDe } from "../src/lib/engine/volume";
 import {
   AVISO_SEM_SNAPSHOT,
   aplicarCorrecao,
@@ -79,9 +80,9 @@ function concluir(s: AppState, sid: string, rs: RegistroSerie[], snapshot: boole
       estados: st.estados.map((e) => (e.exercicio_id !== ex2 ? e : { ...e, carga_atual_kg: ANCORA_B, alvo_proxima_sessao: { ...e.alvo_proxima_sessao, carga_kg: ANCORA_B }, origem_carga: "usuario" as const })),
     };
   }
-  const r = concluirSessao(st, { gravarSnapshot: snapshot }).state;
-  // finalizada_em determinístico para ordem
-  return { ...r, sessoes: r.sessoes.map((x) => (x.id === sid ? { ...x, finalizada_em: sid === A0.id ? "2026-10-26T13:00:00.000Z" : "2026-10-28T13:00:00.000Z" } : x)) };
+  // Relógio explícito: a sessão é concluída na data dela (determinístico).
+  const agora = sid === A0.id ? "2026-10-26T13:00:00.000Z" : "2026-10-28T13:00:00.000Z";
+  return concluirSessao(st, { gravarSnapshot: snapshot, agora }).state;
 }
 
 const histA = { [ex1]: tres(40, 10), [ex2]: tres(30, 12) };
@@ -102,6 +103,21 @@ const est = (s: AppState, ex: string) => s.estados.find((e) => e.exercicio_id ==
 
 // ——— Com snapshot ———
 const S = historia(histA);
+// Conclusão determinística: data, decisão e semana de volume saem da sessão, não do relógio.
+// Sem isso, corrigir um treino de outra semana nunca reproduz a história.
+const semanaA = isoWeekDe(new Date("2026-10-26T13:00:00.000Z"));
+ok(
+  S.sessoes.find((x) => x.id === A0.id)?.finalizada_em === "2026-10-26T13:00:00.000Z",
+  "conclusão carimba finalizada_em com o relógio da sessão",
+);
+ok(
+  S.decisoes.filter((d) => d.sessao_id === A0.id).every((d) => d.data === "2026-10-26"),
+  "decisões datadas no dia da sessão",
+);
+ok(
+  S.volumes_semanais.every((v) => v.semana_iso === semanaA),
+  "volume semanal cai na semana da sessão",
+);
 ok(!!S.sessoes.find((x) => x.id === A0.id)?.snapshot_conclusao, "concluir grava snapshot");
 ok(S.decisoes.length === 4, "4 decisões (2 exercícios × 2 sessões)");
 ok(est(S, ex2).alvo_proxima_sessao.carga_kg !== undefined, "estado do exercício ancorado existe");
