@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 // date only on save (event handler) — ok for prerender
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
@@ -40,14 +40,13 @@ export default function CheckinPage() {
   const [sonoInicio, setSonoInicio] = useState(DEFAULT_INICIO);
   const [sonoFim, setSonoFim] = useState(DEFAULT_FIM);
   const [horariosHydrated, setHorariosHydrated] = useState(false);
-  useEffect(() => {
-    if (horariosHydrated) return;
-    if (state.checkins.length === 0) return;
+  // Preenche uma vez com o horário habitual assim que o histórico chega (ajuste no render, sem efeito).
+  if (!horariosHydrated && state.checkins.length > 0) {
     const d = defaultsFromHistory(state.checkins);
     setSonoInicio(d.inicio);
     setSonoFim(d.fim);
     setHorariosHydrated(true);
-  }, [state.checkins, horariosHydrated]);
+  }
   const [prontidao, setProntidao] = useState(4);
   const [peso, setPeso] = useState<number | null>(null);
   const [aguaMl, setAguaMl] = useState<number | null>(null);

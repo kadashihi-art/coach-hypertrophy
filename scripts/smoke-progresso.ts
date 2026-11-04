@@ -60,7 +60,7 @@ function concluir(s: AppState, sid: string, rs: RegistroSerie[], agora: string):
 const est = (s: AppState) => s.estados.find((e) => e.exercicio_id === ex1)!;
 
 // (5) volume na semana do treino, não do clique (concluída 9 dias depois)
-let s1 = concluir(base, A0.id, regs(A0, 40, 10), "2026-10-30T13:00:00.000Z");
+const s1 = concluir(base, A0.id, regs(A0, 40, 10), "2026-10-30T13:00:00.000Z");
 const semA = isoWeekDe(new Date("2026-10-21T12:00:00"));
 ok(s1.volumes_semanais.length > 0 && s1.volumes_semanais.every((v) => v.semana_iso === semA), `volume na semana do treino (${semA})`);
 ok(est(s1).pr_carga_kg === 40 && est(s1).pr_reps === 10 && est(s1).e1rm_estimado_kg === e1rmEpley(40, 10), "1º treino real define PR/e1RM");

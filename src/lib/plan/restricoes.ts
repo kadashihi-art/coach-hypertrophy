@@ -40,6 +40,9 @@ export function patternBlocked(padrao: Padrao, r: Set<RestricaoKey>): boolean {
   if (r.has("ombro") && (padrao === "empurrar_vertical" || padrao === "flexao_ombro")) {
     return true; // skip vertical press for shoulder injury
   }
+  if (r.has("punho") && padrao === "antebraco_pegada") {
+    return true; // punho/rosca de punho/carregadas sobrecarregam o punho lesionado
+  }
   return false;
 }
 

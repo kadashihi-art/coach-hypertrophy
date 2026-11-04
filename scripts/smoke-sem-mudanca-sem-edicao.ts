@@ -179,7 +179,7 @@ function checar(nome: string, raw: unknown, v: Velho | null) {
     // fix/progresso-e1rm-pr: e1RM/PR agora vêm só dos registros reais (o código antigo
     // semeava estimativas). Carga, alvo, RIR, séries e decisões têm que continuar iguais.
     // Volume agora entra na semana do dia do treino (antes: semana do clique em concluir).
-    const semRecorde = (st: AppState) => ({ ...st, volumes_semanais: [], estados: st.estados.map(({ e1rm_estimado_kg: _a, pr_carga_kg: _b, pr_reps: _c, ...r }) => r) });
+    const semRecorde = (st: AppState) => ({ ...st, volumes_semanais: [], estados: st.estados.map((e) => { const r: Partial<typeof e> = { ...e }; delete r.e1rm_estimado_kg; delete r.pr_carga_kg; delete r.pr_reps; return r; }) });
     ok(JSON.stringify(limpo(semRecorde(novo))) === JSON.stringify(limpo(semRecorde(antigo))), `${nome}: concluir dá o mesmo estado do código de antes do PR (fora e1RM/PR e a semana do volume)`);
     const semAlvo = alvo.data ? isoWeekDe(new Date(`${alvo.data}T12:00:00`)) : null;
     ok(!semAlvo || novo.volumes_semanais.some((v) => v.semana_iso === semAlvo), `${nome}: volume na semana do dia do treino`);

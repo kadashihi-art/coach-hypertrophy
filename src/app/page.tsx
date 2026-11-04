@@ -50,16 +50,21 @@ function HomeInner() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LAST_EMAIL_KEY)?.trim().toLowerCase() ?? "";
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o último e-mail do localStorage só no cliente, depois da hidratação
       if (saved) setSentEmail(saved);
     } catch {
       /* ignore */
     }
   }, []);
 
-  useEffect(() => {
-    const fromUrl = authErrorMessage(searchParams.get("error"));
+  // Erro vindo da URL (?error=…): aplica quando o parâmetro muda (ajuste no render, sem efeito).
+  const erroUrl = searchParams.get("error");
+  const [erroUrlVisto, setErroUrlVisto] = useState<string | null>(null);
+  if (erroUrl !== erroUrlVisto) {
+    setErroUrlVisto(erroUrl);
+    const fromUrl = authErrorMessage(erroUrl);
     if (fromUrl) setError(fromUrl);
-  }, [searchParams]);
+  }
 
   useEffect(() => {
     if (status === "loading" || !ready) return;

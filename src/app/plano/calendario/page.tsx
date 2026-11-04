@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
 import { PlanoTabs } from "@/components/PlanoTabs";
@@ -10,6 +10,7 @@ import {
   parseIsoDate,
   type CalendarioDiaView,
 } from "@/lib/plan/calendario";
+import { useClientValue } from "@/lib/use-client-value";
 import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
 
 /** "2026-10-29" → "Qui, 29 out" (pt-BR, sem pontos). */
@@ -52,18 +53,17 @@ function statusColor(s: CalendarioDiaView["status"]) {
 /** Calendário mensal mínimo gamer — planejado / feito / pulado */
 export default function CalendarioPage() {
   const { state, markCalendario, setDataInicio } = useApp();
-  const [year, setYear] = useState(2026);
-  const [month0, setMonth0] = useState(9); // Oct 0-indexed fallback; hydrated below
+  // Mês do relógio do aparelho (no servidor: outubro/2026 até hidratar) + navegação relativa.
+  const mesBase = useClientValue(() => {
+    const n = new Date();
+    return n.getFullYear() * 12 + n.getMonth();
+  }, 2026 * 12 + 9);
+  const hydrated = useClientValue(() => true, false);
+  const [deslocMes, setDeslocMes] = useState(0);
+  const year = Math.floor((mesBase + deslocMes) / 12);
+  const month0 = (mesBase + deslocMes) % 12;
   // Guarda só a data: o card lê o dia sempre do estado atual (não de uma cópia).
   const [selectedData, setSelectedData] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    const n = new Date();
-    setYear(n.getFullYear());
-    setMonth0(n.getMonth());
-    setHydrated(true);
-  }, []);
 
   const days = useMemo(
     () => derivarCalendario(state.sessoes, year, month0),
@@ -85,24 +85,15 @@ export default function CalendarioPage() {
     year: "numeric",
   });
 
-  const [hojeIso, setHojeIso] = useState<string | null>(null);
-  useEffect(() => {
-    setHojeIso(hojeIsoSaoPaulo());
-  }, []);
+  const hojeIso = useClientValue<string | null>(hojeIsoSaoPaulo, null);
   const next = hydrated ? proximaSessao(state, hojeIso) : undefined;
   const dataInicio = state.plano?.mesociclo?.data_inicio;
 
   function prevMonth() {
-    if (month0 === 0) {
-      setYear((y) => y - 1);
-      setMonth0(11);
-    } else setMonth0((m) => m - 1);
+    setDeslocMes((d) => d - 1);
   }
   function nextMonth() {
-    if (month0 === 11) {
-      setYear((y) => y + 1);
-      setMonth0(0);
-    } else setMonth0((m) => m + 1);
+    setDeslocMes((d) => d + 1);
   }
 
   return (

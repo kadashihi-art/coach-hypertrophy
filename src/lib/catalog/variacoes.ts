@@ -51,6 +51,17 @@ const DEFS: Def[] = [
   { id: "rosca_barra_w", base: "rosca_direta", nome: "Rosca na barra W", variacao: "barra W" },
   { id: "rosca_alternada", base: "rosca_direta", nome: "Rosca alternada com halteres", variacao: "alternada", equipamento: "halteres" },
   { id: "triceps_barra_v", base: "triceps_pulley", nome: "Tríceps na barra V", variacao: "barra V" },
+  // Abdômen
+  { id: "prancha_joelhos", base: "prancha", nome: "Prancha com joelhos apoiados", variacao: "joelhos apoiados" },
+  { id: "abdominal_polia_ajoelhado", base: "abdominal_cabo", nome: "Abdominal na polia ajoelhado", variacao: "ajoelhado" },
+  { id: "elevacao_pernas_barra", base: "elevacao_pernas", nome: "Elevação de pernas na barra fixa", variacao: "suspenso na barra" },
+  { id: "elevacao_joelhos_paralela", base: "elevacao_pernas", nome: "Elevação de joelhos na paralela", variacao: "na paralela" },
+  // Antebraço
+  { id: "rosca_punho_barra", base: "rosca_punho", nome: "Rosca punho com barra", variacao: "barra", equipamento: "barra" },
+  { id: "rosca_punho_cabo", base: "rosca_punho", nome: "Rosca punho no cabo", variacao: "cabo", equipamento: "cabo" },
+  { id: "rosca_inversa_w", base: "rosca_inversa", nome: "Rosca inversa na barra W", variacao: "barra W" },
+  { id: "rosca_inversa_cabo", base: "rosca_inversa", nome: "Rosca inversa no cabo", variacao: "cabo", equipamento: "cabo" },
+  { id: "farmer_walk_kettlebell", base: "farmer_walk", nome: "Farmer walk com kettlebell", variacao: "kettlebell", equipamento: "kettlebell" },
   // Panturrilhas
   { id: "panturrilha_smith", base: "panturrilha_pe", nome: "Panturrilha em pé no Smith", variacao: "Smith", equipamento: "maquina" },
 ];

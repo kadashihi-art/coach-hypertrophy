@@ -42,6 +42,11 @@ export const PerfilSchema = z.object({
   /** Condições/ajustes acordados na negociação do plano (texto curto). */
   acordos_plano: z.array(z.string().max(240)).max(12).optional(),
   /**
+   * Grupos opcionais (abdômen/antebraço) que o usuário quer no plano.
+   * Ausente = o gerador não inclui nenhum (splits iguais aos de antes).
+   */
+  grupos_opcionais: z.array(z.enum(["abdomen", "antebracos"])).max(2).optional(),
+  /**
    * Opcionais: só afinam a estimativa inicial de carga.
    * Não bloqueiam onboarding; ausência mantém o cálculo anterior.
    */

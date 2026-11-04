@@ -175,6 +175,13 @@ const TEMPLATES: Partial<Record<Padrao, GuiaTemplate>> = {
     cues: ["Costelas baixas"],
     contraindicacoes: ["Dor lombar aguda"],
   },
+  antebraco_pegada: {
+    setup: ["Antebraço apoiado ou braços ao lado do corpo", "Pegada firme, sem dor no punho"],
+    execucao: ["Movimento curto e controlado só no punho (ou caminhe com o tronco firme)"],
+    erros_comuns: ["Balançar o corpo", "Carga que tira a amplitude"],
+    cues: ["Punho trabalha, ombro quieto"],
+    contraindicacoes: ["Dor aguda no punho ou cotovelo"],
+  },
   core_antirotacao: {
     setup: ["Base estável", "Pelve neutra"],
     execucao: ["Resista à rotação sem torcer a lombar"],

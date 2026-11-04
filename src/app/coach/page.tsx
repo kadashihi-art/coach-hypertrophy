@@ -23,6 +23,11 @@ import {
   type FrameExtraido,
 } from "@/lib/media/client-media";
 
+/** Id local de mensagem (fora do render, só chamado em handlers). */
+function msgId(prefixo: string): string {
+  return `${prefixo}-${Date.now()}`;
+}
+
 type Anexo = {
   tipo: "imagem" | "video";
   frames: FrameExtraido[];
@@ -166,7 +171,7 @@ export default function CoachPage() {
     setInput("");
     setAnexo(null);
     const userMsg: ChatMsg = {
-      id: `u-${Date.now()}`,
+      id: msgId("u"),
       role: "user",
       content: midia ? `${mensagem}\n📎 ${midia.tipo === "video" ? `vídeo ${Math.round(midia.duracao_seg ?? 0)} s · ${midia.frames.length} frames` : "foto"}` : mensagem,
       ...(midia ? { thumbs: midia.frames.slice(0, 4).map((f) => f.data_url) } : {}),
@@ -180,7 +185,7 @@ export default function CoachPage() {
       setMsgs((m) => [
         ...m,
         {
-          id: `a-troca-${Date.now()}`,
+          id: msgId("a-troca"),
           role: "assistant",
           content: nome
             ? `Bora trocar o ${nome}. Separei opções com o mesmo movimento e o mesmo músculo, dentro do que você tem. Escolhe uma e confirma; só mudo o plano depois disso.`
@@ -239,7 +244,7 @@ export default function CoachPage() {
       setMsgs((m) => [
         ...m,
         {
-          id: `a-${Date.now()}`,
+          id: msgId("a"),
           role: "assistant",
           content: reply,
           cta: json.cta ?? null,
@@ -252,7 +257,7 @@ export default function CoachPage() {
       setMsgs((m) => [
         ...m,
         {
-          id: `a-err-${Date.now()}`,
+          id: msgId("a-err"),
           role: "assistant",
           content:
             "Tive um problema pra pensar agora. Tenta de novo em alguns segundos — seu plano e seu histórico continuam intactos.",
@@ -380,7 +385,7 @@ export default function CoachPage() {
           deId={troca}
           onClose={() => setTroca(undefined)}
           onTrocado={(msg) =>
-            setMsgs((m) => [...m, { id: `a-trocado-${Date.now()}`, role: "assistant", content: `${msg} As próximas sessões já vêm com ele.`, cta: { label: "Ver plano", href: "/plano" } }])
+            setMsgs((m) => [...m, { id: msgId("a-trocado"), role: "assistant", content: `${msg} As próximas sessões já vêm com ele.`, cta: { label: "Ver plano", href: "/plano" } }])
           }
         />
       ) : null}
