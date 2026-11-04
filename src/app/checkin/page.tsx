@@ -15,7 +15,9 @@ import {
 const AGUA_CHIPS: { label: string; ml: number }[] = [
   { label: "1 L", ml: 1000 },
   { label: "1,5 L", ml: 1500 },
-  { label: "2 L+", ml: 2000 },
+  { label: "2 L", ml: 2000 },
+  { label: "2,5 L", ml: 2500 },
+  { label: "3 L+", ml: 3000 },
 ];
 
 const DEFAULT_INICIO = "23:00";
@@ -177,7 +179,7 @@ export default function CheckinPage() {
             key={c.ml}
             type="button"
             onClick={() => setAguaMl(aguaMl === c.ml ? null : c.ml)}
-            className={`chip-motion flex-1 rounded-xl border py-2.5 text-sm font-semibold ${
+            className={`chip-motion min-w-0 flex-1 rounded-xl border py-2.5 text-[13px] font-semibold ${
               aguaMl === c.ml
                 ? "on border-accent bg-[rgba(184,255,60,.12)] text-accent"
                 : "border-line text-bone-50"
