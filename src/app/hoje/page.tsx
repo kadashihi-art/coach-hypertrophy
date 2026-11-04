@@ -23,6 +23,7 @@ import {
   proximaSessao,
   sessoesDoPlano,
 } from "@/lib/plan/proxima-sessao";
+import { agendaEfetiva, avisoPendente } from "@/lib/plan/pendente";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { alvoEditarHoje } from "@/lib/plan/hoje-editar";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
@@ -140,8 +141,13 @@ export default function HojePage() {
   const totalSeries = sess ? sess.prescricoes.reduce((n, p) => n + p.series, 0) : 0;
   const feitas = sess ? state.registros.filter((r) => r.sessao_id === sess.id).length : 0;
   const hoje = hojeSP ?? hojeIso;
+  // Agenda efetiva (só leitura): treino não feito não é pulado, a sequência anda por treino.
+  const agenda = agendaEfetiva(state, hoje);
+  const agendaSess = agenda.sessoes;
+  const aviso = hoje ? avisoPendente(agenda.pendentes, hoje) : null;
+  const dataEfetiva = (id: string | undefined) => agendaSess.find((x) => x.id === id)?.data ?? null;
   const temAgenda = state.sessoes.some((s) => !!s.data);
-  const sessHoje = hoje ? state.sessoes.find((s) => s.data === hoje && s.status !== "pulada") : undefined;
+  const sessHoje = hoje ? agendaSess.find((s) => s.data === hoje && s.status !== "pulada") : undefined;
   const estadoHero: "andamento" | "feito" | "descanso" | "novo" =
     sess?.status === "em_andamento"
       ? "andamento"
@@ -150,8 +156,8 @@ export default function HojePage() {
         : temAgenda && hoje && !sessHoje
           ? "descanso"
           : "novo";
-  const proxData = sess?.data
-    ? new Date(`${sess.data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
+  const proxData = dataEfetiva(sess?.id)
+    ? new Date(`${dataEfetiva(sess?.id)}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
     : null;
 
   // Semana strip (seg→dom da semana atual, fuso SP)
@@ -162,7 +168,7 @@ export default function HojePage() {
     const L = ["S", "T", "Q", "Q", "S", "S", "D"];
     return L.map((label, i) => {
       const iso = addDaysIso(seg, i);
-      const ss = state.sessoes.filter((x) => x.data === iso);
+      const ss = agendaSess.filter((x) => x.data === iso);
       const st = ss.some((x) => x.status === "concluida")
         ? ("feito" as const)
         : ss.some((x) => x.status === "pulada") && !ss.some((x) => x.status === "planejada")
@@ -176,7 +182,7 @@ export default function HojePage() {
   const consistencia = (() => {
     if (!hoje) return null;
     const ini = addDaysIso(hoje, -27);
-    const janela = state.sessoes.filter((x) => x.data && x.data >= ini && x.data <= hoje);
+    const janela = agendaSess.filter((x) => x.data && x.data >= ini && x.data <= hoje);
     if (!janela.length) return null;
     return { feitos: janela.filter((x) => x.status === "concluida").length, total: janela.length };
   })();
@@ -292,6 +298,13 @@ export default function HojePage() {
       ) : null}
 
       <ReavaliacaoNivelCard />
+
+      {aviso && sess?.id === agenda.pendentes[0]?.sessao_id ? (
+        <Card className="mb-4 border border-warn/40 bg-[rgba(255,184,60,.08)]" data-testid="aviso-pendente">
+          <p className="text-sm font-semibold text-warn">{aviso.titulo}</p>
+          <p className="mt-1 text-sm text-muted">{aviso.texto}</p>
+        </Card>
+      ) : null}
 
       {/* Hero: Treino do dia */}
       {sess && (

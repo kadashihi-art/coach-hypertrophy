@@ -53,21 +53,9 @@ export function proximaSessao(
     s.status !== "abandonada" &&
     s.prescricoes.length > 0;
 
-  const dataInicio = state.plano?.mesociclo?.data_inicio ?? null;
-  const hoje = hojeIso ?? null;
-
-  if (dataInicio && hoje) {
-    const upcoming = ordered
-      .filter(
-        (s) =>
-          elegivel(s) &&
-          s.status === "planejada" &&
-          s.data != null &&
-          s.data >= hoje,
-      )
-      .sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-    if (upcoming[0]) return upcoming[0];
-
+  // Com agenda: a ordem é por treino, não por data. Treino planejado que passou sem ser feito
+  // continua sendo o próximo (não é pulado); só "pulada" explícita sai da fila.
+  if (state.plano?.mesociclo?.data_inicio) {
     const planejada = ordered.find(
       (s) => elegivel(s) && s.status === "planejada",
     );
