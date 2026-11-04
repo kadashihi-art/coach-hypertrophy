@@ -45,13 +45,15 @@ export function patternBlocked(padrao: Padrao, r: Set<RestricaoKey>): boolean {
 
 /** `true` quando a restrição bane o exercício (id ou padrão). */
 export function restricaoBane(
-  ex: Pick<Exercicio, "id" | "padrao">,
+  ex: Pick<Exercicio, "id" | "padrao"> & { base_id?: string },
   restr: Set<RestricaoKey>,
 ): boolean {
   if (restr.size === 0) return false;
   if (patternBlocked(ex.padrao, restr)) return true;
   for (const k of restr) {
     if (BAN_IDS[k].includes(ex.id)) return true;
+    // variação herda a restrição do exercício-base (ex.: agachamento no Smith x joelho)
+    if (ex.base_id && BAN_IDS[k].includes(ex.base_id)) return true;
   }
   return false;
 }

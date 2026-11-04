@@ -1,7 +1,8 @@
 import type { Exercicio } from "@/lib/domain";
+import { gerarVariacoes } from "./variacoes";
 
 /** Catálogo estático de exercícios (brief Camada A). */
-export const CATALOG_EXERCICIOS: Exercicio[] = [
+const BASE_EXERCICIOS: Exercicio[] = [
   {
     id: "supino_reto_convencional",
     nome: "Supino reto convencional",
@@ -747,6 +748,9 @@ export const CATALOG_EXERCICIOS: Exercicio[] = [
     unilateral: true,
   },
 ];
+
+/** Catálogo completo: base + variações (lote 3). */
+export const CATALOG_EXERCICIOS: Exercicio[] = [...BASE_EXERCICIOS, ...gerarVariacoes(BASE_EXERCICIOS)];
 
 /** Alias pedido pelo brief de geração de plano */
 export const catalogExercicios = CATALOG_EXERCICIOS;

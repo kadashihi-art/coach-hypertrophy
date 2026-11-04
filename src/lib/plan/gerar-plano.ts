@@ -466,6 +466,7 @@ function pickForSlot(
     let best: Exercicio | null = null;
     let bestScore = 0;
     for (const ex of catalog) {
+      if (ex.base_id) continue; // variações só entram por escolha do usuário
       const s = scoreExercise(ex, trySlot, equips, restr, used);
       if (s > bestScore) {
         bestScore = s;

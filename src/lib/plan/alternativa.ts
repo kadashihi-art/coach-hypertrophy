@@ -46,6 +46,7 @@ export function findAlt(
   const candidatos = catalog.filter(
     (e) =>
       e.padrao === padrao &&
+      !e.base_id &&
       e.id !== excludeId &&
       !excluir.has(e.id) &&
       exerciseAllowed(e, equipamentos, restr),
