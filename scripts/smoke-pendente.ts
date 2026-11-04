@@ -1,6 +1,6 @@
 /** Treino não feito não é pulado: a sequência anda por treino (só leitura, nada gravado). */
 import assert from "node:assert/strict";
-import { agendaEfetiva, avisoPendente } from "../src/lib/plan/pendente";
+import { agendaEfetiva, avisoPendente, sessoesDoCalendario } from "../src/lib/plan/pendente";
 import { proximaSessao } from "../src/lib/plan/proxima-sessao";
 
 // Seg/Qua/Sex por 2 semanas (6 treinos), início 02/11/2026.
@@ -43,14 +43,25 @@ const datasDe = (a: { sessoes: Array<{ id: string; data: string }> }) => a.sesso
   assert.deepEqual([...d].sort(), d);
   assert.equal(avisoPendente(a.pendentes, "2026-11-07")!.titulo, "2 treinos ficaram pendentes");
 }
-// 4) Pulo explícito é respeitado: s1 pulado → próximo é s2; s1 fica no dia dele.
+// 4) Pulo explícito é respeitado: s1 pulado → próximo é s2; o dia 04 continua pulado e os outros
+//    treinos não andam. Depois que o dia passa, s1 volta na próxima rodada (fim da fila), sem sumir do plano.
 {
   const st = mk({ 0: "concluida", 1: "pulada" });
   assert.equal(proximaSessao(st, "2026-11-05")?.id, "s2");
   const a = agendaEfetiva(st, "2026-11-05");
-  assert.equal(a.sessoes[1]!.data, "2026-11-04");
   assert.equal(a.pendentes.length, 0);
-  assert.deepEqual(datasDe(a as never), datas, "sem pendente nada muda");
+  assert.deepEqual(datasDe(a as never).filter((_, i) => i !== 1), datas.filter((_, i) => i !== 1), "os outros não mudam");
+  assert.equal(a.sessoes[1]!.data, "2026-11-16", "s1 volta depois do último, no mesmo ritmo");
+  const pulo = sessoesDoCalendario(a).find((s) => s.data === "2026-11-04")!;
+  assert.equal(pulo.status, "pulada", "o dia 04 continua aparecendo como pulado");
+  // Hoje, s1 pulado no próprio dia (04): fica no dia, não volta ainda.
+  assert.equal(agendaEfetiva(st, "2026-11-04").sessoes[1]!.data, "2026-11-04");
+}
+// 4b) Todos os que faltavam foram pulados (caso real de 04/11): a agenda não fica vazia.
+{
+  const st = mk({ 0: "concluida", 1: "concluida", 2: "concluida", 3: "pulada", 4: "pulada", 5: "pulada" });
+  const a = agendaEfetiva(st, "2026-11-14");
+  assert.deepEqual(a.sessoes.slice(3).map((s) => s.data), ["2026-11-14", "2026-11-18", "2026-11-20"], "no ritmo da semana, sem buraco");
 }
 // 5) Já treinou hoje: o pendente vai para o próximo dia.
 {

@@ -1,7 +1,7 @@
 /* Coach Hypertrophy — SW mínimo (installability + shell cache).
  * Não cacheia /api/auth/* nem APIs autenticadas de forma agressiva.
  */
-const CACHE = "ch-shell-v2";
+const CACHE = "ch-shell-v3";
 const PRECACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
