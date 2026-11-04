@@ -31,7 +31,7 @@ export const BAN_IDS: Record<RestricaoKey, string[]> = {
     "bom_dia",
     "agachamento_barra",
   ],
-  joelho: ["agachamento_barra", "afundo_bulgaro", "passada_caminhando", "step_up"],
+  joelho: ["agachamento_barra", "afundo_bulgaro", "passada_caminhando", "step_up", "copenhagen_plank"],
   punho: [],
 };
 

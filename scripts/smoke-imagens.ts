@@ -7,7 +7,9 @@ import { IMAGEM_ORIGEM, arquivoImagem, imagemDoExercicio } from "../src/lib/cata
 let fail = 0;
 const ok = (c: boolean, m: string) => { if (!c) { console.log("FAIL " + m); fail++; } };
 /** Exercícios que ainda não têm imagem fiel: mostram placeholder neutro (lista explícita, para nada ficar sem nada por acidente). */
-const PLACEHOLDER = new Set(["hip_thrust_maquina", "puxada_articulada", "elevacao_lateral_maquina", "rdl_unilateral"]);
+const PLACEHOLDER = new Set(["hip_thrust_maquina", "puxada_articulada", "elevacao_lateral_maquina", "rdl_unilateral",
+  // abdutores/adutores sem foto fiel no Free Exercise DB
+  "abducao_quadril_polia", "abducao_deitado_lado", "fire_hydrant", "abducao_sentado_miniband", "copenhagen_plank", "aducao_deitado_lado"]);
 const ids = new Set(CATALOG_EXERCICIOS.map((e) => e.id));
 let propria = 0, base = 0, ph = 0;
 for (const k of Object.keys(IMAGEM_ORIGEM)) {

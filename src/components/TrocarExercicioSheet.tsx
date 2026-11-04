@@ -1,5 +1,6 @@
 "use client";
 
+import { ListaExerciciosOrdenada } from "@/components/ListaExerciciosOrdenada";
 import { ExercicioThumb } from "@/components/ExercicioImagem";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -97,14 +98,14 @@ export function TrocarExercicioSheet({
             <p className="mb-1 text-xs uppercase tracking-wide text-accent">Trocar exercício</p>
             <h2 className="mb-3 text-xl font-bold">Qual você quer trocar?</h2>
             <div className="space-y-2">
-              {lista.map((e) => (
+              <ListaExerciciosOrdenada itens={lista} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
                 <button key={e.id} type="button" onClick={() => setDeId(e.id)} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
                   <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
                   <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento]}</span>
                 </button>
-              ))}
+              )} />
             </div>
           </>
         ) : !previa ? (
@@ -120,7 +121,7 @@ export function TrocarExercicioSheet({
               </p>
             ) : (
               <div className="motion-stagger space-y-2">
-                {alternativas.map((a) => (
+                <ListaExerciciosOrdenada itens={alternativas} exercicio={(a) => a.exercicio} chave={(a) => a.exercicio.id} render={(a) => (
                   <button
                     key={a.exercicio.id}
                     type="button"
@@ -136,7 +137,7 @@ export function TrocarExercicioSheet({
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-muted">{llm[a.exercicio.id] ?? a.explicacao}</p>
                   </button>
-                ))}
+                )} />
               </div>
             )}
             <div className="sheet-actions">

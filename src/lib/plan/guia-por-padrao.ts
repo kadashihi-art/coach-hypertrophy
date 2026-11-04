@@ -182,6 +182,20 @@ const TEMPLATES: Partial<Record<Padrao, GuiaTemplate>> = {
     cues: ["Punho trabalha, ombro quieto"],
     contraindicacoes: ["Dor aguda no punho ou cotovelo"],
   },
+  abducao_quadril: {
+    setup: ["Tronco firme e quadril parado", "Comece com carga leve"],
+    execucao: ["Abra a perna (ou as pernas) para o lado de forma controlada", "Volte devagar, sem deixar a carga bater"],
+    erros_comuns: ["Balançar o tronco", "Girar o quadril pra roubar amplitude"],
+    cues: ["Empurre com a lateral do quadril"],
+    contraindicacoes: ["Dor aguda no quadril ou na virilha"],
+  },
+  aducao_quadril: {
+    setup: ["Tronco firme e quadril parado", "Abra só até onde alonga sem dor"],
+    execucao: ["Feche as pernas de forma controlada", "Volte devagar até o alongamento"],
+    erros_comuns: ["Abrir demais na volta", "Soltar a carga no final"],
+    cues: ["Aperte por dentro da coxa"],
+    contraindicacoes: ["Dor aguda na virilha (pubalgia)"],
+  },
   core_antirotacao: {
     setup: ["Base estável", "Pelve neutra"],
     execucao: ["Resista à rotação sem torcer a lombar"],
@@ -191,11 +205,96 @@ const TEMPLATES: Partial<Record<Padrao, GuiaTemplate>> = {
   },
 };
 
+/** Guias próprios por exercício (abdutores e adutores). Têm prioridade sobre o guia do padrão. */
+const GUIAS_EXERCICIO: Record<string, GuiaTemplate> = {
+  cadeira_abdutora: {
+    setup: ["Sente com as costas apoiadas e as pernas fechadas nas almofadas", "Segure as alças e ajuste a abertura inicial"],
+    execucao: ["Abra as pernas até o máximo confortável", "Segure 1 segundo e volte devagar, sem bater o peso"],
+    erros_comuns: ["Jogar o tronco pra frente e pra trás", "Soltar o peso na volta"],
+    cues: ["Joelhos empurram pra fora", "Quadril colado no banco"],
+    respiracao: "Expira ao abrir, inspira ao fechar",
+    contraindicacoes: ["Dor aguda na lateral do quadril (bursite)"],
+  },
+  cadeira_adutora: {
+    setup: ["Sente com as costas apoiadas e as almofadas por dentro dos joelhos", "Comece com abertura menor e aumente nas semanas seguintes"],
+    execucao: ["Feche as pernas até as almofadas se encostarem", "Volte devagar até sentir alongar a parte de dentro da coxa"],
+    erros_comuns: ["Abrir demais logo no começo", "Usar impulso pra fechar"],
+    cues: ["Aperte por dentro da coxa", "Controle a volta"],
+    respiracao: "Expira ao fechar, inspira ao abrir",
+    contraindicacoes: ["Dor aguda na virilha (pubalgia)"],
+  },
+  abducao_quadril_polia: {
+    setup: ["Tornozeleira na perna de fora, polia baixa", "Fique de lado pra polia, segurando no aparelho"],
+    execucao: ["Leve a perna para o lado, longe da polia, com o joelho estendido", "Volte devagar sem deixar o peso bater"],
+    erros_comuns: ["Inclinar o tronco pro lado", "Girar o pé pra fora"],
+    cues: ["Ponta do pé pra frente", "Tronco reto"],
+    contraindicacoes: ["Dor aguda no quadril"],
+  },
+  aducao_quadril_polia: {
+    setup: ["Tornozeleira na perna mais perto da polia, polia baixa", "Base afastada e mão apoiada no aparelho"],
+    execucao: ["Puxe a perna pra frente da outra, cruzando um pouco", "Volte devagar até sentir alongar"],
+    erros_comuns: ["Girar o quadril", "Usar impulso"],
+    cues: ["Coxa puxa por dentro", "Tronco parado"],
+    contraindicacoes: ["Dor aguda na virilha (pubalgia)"],
+  },
+  abducao_deitado_lado: {
+    setup: ["Deite de lado, perna de baixo um pouco flexionada", "Quadril empilhado, sem rolar pra trás"],
+    execucao: ["Suba a perna de cima reta até uns 30–45°", "Desça devagar, sem encostar na outra"],
+    erros_comuns: ["Rolar o quadril pra trás", "Subir alto demais e usar a lombar"],
+    cues: ["Calcanhar levemente pra trás", "Ponta do pé pra frente"],
+    contraindicacoes: ["Dor aguda na lateral do quadril (bursite)"],
+  },
+  aducao_deitado_lado: {
+    setup: ["Deite de lado e apoie o pé de cima no chão à frente", "Perna de baixo reta"],
+    execucao: ["Suba a perna de baixo alguns centímetros", "Segure 1 segundo e desça devagar"],
+    erros_comuns: ["Rolar o tronco", "Pressa na descida"],
+    cues: ["Aperte por dentro da coxa de baixo"],
+    contraindicacoes: ["Dor aguda na virilha (pubalgia)"],
+  },
+  monster_walk: {
+    setup: ["Miniband acima dos joelhos ou nos tornozelos", "Meio agachamento, tronco levemente à frente"],
+    execucao: ["Dê passos curtos para o lado (ou na diagonal) sem juntar os pés", "Mantenha a tensão no elástico o tempo todo"],
+    erros_comuns: ["Joelhos caindo pra dentro", "Subir e descer o corpo a cada passo"],
+    cues: ["Joelhos pra fora", "Altura do quadril constante"],
+    contraindicacoes: ["Dor aguda no joelho ou no quadril"],
+  },
+  fire_hydrant: {
+    setup: ["Quatro apoios, mãos embaixo dos ombros e joelhos embaixo do quadril", "Miniband acima dos joelhos"],
+    execucao: ["Abra uma perna para o lado com o joelho dobrado", "Volte devagar e repita do outro lado"],
+    erros_comuns: ["Girar o tronco junto", "Arquear a lombar"],
+    cues: ["Tronco parado, só o quadril abre"],
+    contraindicacoes: ["Dor aguda no quadril ou no punho"],
+  },
+  abducao_sentado_miniband: {
+    setup: ["Sente na ponta do banco com a miniband acima dos joelhos", "Pés no chão, um pouco afastados"],
+    execucao: ["Abra os joelhos contra o elástico", "Segure 1 segundo e feche devagar"],
+    erros_comuns: ["Fechar rápido demais", "Tirar os pés do chão"],
+    cues: ["Joelhos pra fora"],
+    contraindicacoes: ["Dor aguda na lateral do quadril"],
+  },
+  copenhagen_plank: {
+    setup: ["Prancha lateral com a perna de cima apoiada no banco (joelho ou pé)", "Comece com o joelho apoiado, que é mais leve"],
+    execucao: ["Suba o quadril até o corpo ficar reto", "Segure o tempo combinado ou suba e desça devagar"],
+    erros_comuns: ["Deixar o quadril cair", "Começar já com o pé apoiado"],
+    cues: ["Perna de cima aperta o banco", "Quadril alto"],
+    respiracao: "Respire curto, sem prender o ar",
+    contraindicacoes: ["Dor aguda na virilha ou no joelho", "Dor no ombro de apoio"],
+  },
+  agachamento_sumo_adutores: {
+    setup: ["Pés bem afastados e pontas viradas pra fora", "Halter seguro na frente do corpo, com as duas mãos"],
+    execucao: ["Desça com os joelhos seguindo a direção dos pés", "Suba apertando por dentro das coxas"],
+    erros_comuns: ["Joelhos caindo pra dentro", "Tronco despencando à frente"],
+    cues: ["Joelhos pra fora", "Peito alto"],
+    respiracao: "Inspira na descida, expira na subida",
+    contraindicacoes: ["Dor aguda na virilha ou no joelho"],
+  },
+};
+
 export function guiaPorPadrao(
   padrao: Padrao,
   exercicioId = "fallback",
 ): GuiaExecucao {
-  const t = TEMPLATES[padrao] ?? {
+  const t = GUIAS_EXERCICIO[exercicioId] ?? TEMPLATES[padrao] ?? {
     setup: ["Posição estável", "Amplitude controlável"],
     execucao: ["Movimento controlado", "Pare se houver dor aguda"],
     erros_comuns: ["Usar impulso", "Perder alinhamento"],

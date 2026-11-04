@@ -1,5 +1,6 @@
 "use client";
 
+import { ListaExerciciosOrdenada } from "@/components/ListaExerciciosOrdenada";
 import { ExercicioThumb } from "@/components/ExercicioImagem";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/AppProvider";
@@ -86,14 +87,14 @@ export function EditarDuranteTreinoSheet(props: {
         </div>
         <p className="mb-3 text-xs text-muted">Séries, reps e carga ficam com o Coach. Só aparece o que combina com seu equipamento e suas restrições.</p>
         <div className="space-y-2">
-          {cands.map((e) => (
+          <ListaExerciciosOrdenada itens={cands} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
             <button key={e.id} type="button" data-testid="aovivo-add-ex" onClick={() => { setR(adicionarAoVivo(state, r, e.id, modo.adicionar)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
               <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
               <span className="block text-[11px] text-muted">{labelGrupo(e.grupo_primario)} · {EQUIP[e.equipamento] ?? ""}{e.composto ? " · multiarticular" : ""}</span>
             </button>
-          ))}
+          )} />
         </div>
         <button type="button" onClick={() => setModo("editar")} className="mt-3 min-h-11 w-full text-sm text-muted">Voltar</button>
       </>
@@ -116,14 +117,14 @@ export function EditarDuranteTreinoSheet(props: {
           <p className="rounded-2xl border border-border bg-ink-900 p-4 text-sm text-muted">Não achei outra opção segura com o mesmo movimento pro seu equipamento.</p>
         ) : (
           <div className="space-y-2">
-            {alts.map((e) => (
+            <ListaExerciciosOrdenada itens={alts} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
               <button key={e.id} type="button" data-testid="aovivo-alt" onClick={() => { setR(trocarAoVivo(state, r, idx, e.id)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
                 <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>
               <VariacaoInfo ex={e} state={state} />
                 <span className="block text-[11px] text-muted">{EQUIP[e.equipamento] ?? ""}</span>
               </button>
-            ))}
+            )} />
           </div>
         )}
         <button type="button" onClick={() => setModo("editar")} className="mt-3 min-h-11 w-full text-sm text-muted">Voltar</button>
