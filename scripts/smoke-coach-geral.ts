@@ -54,7 +54,7 @@ function limpo(t: string) {
     modo = m;
     const b = await chamar();
     const t = b.json.mensagem_usuario ?? "";
-    if (b.status !== 200 || !b.json.falha_llm || !/Tive um problema pra pensar agora/.test(t)) throw new Error(`fallback ${m} não humano: ` + t);
+    if (b.status !== 200 || !b.json.falha_llm || !/O Coach está sem IA agora/.test(t)) throw new Error(`fallback ${m} não humano: ` + t);
     limpo(t);
   }
   const { semIdsInternos } = await import("../src/lib/llm/tom");

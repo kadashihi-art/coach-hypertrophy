@@ -1,3 +1,4 @@
+import { algumaIaConfigurada, chamarCadeia, extrairJson } from "@/lib/llm/cadeia";
 import { mensagemApiValida } from "@/lib/chat-input";
 /**
  * POST /api/onboarding/coleta — coleta inteligente (read-only, nunca grava).
@@ -26,57 +27,25 @@ export async function POST(req: Request) {
   const abertura = !mensagem.trim() && historico.length === 0;
   const base = PerfilColetaSchema.safeParse(parsed.data.perfil ?? {});
   const perfilAtual = base.success ? base.data : {};
-  const apiKey = process.env.COACH_LLM_API_KEY?.trim();
-  const baseUrl = process.env.COACH_LLM_BASE_URL?.trim();
-  const model = process.env.COACH_LLM_PLAN_MODEL?.trim() || process.env.COACH_LLM_MODEL?.trim() || "openrouter/anthropic/claude-opus-5";
-  if (!apiKey || !baseUrl) return NextResponse.json({ fallback: true, motivo: "llm_indisponivel" });
-
-  const pedir = async () => {
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.4,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: `${COLETA_SYSTEM}\n\nPERFIL JÁ COLETADO: ${JSON.stringify(perfilAtual)}\nOBRIGATÓRIOS FALTANDO: ${JSON.stringify(faltando(perfilAtual))}\nResponda apenas com o objeto JSON, sem texto fora dele.` },
-          ...historico.slice(-20),
-          ...(mensagem.trim() ? [{ role: "user" as const, content: mensagem }] : [{ role: "user" as const, content: "(início da conversa)" }]),
-        ],
-      }),
-      signal: AbortSignal.timeout(40_000),
-    });
-    if (!res.ok) return { erro: `llm_${res.status}` } as const;
-    const corpo = await res.text();
-    let j: { choices?: Array<{ message?: { content?: string } }> };
-    try {
-      j = JSON.parse(corpo);
-    } catch {
-      return { erro: `gateway_nao_json:${corpo.slice(0, 160)}` } as const;
-    }
-    const txt = j.choices?.[0]?.message?.content ?? "";
-    const a = txt.indexOf("{");
-    const b = txt.lastIndexOf("}");
-    try {
-      return { json: JSON.parse(a >= 0 && b > a ? txt.slice(a, b + 1) : txt) as unknown } as const;
-    } catch {
-      return { erro: `json_invalido:${txt.slice(0, 1500)}` } as const;
-    }
-  };
+  if (!algumaIaConfigurada()) return NextResponse.json({ fallback: true, motivo: "llm_indisponivel" });
 
   try {
-    let out = await pedir();
-    if ("erro" in out && String(out.erro).startsWith("json_invalido")) out = await pedir();
-    if ("erro" in out && String(out.erro).startsWith("json_invalido")) {
-      // LLM respondeu em texto puro: usa como fala do turno, sem mexer no perfil
-      const txt = String(out.erro).slice("json_invalido:".length);
-      const pf = perguntaFaltante(perfilAtual);
-      const fala = limparSaidaCoach(txt).texto || pf?.q || "Me conta mais um pouco?";
-      return NextResponse.json({ resposta: abertura ? comAberturaSincera(fala) : fala, chips: pf?.chips ?? [], perfil: perfilAtual, faltando: faltando(perfilAtual), pronto: false, fonte: "llm_texto", modelo: model });
-    }
-    if ("erro" in out) return NextResponse.json({ fallback: true, motivo: out.erro });
+    const r = await chamarCadeia({
+      ponto: "onboarding/coleta",
+      json: true,
+      temperature: 0.4,
+      max_tokens: 2000,
+      timeoutTokiaMs: 40_000,
+      modeloTokia: process.env.COACH_LLM_PLAN_MODEL?.trim() || process.env.COACH_LLM_MODEL?.trim() || undefined,
+      messages: [
+        { role: "system", content: `${COLETA_SYSTEM}\n\nPERFIL JÁ COLETADO: ${JSON.stringify(perfilAtual)}\nOBRIGATÓRIOS FALTANDO: ${JSON.stringify(faltando(perfilAtual))}\nResponda apenas com o objeto JSON, sem texto fora dele.` },
+        ...historico.slice(-20),
+        ...(mensagem.trim() ? [{ role: "user" as const, content: mensagem }] : [{ role: "user" as const, content: "(início da conversa)" }]),
+      ],
+      validar: (t) => RespostaColetaSchema.safeParse(extrairJson(t)).success,
+    });
+    if (!r) return NextResponse.json({ fallback: true, motivo: "llm_indisponivel" });
+    const out = { json: extrairJson(r.texto) };
     const v = RespostaColetaSchema.safeParse(out.json);
     if (!v.success) return NextResponse.json({ fallback: true, motivo: "schema" });
     const perfil = mesclarPerfil(perfilAtual, v.data.perfil);
@@ -92,7 +61,7 @@ export async function POST(req: Request) {
     }
     const validacao = pronto ? validarEstrategia(perfil, v.data.estrategia) : null;
     if (pronto && !v.data.estrategia) pronto = true; // estratégia ausente → auto pelo motor
-    return NextResponse.json({ resposta, chips, perfil, faltando: falta, pronto, ...(validacao ? validacao : {}), fonte: "llm", modelo: model });
+    return NextResponse.json({ resposta, chips, perfil, faltando: falta, pronto, ...(validacao ? validacao : {}), fonte: "llm" });
   } catch (e) {
     return NextResponse.json({ fallback: true, motivo: e instanceof Error ? e.name : "erro" });
   }

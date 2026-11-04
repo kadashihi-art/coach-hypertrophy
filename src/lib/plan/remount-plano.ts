@@ -5,6 +5,7 @@
  * may suggest split notes / exercise preference / justificativa within catalog.
  * LLM MUST NOT invent kg into EstadoExercicio — loads stay from motor.
  */
+import { algumaIaConfigurada, chamarCadeia, extrairJson } from "@/lib/llm/cadeia";
 import { semMotor } from "@/lib/llm/tom";
 import type {
   EstadoExercicio,
@@ -46,10 +47,7 @@ function planModel(): string | undefined {
 }
 
 function llmConfigured(): boolean {
-  return Boolean(
-    process.env.COACH_LLM_API_KEY?.trim() &&
-      process.env.COACH_LLM_BASE_URL?.trim(),
-  );
+  return algumaIaConfigurada();
 }
 
 /** Ask LLM for structure/copy only. Never trust kg from response. */
@@ -61,8 +59,6 @@ export async function sugerirPlanoLlm(args: {
   sessoesResumo: Array<{ nome: string; exercicios: string[] }>;
 }): Promise<LlmPlanSuggestion | null> {
   if (!llmConfigured()) return null;
-  const apiKey = process.env.COACH_LLM_API_KEY!.trim();
-  const baseUrl = process.env.COACH_LLM_BASE_URL!.trim().replace(/\/$/, "");
   const model = planModel() || "openrouter/anthropic/claude-opus-5";
 
   const system = buildCoachSystemWithArsenal(
@@ -98,30 +94,23 @@ export async function sugerirPlanoLlm(args: {
   });
 
   try {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+    const r = await chamarCadeia({
+      ponto: "remount-plano",
+      json: true,
+      temperature: 0.2,
+      modeloTokia: model,
+      timeoutTokiaMs: 18_000,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      validar: (t) => {
+        const j = extrairJson(t);
+        return !!j && typeof j === "object" && !Array.isArray(j);
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
-      signal: AbortSignal.timeout(18_000),
     });
-    if (!res.ok) return null;
-    const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const raw = json.choices?.[0]?.message?.content;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as LlmPlanSuggestion;
+    if (!r) return null;
+    const parsed = extrairJson(r.texto) as LlmPlanSuggestion;
     if (!parsed || typeof parsed !== "object") return null;
     // Sanitize prefer ids to catalog
     const allowed = new Set(args.catalogIds);

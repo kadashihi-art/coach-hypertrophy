@@ -2,6 +2,7 @@
  * Explicação curta (texto) das alternativas de troca via LLM — read-only.
  * A LLM só reescreve texto; qualquer número/id/enum na saída descarta o item (fica o texto por regra).
  */
+import { algumaIaConfigurada, chamarCadeia, extrairJson } from "@/lib/llm/cadeia";
 import { limparSaidaCoach } from "@/lib/llm/tom";
 
 export type ItemExplicar = { id: string; nome: string; equipamento: string; texto_base: string };
@@ -37,12 +38,7 @@ export async function explicarComLlm(args: {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }): Promise<{ explicacoes: Record<string, string>; fonte: "llm" | "regra"; erro?: string }> {
-  const apiKey = process.env.COACH_LLM_API_KEY?.trim();
-  const baseUrl = process.env.COACH_LLM_BASE_URL?.trim();
-  if (!apiKey || !baseUrl) return { explicacoes: {}, fonte: "regra", erro: "sem_llm" };
-  const f = args.fetchImpl ?? fetch;
-  const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), args.timeoutMs ?? 15000);
+  if (!algumaIaConfigurada()) return { explicacoes: {}, fonte: "regra", erro: "sem_llm" };
   try {
     const sys =
       "Você é um coach de musculação falando em PT-BR, primeira pessoa, tom de WhatsApp. " +
@@ -54,30 +50,25 @@ export async function explicarComLlm(args: {
       restricoes: args.restricoes,
       alternativas: args.itens.map((i) => ({ id: i.id, nome: i.nome, equipamento: i.equipamento, base: i.texto_base })),
     });
-    const res = await f(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: process.env.COACH_LLM_MODEL?.trim() || "openrouter/anthropic/claude-opus-5",
-        messages: [
-          { role: "system", content: sys },
-          { role: "user", content: user },
-        ],
-        temperature: 0.4,
-      }),
+    const r = await chamarCadeia({
+      ponto: "trocar/explicar",
+      json: true,
+      temperature: 0.4,
+      timeoutTokiaMs: args.timeoutMs ?? 15000,
+      fetchImpl: args.fetchImpl,
+      messages: [
+        { role: "system", content: sys },
+        { role: "user", content: user },
+      ],
+      validar: (t) => {
+        const j = extrairJson(t);
+        return !!j && Object.keys(filtrarExplicacoes(j, args.itens)).length > 0;
+      },
     });
-    if (!res.ok) return { explicacoes: {}, fonte: "regra", erro: `http_${res.status}` };
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: unknown } }> };
-    const c = json.choices?.[0]?.message?.content;
-    const txt = typeof c === "string" ? c : "";
-    const m = txt.match(/\{[\s\S]*\}/);
-    if (!m) return { explicacoes: {}, fonte: "regra", erro: "sem_json" };
-    const ex = filtrarExplicacoes(JSON.parse(m[0]), args.itens);
+    if (!r) return { explicacoes: {}, fonte: "regra", erro: "sem_ia" };
+    const ex = filtrarExplicacoes(extrairJson(r.texto), args.itens);
     return { explicacoes: ex, fonte: Object.keys(ex).length ? "llm" : "regra" };
   } catch (e) {
     return { explicacoes: {}, fonte: "regra", erro: e instanceof Error ? e.name : "erro" };
-  } finally {
-    clearTimeout(to);
   }
 }
