@@ -111,8 +111,9 @@ export function pesoAtual(checkins: CheckinLike[], perfilPeso?: number | null): 
   return c?.peso_kg ?? perfilPeso ?? null;
 }
 
-export function litros(ml: number): string {
-  return `${(ml / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} L`;
+/** 2750 → "2,75 L" (meta); com `casas = 1`, 2320 → "2,3 L" (médias). */
+export function litros(ml: number, casas = 2): string {
+  return `${(ml / 1000).toLocaleString("pt-BR", { maximumFractionDigits: casas })} L`;
 }
 
 /** 70 → "1h10"; 40 → "40 min". */
@@ -213,7 +214,7 @@ export function avaliarSono(dias: DiaSonoAgua[], janela: 7 | 14): AlertaApresent
     tipo: "sono",
     urgencia: "info",
     titulo: "Sono na faixa boa",
-    porque: `${base}${r.abaixo7 ? `, e só ${plural(r.abaixo7, "noite")} ficou abaixo de 7 h` : ", todas com 7 h ou mais"}.${treino}`,
+    porque: `${base}${r.abaixo7 ? `, e só ${plural(r.abaixo7, "noite")} ${r.abaixo7 === 1 ? "ficou" : "ficaram"} abaixo de 7 h` : ", todas com 7 h ou mais"}.${treino}`,
     dica: `Continue assim: de 7 a 9 h por noite é o que mais ajuda a recuperar entre os treinos.${varTxt}`,
   };
 }
@@ -223,7 +224,7 @@ export function avaliarAgua(dias: DiaSonoAgua[], metaMl: number, janela: 7 | 14)
   if (r.dias < minimoRegistros(janela) || r.media_ml == null) return null;
   const per = periodo(janela);
   const meta = litros(metaMl);
-  const base = `${per} você bateu a meta de ${meta} em ${r.batidos} de ${plural(r.dias, "dia")} registrado${r.dias === 1 ? "" : "s"}, com média de ${litros(r.media_ml)} por dia.`;
+  const base = `${per} você bateu a meta de ${meta} em ${r.batidos} de ${plural(r.dias, "dia")} registrado${r.dias === 1 ? "" : "s"}, com média de ${litros(r.media_ml, 1)} por dia.`;
   const pct = r.batidos / r.dias;
   if (pct >= 0.7) {
     return { tipo: "agua", urgencia: "info", titulo: "Água em dia", porque: base, dica: "Boa. Manter a hidratação ajuda o rendimento nas séries." };
@@ -233,7 +234,7 @@ export function avaliarAgua(dias: DiaSonoAgua[], metaMl: number, janela: 7 | 14)
     urgencia: pct < 0.4 ? "atencao" : "info",
     titulo: "Água abaixo da meta",
     porque: base,
-    dica: `Deixe uma garrafa por perto e tome um copo a cada refeição e entre as séries. Faltam em média ${litros(Math.max(0, metaMl - r.media_ml))} por dia.`,
+    dica: `Deixe uma garrafa por perto e tome um copo a cada refeição e entre as séries. Faltam em média ${litros(Math.max(0, metaMl - r.media_ml), 1)} por dia.`,
     acao: ACAO_CHECKIN,
   };
 }
