@@ -26,6 +26,7 @@ import {
   decidirProgressao,
 } from "@/lib/engine/progression";
 import { isoWeekDe, mergeVolumeSessao, volumeSessaoPorGrupo } from "@/lib/engine/volume";
+import { aplicarRecordes, registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
 
 /** Limites validados no cliente e no servidor. RIR: o registro aceita até 5 (schema). */
 export const LIMITES_CORRECAO = {
@@ -316,7 +317,7 @@ function estadoPadrao(p: Prescricao): EstadoExercicio {
     sessoes_sem_progresso: 0,
     ultima_progressao_em: null,
     e1rm_estimado_kg: 0,
-    pr_carga_kg: p.carga.trabalho_kg,
+    pr_carga_kg: 0,
     pr_reps: 0,
     origem_carga: p.carga.origem,
     primeira_sessao: false,
@@ -376,7 +377,7 @@ export function recalcularAPartirDe(state: AppState, sid: string, antigosSid: Re
   for (let i = i0; i < ordem.length; i++) {
     const S = ordem[i]!;
     const regs = regsDe(S.id);
-    const tocados = S.prescricoes.filter((p) => afetados.has(p.exercicio_id) && regs.some((r) => r.prescricao_id === p.id));
+    const tocados = S.prescricoes.filter((p) => afetados.has(p.exercicio_id) && seriesDaPrescricao(regs, S.prescricoes, p).length > 0);
     if (i > i0 && !S.snapshot_conclusao) {
       if (tocados.length > 0) { parouEm = S; iParada = i; break; }
       continue;
@@ -404,7 +405,7 @@ export function recalcularAPartirDe(state: AppState, sid: string, antigosSid: Re
       } else if (!estadosAntes.some((e) => e.exercicio_id === p.exercicio_id)) {
         estadosAntes.push(input);
       }
-      const series = regs.filter((r) => r.prescricao_id === p.id);
+      const series = seriesDaPrescricao(regs, S.prescricoes, p);
       const grupo = ex?.grupo_primario ?? "peito";
       let d: DecisaoProgressao = decidirProgressao({
         exercicio_id: p.exercicio_id,
@@ -438,7 +439,7 @@ export function recalcularAPartirDe(state: AppState, sid: string, antigosSid: Re
   const mudados = new Map<string, EstadoExercicio>();
   for (const ex of afetados) {
     if (depoisDaParada.some((s) => toca(s, ex))) continue;
-    const novo = E.get(ex)!;
+    const novo = aplicarRecordes([E.get(ex)!], registrosValidos(state))[0]!;
     const atual = estados.find((e) => e.exercicio_id === ex);
     if (atual && equivalenteEstado(atual, novo)) continue;
     const final = atual ? { ...novo, atualizado_em: new Date().toISOString() } : novo;
@@ -559,6 +560,9 @@ export function aplicarCorrecao(state: AppState, r: RascunhoCorrecao, agoraIso =
   } else {
     avisos.push(AVISO_SEM_SNAPSHOT);
   }
+  // e1RM/PR vêm dos registros reais: a correção também pode baixar esses números.
+  const tocadosEx = new Set([...antigos, ...registros].map((x) => x.exercicio_id));
+  next = { ...next, estados: aplicarRecordes(next.estados, registrosValidos(next), tocadosEx) };
   const mudadas = state.sessoes.filter((s) => next.sessoes.find((n) => n.id === s.id) !== s);
   const correcao: CorrecaoConcluida = {
     sessao_id: sess.id,

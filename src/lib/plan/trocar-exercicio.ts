@@ -282,8 +282,8 @@ export function aplicarTroca(state: AppState, deId: string, paraId: string): App
       alvo_proxima_sessao: { carga_kg: carga, faixa_reps: r.faixa_reps, rir_alvo: r.rir_alvo },
       sessoes_sem_progresso: 0,
       ultima_progressao_em: null,
-      e1rm_estimado_kg: Math.round(carga * (1 + r.faixa_reps[1] / 30) * 10) / 10,
-      pr_carga_kg: carga,
+      e1rm_estimado_kg: 0, // sem dados até o 1º treino real
+      pr_carga_kg: 0,
       pr_reps: 0,
       origem_carga: "estimativa_conservadora",
       primeira_sessao: true,

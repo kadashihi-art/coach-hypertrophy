@@ -29,7 +29,8 @@
     "smoke:hoje-editar": "npx --yes tsx scripts/smoke-hoje-editar.ts",
     "smoke:memoria-carga": "npx --yes tsx scripts/smoke-memoria-carga.ts",
     "smoke:catalogo": "npx --yes tsx scripts/smoke-catalogo.ts",
-    "smoke:alternativa": "npx --yes tsx scripts/smoke-alternativa.ts"
+    "smoke:alternativa": "npx --yes tsx scripts/smoke-alternativa.ts",
+    "smoke:progresso": "npx --yes tsx scripts/smoke-progresso.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

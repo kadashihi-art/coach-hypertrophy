@@ -26,6 +26,7 @@ import {
   avaliarAlertasVolume,
   extractVolumeMarkers,
 } from "@/lib/engine/alertas-volume";
+import { aplicarRecordes, registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
 
 export function concluirSessao(
   s: AppState,
@@ -46,10 +47,11 @@ export function concluirSessao(
       const novasDecisoes: DecisaoProgressao[] = [];
       let estados = [...s.estados];
       const estadosAntes: EstadoExercicio[] = [];
-      const semanaVolume = isoWeekDe(new Date(agoraIso));
+      // Volume entra na semana do dia do treino (não no momento em que tocou em concluir).
+      const semanaVolume = isoWeekDe(new Date(sess.data ? `${sess.data}T12:00:00` : agoraIso));
 
       for (const presc of sess.prescricoes) {
-        const series = seriesSessao.filter((r) => r.prescricao_id === presc.id);
+        const series = seriesDaPrescricao(seriesSessao, sess.prescricoes, presc);
         if (series.length === 0) continue;
         const ex = s.exercicios.find((e) => e.id === presc.exercicio_id);
         const estado =
@@ -66,7 +68,7 @@ export function concluirSessao(
             sessoes_sem_progresso: 0,
             ultima_progressao_em: null,
             e1rm_estimado_kg: 0,
-            pr_carga_kg: presc.carga.trabalho_kg,
+            pr_carga_kg: 0,
             pr_reps: 0,
             origem_carga: presc.carga.origem,
             primeira_sessao: false,
@@ -104,6 +106,13 @@ export function concluirSessao(
           novoEstado,
         ];
       }
+
+      // e1RM/PR derivados dos registros reais (concluídas + esta).
+      estados = aplicarRecordes(
+        estados,
+        registrosValidos(s, [sid]),
+        new Set(novasDecisoes.map((d) => d.exercicio_id)),
+      );
 
       const realizado = volumeSessaoPorGrupo(seriesSessao, s.exercicios);
       const volume_por_grupo = mergeVolumeSessao(

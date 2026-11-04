@@ -7,7 +7,7 @@
  */
 import { gerarPlanoFromPerfil } from "../src/lib/plan/gerar-plano";
 import { CATALOG_EXERCICIOS } from "../src/lib/catalog/exercicios";
-import { AppStateSchema, type AppState, type Perfil, type RegistroSerie, type Sessao } from "../src/lib/domain";
+import { AppStateSchema, type AppState, type EstadoExercicio, type Perfil, type RegistroSerie, type Sessao } from "../src/lib/domain";
 import { concluirSessao } from "../src/lib/engine/concluir-sessao";
 import { isoWeekDe } from "../src/lib/engine/volume";
 import {
@@ -218,7 +218,9 @@ ok(validarRascunhoCorrecao(S, rx) !== null, "RIR > 10 recusado");
   for (let j = 0; j < 3; j++) r2 = editarSerie(r2, i1, j, { carga_kg: 50, reps: 12 });
   const rs = aplicarCorrecao(s, r2);
   ok(rs.ok && rs.avisos.some((a) => a.includes("só até ele")), "sessão seguinte sem snapshot: aviso de recálculo parcial");
-  ok(rs.ok && mesmo(est(rs.state, ex1), est(s, ex1)), "estado final mantido quando a cascata para");
+  const semRec = (e: EstadoExercicio | undefined) => e && { ...e, e1rm_estimado_kg: 0, pr_carga_kg: 0, pr_reps: 0 };
+  ok(rs.ok && mesmo(semRec(est(rs.state, ex1)), semRec(est(s, ex1))), "estado final (carga/alvo) mantido quando a cascata para");
+  ok(rs.ok && est(rs.state, ex1)!.pr_carga_kg === 50 && est(rs.state, ex1)!.pr_reps === 12, "PR segue o registro corrigido mesmo quando a cascata para");
   ok(rs.ok && rs.state.decisoes.find((d) => d.sessao_id === A0.id && d.exercicio_id === ex1)!.nova_carga_kg >= 0, "decisão do treino corrigido refeita");
 }
 
@@ -231,7 +233,9 @@ ok(validarRascunhoCorrecao(S, rx) !== null, "RIR > 10 recusado");
   const pv = previaCorrecao(L, r3);
   ok(pv.avisos.includes(AVISO_SEM_SNAPSHOT), "aviso humano de treino antigo");
   const rl = aplicarCorrecao(L, r3);
-  ok(rl.ok && JSON.stringify(rl.state.estados) === JSON.stringify(L.estados), "sem snapshot: EstadoExercicio intacto");
+  const semRecL = (es: EstadoExercicio[]) => es.map((e) => ({ ...e, e1rm_estimado_kg: 0, pr_carga_kg: 0, pr_reps: 0, atualizado_em: "" }));
+  ok(rl.ok && JSON.stringify(semRecL(rl.state.estados)) === JSON.stringify(semRecL(L.estados)), "sem snapshot: carga e alvo intactos");
+  ok(rl.ok && est(rl.state, ex1)!.pr_carga_kg === 50 && est(rl.state, ex1)!.pr_reps === 12, "sem snapshot: e1RM/PR seguem o registro corrigido");
   ok(rl.ok && JSON.stringify(rl.state.decisoes) === JSON.stringify(L.decisoes), "sem snapshot: decisões intactas");
   ok(rl.ok && rl.state.registros.filter((x) => x.sessao_id === A0.id && x.exercicio_id === ex1).every((x) => x.carga_kg === 50), "sem snapshot: registro corrigido");
   const rr4 = removerExercicioCorrecao(rascunhoCorrecaoDaSessao(L, A0.id), i1);

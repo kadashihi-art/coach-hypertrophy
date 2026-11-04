@@ -286,8 +286,6 @@ export async function remountPlano(args: {
     e.alvo_proxima_sessao = { ...e.alvo_proxima_sessao, carga_kg: sugerida.carga_kg };
     e.origem_carga = "historico";
     e.primeira_sessao = false;
-    e.e1rm_estimado_kg =
-      Math.round(sugerida.carga_kg * (1 + e.faixa_reps[1] / 30) * 10) / 10;
   }
 
   // Add placeholders for swapped-in exercises missing from motor estados
@@ -320,8 +318,8 @@ export async function remountPlano(args: {
       },
       sessoes_sem_progresso: 0,
       ultima_progressao_em: null,
-      e1rm_estimado_kg: Math.round(carga * (1 + faixa[1] / 30) * 10) / 10,
-      pr_carga_kg: carga,
+      e1rm_estimado_kg: 0, // sem dados até o 1º treino real
+      pr_carga_kg: 0,
       pr_reps: 0,
       origem_carga: "estimativa_conservadora",
       primeira_sessao: true,
@@ -347,8 +345,6 @@ export async function remountPlano(args: {
     e.alvo_proxima_sessao = { ...e.alvo_proxima_sessao, carga_kg: sugerida.carga_kg };
     e.origem_carga = "historico";
     e.primeira_sessao = false;
-    e.e1rm_estimado_kg =
-      Math.round(sugerida.carga_kg * (1 + e.faixa_reps[1] / 30) * 10) / 10;
   }
 
   // Memória de carga: preserva histórico, PRs e e1RM; adota faixa/RIR do plano novo.
