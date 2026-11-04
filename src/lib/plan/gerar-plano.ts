@@ -271,34 +271,34 @@ export function templatesPorEstilo(
 function fbSlots(variant: "a" | "b" | "c"): Slot[] {
   if (variant === "a") {
     return [
-      { padrao: "agachamento", composto: true, prefer: ["agachamento_barra", "hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro"] },
+      { padrao: "agachamento", composto: true, prefer: ["agachamento_barra", "hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "step_up", "agachamento_sumo"] },
       { padrao: "empurrar_horizontal", composto: true, prefer: ["supino_reto_convencional", "supino_halteres", "supino_maquina"] },
-      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_curvada", "remada_maquina", "remada_halteres", "remada_cabo"] },
-      { padrao: "dobradica_quadril", composto: true, prefer: ["stiff_rdl", "rdl_halteres", "hip_thrust", "hip_thrust_maquina", "mesa_flexora"] },
-      { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull"] },
-      { padrao: "flexao_cotovelo", prefer: ["rosca_direta", "rosca_martelo", "rosca_cabo"] },
-      { padrao: "extensao_cotovelo", prefer: ["triceps_corda", "triceps_maquina", "triceps_halteres", "triceps_testa"] },
+      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_curvada", "remada_maquina", "remada_halteres", "remada_cabo", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_invertida"] },
+      { padrao: "dobradica_quadril", composto: true, prefer: ["stiff_rdl", "rdl_halteres", "hip_thrust", "hip_thrust_maquina", "mesa_flexora", "rdl_unilateral", "bom_dia"] },
+      { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull", "elevacao_lateral_maquina", "crucifixo_inverso"] },
+      { padrao: "flexao_cotovelo", prefer: ["rosca_direta", "rosca_martelo", "rosca_cabo", "rosca_inclinada", "rosca_scott", "rosca_concentrada"] },
+      { padrao: "extensao_cotovelo", prefer: ["triceps_corda", "triceps_maquina", "triceps_halteres", "triceps_testa", "triceps_pulley", "triceps_overhead_cabo"] },
     ];
   }
   if (variant === "b") {
     return [
-      { padrao: "agachamento", composto: true, prefer: ["hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "agachamento_barra"] },
-      { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa"] },
-      { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres", "supino_halteres"] },
-      { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "rdl_halteres", "stiff_rdl", "ponte_gluteo", "mesa_flexora"] },
-      { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres"] },
-      { padrao: "flexao_joelho", prefer: ["mesa_flexora"] },
-      { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado"] },
+      { padrao: "agachamento", composto: true, prefer: ["hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "agachamento_barra", "step_up", "agachamento_sumo"] },
+      { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa", "puxada_articulada", "pullover_cabo"] },
+      { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres", "supino_halteres", "supino_inclinado_maquina", "supino_inclinado_barra"] },
+      { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "rdl_halteres", "stiff_rdl", "ponte_gluteo", "mesa_flexora", "rdl_unilateral", "bom_dia"] },
+      { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres", "desenvolvimento_arnold", "desenvolvimento_barra"] },
+      { padrao: "flexao_joelho", prefer: ["mesa_flexora", "cadeira_flexora_sentada"] },
+      { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado", "panturrilha_leg_press"] },
     ];
   }
   return [
-    { padrao: "agachamento", composto: true, prefer: ["agachamento_goblet", "afundo_bulgaro", "hack_squat", "leg_press", "agachamento_barra"] },
+    { padrao: "agachamento", composto: true, prefer: ["agachamento_goblet", "afundo_bulgaro", "hack_squat", "leg_press", "agachamento_barra", "passada_caminhando", "step_up"] },
     { padrao: "empurrar_horizontal", composto: true, prefer: ["supino_halteres", "supino_maquina", "supino_reto_convencional", "flexao_solo"] },
-    { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada"] },
+    { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_invertida"] },
     { padrao: "extensao_joelho", prefer: ["cadeira_extensora"] },
-    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_neutra", "puxada_frontal", "barra_fixixa"] },
-    { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull"] },
-    { padrao: "extensao_cotovelo", prefer: ["triceps_halteres", "triceps_maquina", "triceps_testa", "triceps_corda"] },
+    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_neutra", "puxada_frontal", "barra_fixixa", "puxada_articulada", "pullover_cabo"] },
+    { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull", "elevacao_lateral_maquina", "crucifixo_inverso"] },
+    { padrao: "extensao_cotovelo", prefer: ["triceps_halteres", "triceps_maquina", "triceps_testa", "triceps_corda", "triceps_pulley", "triceps_overhead_cabo"] },
   ];
 }
 
@@ -306,41 +306,41 @@ function upperSlots(variant: "a" | "b"): Slot[] {
   if (variant === "a") {
     return [
       { padrao: "empurrar_horizontal", composto: true, prefer: ["supino_reto_convencional", "supino_halteres", "supino_maquina"] },
-      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_curvada", "remada_maquina", "remada_halteres", "remada_cabo"] },
-      { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa"] },
-      { padrao: "empurrar_horizontal", prefer: ["crucifixo_cabo", "pec_deck", "supino_halteres"] },
-      { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull"] },
-      { padrao: "extensao_cotovelo", prefer: ["triceps_corda", "triceps_maquina", "triceps_halteres", "triceps_testa"] },
-      { padrao: "flexao_cotovelo", prefer: ["rosca_direta", "rosca_martelo", "rosca_cabo"] },
+      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_curvada", "remada_maquina", "remada_halteres", "remada_cabo", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_invertida"] },
+      { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa", "puxada_articulada", "pullover_cabo"] },
+      { padrao: "empurrar_horizontal", prefer: ["crucifixo_cabo", "pec_deck", "supino_halteres", "crucifixo_halteres"] },
+      { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull", "elevacao_lateral_maquina", "crucifixo_inverso"] },
+      { padrao: "extensao_cotovelo", prefer: ["triceps_corda", "triceps_maquina", "triceps_halteres", "triceps_testa", "triceps_pulley", "triceps_overhead_cabo"] },
+      { padrao: "flexao_cotovelo", prefer: ["rosca_direta", "rosca_martelo", "rosca_cabo", "rosca_inclinada", "rosca_scott", "rosca_concentrada"] },
     ];
   }
   return [
-    { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres", "supino_halteres"] },
-    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_neutra", "puxada_frontal", "barra_fixixa"] },
-    { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada"] },
-    { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres"] },
-    { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull"] },
-    { padrao: "flexao_cotovelo", prefer: ["rosca_martelo", "rosca_cabo", "rosca_direta"] },
-    { padrao: "extensao_cotovelo", prefer: ["triceps_halteres", "triceps_maquina", "triceps_testa", "triceps_corda"] },
+    { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres", "supino_halteres", "supino_inclinado_maquina", "supino_inclinado_barra"] },
+    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_neutra", "puxada_frontal", "barra_fixixa", "puxada_articulada", "pullover_cabo"] },
+    { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_invertida"] },
+    { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres", "desenvolvimento_arnold", "desenvolvimento_barra"] },
+    { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull", "elevacao_lateral_maquina", "crucifixo_inverso"] },
+    { padrao: "flexao_cotovelo", prefer: ["rosca_martelo", "rosca_cabo", "rosca_direta", "rosca_inclinada", "rosca_scott", "rosca_concentrada"] },
+    { padrao: "extensao_cotovelo", prefer: ["triceps_halteres", "triceps_maquina", "triceps_testa", "triceps_corda", "triceps_pulley", "triceps_overhead_cabo"] },
   ];
 }
 
 function lowerSlots(variant: "a" | "b"): Slot[] {
   if (variant === "a") {
     return [
-      { padrao: "agachamento", composto: true, prefer: ["agachamento_barra", "hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro"] },
-      { padrao: "dobradica_quadril", composto: true, prefer: ["stiff_rdl", "rdl_halteres", "hip_thrust", "hip_thrust_maquina", "mesa_flexora"] },
+      { padrao: "agachamento", composto: true, prefer: ["agachamento_barra", "hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "step_up", "agachamento_sumo"] },
+      { padrao: "dobradica_quadril", composto: true, prefer: ["stiff_rdl", "rdl_halteres", "hip_thrust", "hip_thrust_maquina", "mesa_flexora", "rdl_unilateral", "bom_dia"] },
       { padrao: "extensao_joelho", prefer: ["cadeira_extensora"] },
-      { padrao: "flexao_joelho", prefer: ["mesa_flexora"] },
-      { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado"] },
+      { padrao: "flexao_joelho", prefer: ["mesa_flexora", "cadeira_flexora_sentada"] },
+      { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado", "panturrilha_leg_press"] },
     ];
   }
   return [
-    { padrao: "agachamento", composto: true, prefer: ["hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "agachamento_barra"] },
-    { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "rdl_halteres", "stiff_rdl", "ponte_gluteo", "mesa_flexora"] },
+    { padrao: "agachamento", composto: true, prefer: ["hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "agachamento_barra", "step_up", "agachamento_sumo"] },
+    { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "rdl_halteres", "stiff_rdl", "ponte_gluteo", "mesa_flexora", "rdl_unilateral", "bom_dia"] },
     { padrao: "agachamento", composto: true, prefer: ["agachamento_goblet", "afundo_bulgaro", "leg_press"] },
-    { padrao: "flexao_joelho", prefer: ["mesa_flexora"] },
-    { padrao: "flexao_plantar", prefer: ["panturrilha_sentado", "panturrilha_pe"] },
+    { padrao: "flexao_joelho", prefer: ["mesa_flexora", "cadeira_flexora_sentada"] },
+    { padrao: "flexao_plantar", prefer: ["panturrilha_sentado", "panturrilha_pe", "panturrilha_leg_press"] },
   ];
 }
 
@@ -348,63 +348,63 @@ function pushSlots(variant: "a" | "b"): Slot[] {
   if (variant === "a") {
     return [
       { padrao: "empurrar_horizontal", composto: true, prefer: ["supino_reto_convencional", "supino_halteres", "supino_maquina"] },
-      { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres"] },
-      { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres"] },
-      { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull"] },
-      { padrao: "extensao_cotovelo", prefer: ["triceps_corda", "triceps_maquina", "triceps_halteres", "triceps_testa"] },
-      { padrao: "empurrar_horizontal", prefer: ["crucifixo_cabo", "pec_deck", "supino_halteres"] },
+      { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres", "supino_inclinado_maquina", "supino_inclinado_barra", "supino_halteres"] },
+      { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres", "desenvolvimento_arnold", "desenvolvimento_barra"] },
+      { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull", "elevacao_lateral_maquina", "crucifixo_inverso"] },
+      { padrao: "extensao_cotovelo", prefer: ["triceps_corda", "triceps_maquina", "triceps_halteres", "triceps_testa", "triceps_pulley", "triceps_overhead_cabo"] },
+      { padrao: "empurrar_horizontal", prefer: ["crucifixo_cabo", "pec_deck", "supino_halteres", "crucifixo_halteres"] },
     ];
   }
   return [
-    { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres", "supino_halteres"] },
+    { padrao: "empurrar_inclinado", composto: true, prefer: ["supino_inclinado_halteres", "supino_halteres", "supino_inclinado_maquina", "supino_inclinado_barra"] },
     { padrao: "empurrar_horizontal", composto: true, prefer: ["supino_halteres", "supino_maquina", "supino_reto_convencional", "flexao_solo"] },
-    { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull"] },
-    { padrao: "extensao_cotovelo", prefer: ["triceps_halteres", "triceps_maquina", "triceps_testa", "triceps_corda"] },
-    { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres"] },
+    { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "face_pull", "elevacao_lateral_maquina", "crucifixo_inverso"] },
+    { padrao: "extensao_cotovelo", prefer: ["triceps_halteres", "triceps_maquina", "triceps_testa", "triceps_corda", "triceps_pulley", "triceps_overhead_cabo"] },
+    { padrao: "empurrar_vertical", composto: true, prefer: ["desenvolvimento_maquina", "desenvolvimento_halteres", "desenvolvimento_arnold", "desenvolvimento_barra"] },
   ];
 }
 
 function pullSlots(variant: "a" | "b"): Slot[] {
   if (variant === "a") {
     return [
-      { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa"] },
-      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_curvada", "remada_maquina", "remada_halteres", "remada_cabo"] },
-      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada"] },
-      { padrao: "flexao_cotovelo", prefer: ["rosca_direta", "rosca_martelo", "rosca_cabo"] },
-      { padrao: "flexao_cotovelo", prefer: ["rosca_martelo", "rosca_cabo", "rosca_direta"] },
+      { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa", "puxada_articulada", "pullover_cabo"] },
+      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_curvada", "remada_maquina", "remada_halteres", "remada_cabo", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_invertida"] },
+      { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_invertida"] },
+      { padrao: "flexao_cotovelo", prefer: ["rosca_direta", "rosca_martelo", "rosca_cabo", "rosca_inclinada", "rosca_scott", "rosca_concentrada"] },
+      { padrao: "flexao_cotovelo", prefer: ["rosca_martelo", "rosca_cabo", "rosca_direta", "rosca_inclinada", "rosca_scott", "rosca_concentrada"] },
     ];
   }
   return [
-    { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada"] },
-    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_neutra", "puxada_frontal", "barra_fixixa"] },
-    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa"] },
-    { padrao: "flexao_cotovelo", prefer: ["rosca_martelo", "rosca_cabo", "rosca_direta"] },
+    { padrao: "puxar_horizontal", composto: true, prefer: ["remada_maquina", "remada_halteres", "remada_cabo", "remada_curvada", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_invertida"] },
+    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_neutra", "puxada_frontal", "barra_fixixa", "puxada_articulada", "pullover_cabo"] },
+    { padrao: "puxar_vertical", composto: true, prefer: ["puxada_frontal", "puxada_neutra", "barra_fixixa", "puxada_articulada", "pullover_cabo"] },
+    { padrao: "flexao_cotovelo", prefer: ["rosca_martelo", "rosca_cabo", "rosca_direta", "rosca_inclinada", "rosca_scott", "rosca_concentrada"] },
   ];
 }
 
 function legsSlots(variant: "a" | "b"): Slot[] {
   if (variant === "a") {
     return [
-      { padrao: "agachamento", composto: true, prefer: ["agachamento_barra", "hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro"] },
-      { padrao: "dobradica_quadril", composto: true, prefer: ["stiff_rdl", "rdl_halteres", "hip_thrust", "hip_thrust_maquina", "mesa_flexora"] },
+      { padrao: "agachamento", composto: true, prefer: ["agachamento_barra", "hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "step_up", "agachamento_sumo"] },
+      { padrao: "dobradica_quadril", composto: true, prefer: ["stiff_rdl", "rdl_halteres", "hip_thrust", "hip_thrust_maquina", "mesa_flexora", "rdl_unilateral", "bom_dia"] },
       { padrao: "extensao_joelho", prefer: ["cadeira_extensora"] },
-      { padrao: "flexao_joelho", prefer: ["mesa_flexora"] },
-      { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado"] },
+      { padrao: "flexao_joelho", prefer: ["mesa_flexora", "cadeira_flexora_sentada"] },
+      { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado", "panturrilha_leg_press"] },
     ];
   }
   return [
-    { padrao: "agachamento", composto: true, prefer: ["hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro"] },
-    { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "rdl_halteres", "stiff_rdl", "ponte_gluteo", "mesa_flexora"] },
-    { padrao: "agachamento", prefer: ["agachamento_goblet", "afundo_bulgaro", "leg_press"] },
-    { padrao: "flexao_plantar", prefer: ["panturrilha_sentado", "panturrilha_pe"] },
+    { padrao: "agachamento", composto: true, prefer: ["hack_squat", "leg_press", "agachamento_goblet", "afundo_bulgaro", "passada_caminhando", "step_up", "agachamento_sumo"] },
+    { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "rdl_halteres", "stiff_rdl", "ponte_gluteo", "mesa_flexora", "rdl_unilateral", "bom_dia"] },
+    { padrao: "agachamento", prefer: ["agachamento_goblet", "afundo_bulgaro", "leg_press", "agachamento_sumo", "step_up"] },
+    { padrao: "flexao_plantar", prefer: ["panturrilha_sentado", "panturrilha_pe", "panturrilha_leg_press"] },
   ];
 }
 
 /** Exercises banned outright for a restriction (id match). */
 const BAN_IDS: Record<RestricaoKey, string[]> = {
-  ombro: [],
-  lombar: ["remada_curvada", "stiff_rdl", "rdl_halteres", "agachamento_barra"],
-  joelho: ["agachamento_barra", "afundo_bulgaro"],
+  ombro: ["mergulho_paralelas"],
+  lombar: ["remada_curvada", "stiff_rdl", "rdl_halteres", "rdl_unilateral", "bom_dia", "agachamento_barra"],
+  joelho: ["agachamento_barra", "afundo_bulgaro", "passada_caminhando", "step_up"],
   punho: [],
 };
 
@@ -698,9 +698,9 @@ export function gerarPlanoFromPerfil(
   if (perfil.experiencia === "iniciante") rir = Math.min(4, rir + 1);
 
   const omittedNotes: string[] = [];
-  if (restr.has("ombro")) omittedNotes.push("press vertical / militar");
-  if (restr.has("lombar")) omittedNotes.push("remada_curvada, stiff, agachamento_barra");
-  if (restr.has("joelho")) omittedNotes.push("agachamento_barra, afundo_bulgaro");
+  if (restr.has("ombro")) omittedNotes.push("press vertical / militar, mergulho nas paralelas");
+  if (restr.has("lombar")) omittedNotes.push("remada_curvada, bom dia, rdl unilateral, stiff, agachamento_barra");
+  if (restr.has("joelho")) omittedNotes.push("agachamento_barra, afundo_bulgaro, passada, step-up");
   if (!equips.has("barra")) omittedNotes.push("qualquer exercício de barra");
 
   const planoId = `plano-${Date.now()}`;

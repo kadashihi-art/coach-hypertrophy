@@ -26,7 +26,8 @@
     "smoke:editar-treino": "npx --yes tsx scripts/smoke-editar-treino.ts",
     "smoke:editar-concluida": "npx --yes tsx scripts/smoke-editar-concluida.ts",
     "smoke:sem-mudanca-sem-edicao": "npx --yes tsx scripts/smoke-sem-mudanca-sem-edicao.ts",
-    "smoke:memoria-carga": "npx --yes tsx scripts/smoke-memoria-carga.ts"
+    "smoke:memoria-carga": "npx --yes tsx scripts/smoke-memoria-carga.ts",
+    "smoke:catalogo": "npx --yes tsx scripts/smoke-catalogo.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
