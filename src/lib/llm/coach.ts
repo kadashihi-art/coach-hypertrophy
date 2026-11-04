@@ -268,8 +268,10 @@ export function buildPrescricaoStub(
   const porques: string[] = [];
   if (e?.primeira_sessao || origem === "estimativa_conservadora") {
     porques.push(
-      "Primeira âncora conservadora — calibra na sessão sem forçar PR.",
+      "Primeira âncora conservadora — calibro pela sua 1ª sessão (reps + RIR).",
     );
+  } else if (origem === "calibracao") {
+    porques.push("Carga calibrada pela sua 1ª sessão (reps + RIR).");
   } else if (origem === "historico") {
     porques.push(
       "Carga vem do EstadoExercicio (último top/trabalho + regra R#).",
