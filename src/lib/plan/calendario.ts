@@ -2,7 +2,7 @@
  * Calendário do mesociclo: data_inicio + agendar sessões + marcar feito/pulado.
  * Preferimos sessao.data + status (planejada|concluida|pulada).
  */
-import type { Plano, Sessao } from "@/lib/domain";
+import type { AppState, Plano, Sessao } from "@/lib/domain";
 
 /** Parse YYYY-MM-DD as UTC noon (avoid TZ flip). */
 export function parseIsoDate(iso: string): Date {
@@ -140,7 +140,7 @@ export function desmarcarPulada(sessoes: Sessao[], sessaoId: string): Sessao[] {
 export type CalendarioDiaView = {
   data: string;
   sessao_id: string | null;
-  status: "planejado" | "feito" | "pulado" | "vazio" | "em_andamento";
+  status: "planejado" | "feito" | "pulado" | "vazio" | "em_andamento" | "limpo";
   nome?: string;
 };
 
@@ -149,8 +149,16 @@ export function derivarCalendario(
   sessoes: Sessao[],
   year: number,
   month0: number,
+  diasLimpos: string[] = [],
 ): CalendarioDiaView[] {
   const daysInMonth = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+  const datas = Array.from({ length: daysInMonth }, (_, i) => toIsoDate(new Date(Date.UTC(year, month0, i + 1, 12))));
+  return derivarDias(sessoes, datas, diasLimpos);
+}
+
+/** Mesma regra do calendário para qualquer lista de dias (chips da semana em Hoje usam esta). */
+export function derivarDias(sessoes: Sessao[], datas: string[], diasLimpos: string[] = []): CalendarioDiaView[] {
+  const limpos = new Set(diasLimpos);
   const byDate = new Map<string, Sessao>();
   for (const s of sessoes) {
     if (!s.data) continue;
@@ -171,11 +179,10 @@ export function derivarCalendario(
   }
 
   const out: CalendarioDiaView[] = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso = toIsoDate(new Date(Date.UTC(year, month0, d, 12)));
+  for (const iso of datas) {
     const s = byDate.get(iso);
     if (!s) {
-      out.push({ data: iso, sessao_id: null, status: "vazio" });
+      out.push({ data: iso, sessao_id: null, status: limpos.has(iso) ? "limpo" : "vazio" });
       continue;
     }
     let status: CalendarioDiaView["status"] = "planejado";
@@ -193,4 +200,47 @@ export function mergeEstadosPreservados<
 >(anteriores: T[], novos: T[]): T[] {
   const prev = new Map(anteriores.map((e) => [e.exercicio_id, e]));
   return novos.map((n) => prev.get(n.exercicio_id) ?? n);
+}
+
+export type ResultadoLimpar =
+  | { ok: true; state: AppState; tirado: string | null }
+  | { ok: false; motivo: "feito" | "em_andamento" };
+
+/**
+ * Limpar dia (só depois do usuário confirmar). Nunca apaga série registrada nem treino feito.
+ * - Treino feito ou em andamento no dia: não limpa (o app manda para "Corrigir registro").
+ * - Treino planejado ou pulado no dia: sai do dia SEM sumir do plano. Volta para a fila
+ *   (planejado, sem data) e a agenda o coloca no próximo dia de treino livre, na ordem do plano.
+ * - O dia fica marcado como limpo: a agenda do pendente não põe treino nele.
+ */
+export function limparDia(state: AppState, data: string, sessaoId: string | null): ResultadoLimpar {
+  const s = sessaoId ? state.sessoes.find((x) => x.id === sessaoId) : undefined;
+  if (s?.status === "concluida" || s?.status === "parcial") return { ok: false, motivo: "feito" };
+  if (s?.status === "em_andamento") return { ok: false, motivo: "em_andamento" };
+  const limpos = [...new Set([...(state.dias_limpos ?? []), data])].sort();
+  return {
+    ok: true,
+    tirado: s ? s.nome : null,
+    state: {
+      ...state,
+      dias_limpos: limpos,
+      sessoes: s
+        ? state.sessoes.map((x) => (x.id === s.id ? { ...x, data: null, status: "planejada" as const, data_manual: undefined } : x))
+        : state.sessoes,
+    },
+  };
+}
+
+/** Desfaz a limpeza do dia (o dia volta a poder receber treino). */
+export function desfazerLimpeza(state: AppState, data: string): AppState {
+  return { ...state, dias_limpos: (state.dias_limpos ?? []).filter((d) => d !== data) };
+}
+
+/** Chips da semana (seg→dom) em Hoje: mesma regra e mesmos status do calendário. */
+export function semanaDoCalendario(sessoes: Sessao[], hoje: string, diasLimpos: string[] = []) {
+  const h = parseIsoDate(hoje);
+  const dow = (h.getUTCDay() + 6) % 7;
+  const datas = Array.from({ length: 7 }, (_, i) => toIsoDate(new Date(Date.UTC(h.getUTCFullYear(), h.getUTCMonth(), h.getUTCDate() - dow + i, 12))));
+  const L = ["S", "T", "Q", "Q", "S", "S", "D"];
+  return derivarDias(sessoes, datas, diasLimpos).map((d, i) => ({ iso: d.data, label: L[i]!, st: d.status, nome: d.nome, hoje: d.data === hoje }));
 }

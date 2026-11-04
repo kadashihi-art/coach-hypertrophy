@@ -147,6 +147,8 @@ const SessaoBaseSchema = z.object({
   nome: z.string(),
   ordem: z.number().int().nonnegative(),
   data: z.string().nullable().default(null),
+  /** Data marcada à mão no calendário (planejar/pular): a agenda do pendente não move. */
+  data_manual: z.boolean().optional(),
   status: StatusSessaoSchema.default("planejada"),
   grupos: z.array(GrupoMuscularSchema).default([]),
   prescricoes: z.array(PrescricaoSchema).default([]),

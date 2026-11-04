@@ -92,5 +92,7 @@ export const AppStateSchema = z.object({
   correcoes_concluidas: z.array(CorrecaoConcluidaSchema).optional(),
   /** Última edição feita durante o treino (para Desfazer). */
   edicao_ao_vivo: EdicaoAoVivoSchema.nullable().optional(),
+  /** Dias que o usuário limpou no calendário (YYYY-MM-DD): a agenda não põe treino neles. */
+  dias_limpos: z.array(z.string()).optional(),
 });
 export type AppState = z.infer<typeof AppStateSchema>;
