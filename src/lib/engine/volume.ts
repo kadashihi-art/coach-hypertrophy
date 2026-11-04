@@ -11,6 +11,7 @@ import type {
   VolumeSemanal,
 } from "@/lib/domain";
 import { volumeEfetivo, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
+import { volumeExtraDoRegistro } from "./tecnicas";
 
 export { volumeEfetivo, VOLUME_MAX, VOLUME_MIN };
 
@@ -43,7 +44,7 @@ export function volumeSessaoPorGrupo(
     const ex = exercicios.find((e) => e.id === s.exercicio_id);
     if (!ex) continue;
     const cur = map.get(ex.grupo_primario) ?? { planejado: 0, realizado: 0 };
-    cur.realizado += 1;
+    cur.realizado += 1 + volumeExtraDoRegistro(s);
     map.set(ex.grupo_primario, cur);
   }
   return [...map.entries()].map(([grupo, v]) => ({
@@ -73,7 +74,8 @@ export function acumularVolumeSemanal(
     const ex = exercicios.find((e) => e.id === s.exercicio_id);
     if (!ex) continue;
     const prim = delta.get(ex.grupo_primario) ?? { diretas: 0, indiretas: 0 };
-    prim.diretas += 1;
+    // Técnica na última série: extensão soma +0,5 direta (drop/rest-pause/myo), nada nos secundários.
+    prim.diretas += 1 + volumeExtraDoRegistro(s);
     delta.set(ex.grupo_primario, prim);
     for (const sec of ex.grupos_secundarios) {
       const cur = delta.get(sec) ?? { diretas: 0, indiretas: 0 };

@@ -7,6 +7,8 @@
  * - Histórico (registros) e EstadoExercicio nunca são apagados.
  */
 import { z } from "zod";
+import { TecnicaFinalSchema, type TecnicaFinal } from "@/lib/domain/enums";
+import { exercicioAceitaTecnica, linhaTecnica, validarTecnicasSessao } from "@/lib/engine/tecnicas";
 import type {
   AppState,
   EdicaoSessao,
@@ -54,6 +56,8 @@ export const ItemRascunhoSchema = z
       z.number().int().min(LIMITES_EDICAO.reps_min).max(LIMITES_EDICAO.reps_max),
       z.number().int().min(LIMITES_EDICAO.reps_min).max(LIMITES_EDICAO.reps_max),
     ]),
+    /** Técnica opcional na última série (lote 4). */
+    tecnica_final: TecnicaFinalSchema.nullable().optional(),
   })
   .refine((i) => i.faixa_reps[0] <= i.faixa_reps[1], { message: "faixa de reps invertida" });
 
@@ -106,8 +110,18 @@ export function rascunhoDaSessao(s: Sessao): Rascunho {
     data: s.data,
     itens: [...s.prescricoes]
       .sort((a, b) => a.ordem - b.ordem)
-      .map((p) => ({ exercicio_id: p.exercicio_id, series: p.series, faixa_reps: [p.faixa_reps[0], p.faixa_reps[1]] })),
+      .map((p) => ({
+        exercicio_id: p.exercicio_id,
+        series: p.series,
+        faixa_reps: [p.faixa_reps[0], p.faixa_reps[1]],
+        tecnica_final: p.tecnica_final ?? null,
+      })),
   };
+}
+
+/** Liga/desliga a técnica da última série (só vale depois de "Confirmar"). */
+export function definirTecnicaItem(r: Rascunho, idx: number, tipo: TecnicaFinal | null): Rascunho {
+  return { ...r, itens: r.itens.map((it, i) => (i === idx ? { ...it, tecnica_final: tipo } : it)) };
 }
 
 export function removerItem(r: Rascunho, idx: number): Rascunho {
@@ -164,7 +178,11 @@ export function trocarItem(state: AppState, r: Rascunho, idx: number, paraId: st
   if (!it) return r;
   const ok = alternativasParaItem(state, r, idx).some((e) => e.id === paraId);
   if (!ok) return r;
-  return { ...r, itens: r.itens.map((x, i) => (i === idx ? { ...x, exercicio_id: paraId } : x)) };
+  const novo = state.exercicios.find((e) => e.id === paraId);
+  return {
+    ...r,
+    itens: r.itens.map((x, i) => (i === idx ? { ...x, exercicio_id: paraId, tecnica_final: exercicioAceitaTecnica(novo) ? x.tecnica_final ?? null : null } : x)),
+  };
 }
 
 /** Catálogo para "Adicionar": filtrado por equipamento e lesões (como na troca), sem repetir. */
@@ -309,7 +327,8 @@ export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { se
   const prescricoes: Prescricao[] = r.itens.map((it, i) => {
     const atual = sessao.prescricoes.find((p) => p.exercicio_id === it.exercicio_id);
     const faixa: [number, number] = [it.faixa_reps[0], it.faixa_reps[1]];
-    if (atual) return { ...atual, ordem: i + 1, series: it.series, faixa_reps: faixa };
+    const tecnica_final = it.tecnica_final ?? null;
+    if (atual) return { ...atual, ordem: i + 1, series: it.series, faixa_reps: faixa, tecnica_final };
     const ex = catalog.find((e) => e.id === it.exercicio_id)!;
     const { prescricao, estadoNovo } = novaPrescricao(state, sessao, ex, {
       id: `presc-${sessao.id}-${ex.id}`,
@@ -320,7 +339,7 @@ export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { se
       excluirIds: r.itens.map((x) => x.exercicio_id),
     });
     if (estadoNovo) estadosNovos.push(estadoNovo);
-    return prescricao;
+    return { ...prescricao, tecnica_final };
   });
   const grupos = [...new Set(prescricoes.map((p) => catalog.find((e) => e.id === p.exercicio_id)?.grupo_primario).filter((g): g is NonNullable<typeof g> => !!g))];
   // Duração: mantém a proporção por tempo de execução do treino original.
@@ -357,6 +376,11 @@ export function resumoMudancas(state: AppState, antes: Sessao, depois: Sessao): 
     if (v.faixa_reps[0] !== p.faixa_reps[0] || v.faixa_reps[1] !== p.faixa_reps[1])
       ms.push(`reps ${v.faixa_reps[0]}–${v.faixa_reps[1]} → ${p.faixa_reps[0]}–${p.faixa_reps[1]}`);
     if (ms.length) linhas.push(`${nome(p.exercicio_id)}: ${ms.join(", ")}`);
+  }
+  for (const p of d) {
+    const v = a.find((x) => x.exercicio_id === p.exercicio_id);
+    const l = linhaTecnica(nome(p.exercicio_id), v?.tecnica_final, p.tecnica_final);
+    if (l) linhas.push(l);
   }
   const comunsA = idsA.filter((id) => idsD.includes(id));
   const comunsD = idsD.filter((id) => idsA.includes(id));
@@ -422,6 +446,11 @@ export function validarRascunho(state: AppState, r: Rascunho): string | null {
     if (!ex) return "Tem um exercício que não existe no catálogo.";
     const jaEstava = state.sessoes.find((s) => s.id === r.sessao_id)?.prescricoes.some((p) => p.exercicio_id === ex.id);
     if (!jaEstava && !permitido(ex, state.perfil)) return `${ex.nome} não combina com seu equipamento ou suas restrições.`;
+  }
+  {
+    const sess = state.sessoes.find((s) => s.id === r.sessao_id)!;
+    const t = validarTecnicasSessao(state, montarSessao(state, sess, r).sessao.prescricoes);
+    if (t) return t;
   }
   if (r.data) {
     const c = conflitoDia(state, r.sessao_id, r.data);

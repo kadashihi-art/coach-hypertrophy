@@ -13,6 +13,7 @@ import {
   PadraoSchema,
   RegraProgressaoSchema,
   StatusSessaoSchema,
+  TecnicaFinalSchema,
   TecnicaSchema,
   TipoSerieSchema,
 } from "./enums";
@@ -104,6 +105,8 @@ export const PrescricaoSchema = z.object({
   descanso_seg: z.number().int().positive(),
   cadencia: z.string().default("2-0-1-0"),
   tecnica: TecnicaSchema.default("padrao"),
+  /** Técnica opcional na última série (escolha do usuário, com confirmação). null/ausente = nenhuma. */
+  tecnica_final: TecnicaFinalSchema.nullable().optional(),
   carga: CargaPrescritaSchema,
   alternativa_equipamento_ocupado: z.string().nullable().default(null),
   guia_id: z.string().nullable().default(null),
@@ -230,6 +233,15 @@ export const PlanoSchema = z.object({
 });
 export type Plano = z.infer<typeof PlanoSchema>;
 
+export const RegistroTecnicaSchema = z.object({
+  tipo: TecnicaFinalSchema,
+  /** kg da extensão (drop-set). null = mesma carga. */
+  carga_extra_kg: z.number().nonnegative().nullable().default(null),
+  /** Reps da extensão: drop/parciais = [n]; rest-pause/myo-reps = uma por mini-série. */
+  reps_extra: z.array(z.number().int().min(0).max(50)).max(6).default([]),
+});
+export type RegistroTecnica = z.infer<typeof RegistroTecnicaSchema>;
+
 export const RegistroSerieSchema = z.object({
   id: z.string(),
   sessao_id: z.string(),
@@ -242,6 +254,11 @@ export const RegistroSerieSchema = z.object({
   rir_percebido: z.number().int().min(0).max(5),
   dor: z.boolean().default(false),
   observacao: z.string().optional(),
+  /**
+   * Técnica feita nesta série (lote 4). carga_kg/reps acima são só o bloco principal;
+   * a extensão (drop, mini-séries, parciais) fica aqui e nunca entra em e1RM/PR nem na progressão.
+   */
+  tecnica: RegistroTecnicaSchema.optional(),
   executado_em: z.string(),
 });
 export type RegistroSerie = z.infer<typeof RegistroSerieSchema>;

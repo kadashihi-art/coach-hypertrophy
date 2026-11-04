@@ -4,6 +4,7 @@ import { AppStateSchema } from "@/lib/domain";
 import { hasBlobCredentials } from "@/lib/blob";
 import { validarEdicoesNoEstado } from "@/lib/plan/editar-treino";
 import { validarEdicaoAoVivoNoEstado } from "@/lib/treino/editar-durante-treino";
+import { validarTecnicasNoEstado } from "@/lib/engine/tecnicas";
 import { validarCorrecoesNoEstado } from "@/lib/plan/corrigir-concluida";
 import { readUserState, writeUserState } from "@/lib/user-state";
 
@@ -64,7 +65,7 @@ async function upsert(request: Request) {
       { status: 400 },
     );
   }
-  const erroEdicao = validarEdicoesNoEstado(parsed.data) ?? validarCorrecoesNoEstado(parsed.data) ?? validarEdicaoAoVivoNoEstado(parsed.data);
+  const erroEdicao = validarEdicoesNoEstado(parsed.data) ?? validarCorrecoesNoEstado(parsed.data) ?? validarEdicaoAoVivoNoEstado(parsed.data) ?? validarTecnicasNoEstado(parsed.data);
   if (erroEdicao) {
     return NextResponse.json({ error: "Invalid edit", details: erroEdicao }, { status: 400 });
   }

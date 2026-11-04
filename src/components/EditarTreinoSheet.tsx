@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useApp } from "@/components/AppProvider";
 import { VariacaoInfo } from "@/components/VariacaoInfo";
+import { TecnicaPicker } from "@/components/TecnicaPicker";
+import { prescricaoAceitaTecnica } from "@/lib/engine/tecnicas";
 import { Button } from "@/components/ui";
 import { labelGrupo } from "@/lib/labels";
 import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
@@ -22,6 +24,7 @@ import {
   rascunhoDaSessao,
   removerItem,
   trocarItem,
+  definirTecnicaItem,
   type Rascunho,
 } from "@/lib/plan/editar-treino";
 import {
@@ -399,6 +402,15 @@ function EditarPlanejado({ sessaoId, onClose, onSalvo }: { sessaoId: string; onC
                     </div>
                   </div>
                 </div>
+                {ex && prescricaoAceitaTecnica(previa.depois.prescricoes[i] ?? { tecnica: "padrao" }, ex) ? (
+                  <TecnicaPicker
+                    exNome={ex.nome}
+                    valor={it.tecnica_final}
+                    onChange={(t) => setR(definirTecnicaItem(r, i, t))}
+                    usadas={r.itens.filter((x) => x.tecnica_final).length}
+                    temProximo={i < r.itens.length - 1}
+                  />
+                ) : null}
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={() => setModo({ trocar: i })} className="min-h-9 rounded-full border border-border px-3 text-[11px] font-semibold text-accent">Trocar</button>
                   <button type="button" disabled={r.itens.length <= 1} onClick={() => setR(removerItem(r, i))} className="min-h-9 rounded-full border border-danger/40 px-3 text-[11px] font-semibold text-danger disabled:opacity-30">Remover</button>

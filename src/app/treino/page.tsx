@@ -19,6 +19,10 @@ import { incrementoCargaKg } from "@/lib/domain";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
 import { EditarDuranteTreinoSheet } from "@/components/EditarDuranteTreinoSheet";
+import { Passo } from "@/components/EditarTreinoSheet";
+import { TecnicaNaSerie } from "@/components/TecnicaPicker";
+import { exercicioAceitaTecnica, nomeTecnica, parceiroBiSet, planoTecnica } from "@/lib/engine/tecnicas";
+import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import { podeDesfazerAoVivo } from "@/lib/treino/editar-durante-treino";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
 import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
@@ -168,6 +172,8 @@ export default function TreinoPage() {
   const [hitFlash, setHitFlash] = useState(false);
   const [editarAberto, setEditarAberto] = useState(false);
   const [avisoEdicao, setAvisoEdicao] = useState<string | null>(null);
+  const [tecFeita, setTecFeita] = useState(true);
+  const [tecEdit, setTecEdit] = useState<{ key: string; reps: number[] }>({ key: "", reps: [] });
   /** Exercício (prescrição) que disparou o descanso atual: se ele sair do treino, o descanso é cancelado. */
   const timerPresc = useRef<string | null>(null);
   const anchorTimer = useRef<number | null>(null);
@@ -216,7 +222,7 @@ export default function TreinoPage() {
   }, []);
 
   const alvoLabel = presc
-    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}${prep ? " · antes: aquecimento + aproximação" : ""}`
+    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${presc.rir_alvo}${prep ? " · antes: aquecimento + aproximação" : ""}${presc.tecnica_final ? ` · última série: ${nomeTecnica(presc.tecnica_final)}` : ""}`
     : "";
 
   if (!sess) {
@@ -272,6 +278,22 @@ export default function TreinoPage() {
   }
 
   const exercicioAtivo = ocupado && altEx ? altEx : exercise;
+  const trabalhoFeitas = seriesDone.filter((r) => !ehSeriePreparatoria(r.tipo_serie)).length;
+  const parBiSet = presc.tecnica_final === "bi_set" ? parceiroBiSet(sess, presc.id) : null;
+  const planoTec =
+    presc.tecnica_final && exercicioPendente && !ehSeriePreparatoria(tipo) && trabalhoFeitas === presc.series - 1 && exercicioAceitaTecnica(exercicioAtivo)
+      ? planoTecnica(
+          presc.tecnica_final,
+          carga,
+          exercicioAtivo,
+          presc.faixa_reps,
+          parBiSet ? state.exercicios.find((e) => e.id === parBiSet.exercicio_id)?.nome : undefined,
+        )
+      : null;
+  const tecKey = planoTec ? `${presc.id}-${planoTec.tipo}-${planoTec.campos.length}` : "";
+  // Sugestões do Coach como ponto de partida; o usuário ajusta pro que fez.
+  const tecReps = planoTec ? (tecEdit.key === tecKey ? tecEdit.reps : planoTec.campos.map((c) => c.sugestao)) : [];
+  const setTecReps = (reps: number[]) => setTecEdit({ key: tecKey, reps });
 
   function toggleOcupado() {
     if (!presc || !exercise) return;
@@ -315,6 +337,15 @@ export default function TreinoPage() {
       reps,
       rir_percebido: rir,
       dor,
+      ...(planoTec && (planoTec.campos.length === 0 || tecFeita)
+        ? {
+            tecnica: {
+              tipo: planoTec.tipo,
+              carga_extra_kg: planoTec.tipo === "drop_set" ? planoTec.carga_kg : null,
+              reps_extra: planoTec.campos.length ? tecReps.slice(0, planoTec.campos.length) : [],
+            },
+          }
+        : {}),
     }, { ancorar: false });
     const proxima = proximaFase(presc, prep, [...seriesDone, { tipo_serie: tipo }]);
     if (inReps && inRir && tipo !== "aquecimento" && tipo !== "feeder") {
@@ -323,7 +354,14 @@ export default function TreinoPage() {
       hitTimer.current = window.setTimeout(() => setHitFlash(false), 300);
     }
     timerPresc.current = presc.id;
-    rt.iniciar(descansoSugerido({ fase: tipo, composto: exercicioAtivo?.composto ?? true, prescritoSeg: presc.descanso_seg }), tipo);
+    const semDescanso = !!planoTec?.sem_descanso && !!parBiSet;
+    setTecFeita(true);
+    setTecEdit({ key: "", reps: [] });
+    if (semDescanso && parBiSet) {
+      setCargasToast(planoTec!.texto);
+      window.setTimeout(() => setCargasToast(null), 3200);
+      setLoggerPrescricao(parBiSet.id);
+    } else rt.iniciar(descansoSugerido({ fase: tipo, composto: exercicioAtivo?.composto ?? true, prescritoSeg: presc.descanso_seg }), tipo);
     // Avanço automático: próxima fase já com o kg sugerido (back-off sai do top que você fez).
     setTipo(null);
     setCarga(cargaDaFase(proxima, tipo === "top_set" && carga > 0 ? carga : cargaTop));
@@ -596,9 +634,11 @@ export default function TreinoPage() {
                   {FASE_META[s.tipo_serie]?.label ?? s.tipo_serie}
                 </span>
                 {s.dor && <span className="text-xs text-warn">dor</span>}
+                {s.tecnica ? <span className="text-[10px] font-semibold text-accent">{nomeTecnica(s.tecnica.tipo)}</span> : null}
               </div>
               <span className="num text-sm font-bold">
                 {s.carga_kg} kg · {s.reps} reps · RIR {s.rir_percebido}
+                {s.tecnica?.reps_extra.length ? ` + ${s.tecnica.carga_extra_kg ? `${String(s.tecnica.carga_extra_kg).replace(".", ",")} kg × ` : ""}${s.tecnica.reps_extra.join("+")}` : ""}
               </span>
             </div>
           ))}
@@ -709,6 +749,9 @@ export default function TreinoPage() {
                   </button>
                 ))}
               </div>
+              {planoTec ? (
+                <TecnicaNaSerie plano={planoTec} feita={tecFeita} onFeita={setTecFeita} reps={tecReps} onReps={setTecReps} Passo={Passo} />
+              ) : null}
             </div>
           )}
         </div>

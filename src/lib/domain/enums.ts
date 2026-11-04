@@ -140,6 +140,13 @@ export const TecnicaSchema = z.enum([
 ]);
 export type Tecnica = z.infer<typeof TecnicaSchema>;
 
+/**
+ * Técnicas avançadas opcionais (lote 4): só na ÚLTIMA série de isoladores/máquinas,
+ * ativadas pelo usuário com confirmação. Regras e textos em `engine/tecnicas.ts`.
+ */
+export const TecnicaFinalSchema = z.enum(["drop_set", "rest_pause", "myo_reps", "bi_set", "parciais"]);
+export type TecnicaFinal = z.infer<typeof TecnicaFinalSchema>;
+
 export const GrupoMuscularSchema = z.enum([
   "peito",
   "costas",
