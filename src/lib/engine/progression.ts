@@ -405,7 +405,7 @@ export function decidirProgressao(
 
   // —— R4 Reduzir por falha prematura ——
   if (abaixoPiso >= 2) {
-    const nova = Math.round(carga * 0.925 * 10) / 10; // ~7.5% (meio de 5–10%)
+    const nova = roundToStep(carga * 0.925, inc); // ~7.5% (meio de 5–10%), no step do equipamento
     return base(
       input,
       "R4",
