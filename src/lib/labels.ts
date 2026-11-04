@@ -51,7 +51,7 @@ const RE = new RegExp(String.raw`(?<![\p{L}_])(${Object.keys(TROCAS).join("|")})
 
 /** Acentua palavras-enum soltas em texto de exibição (racional salvo, saída do LLM). Ignora ids com "_". */
 export function acentuar(t: string): string {
-  return t.replace(RE, (m) => {
+  return t.replace(/(?<![\p{L}_])peso_corporal(?![\p{L}_])/gu, "peso do corpo").replace(RE, (m) => {
     const r = TROCAS[m.toLowerCase()];
     if (!r) return m;
     if (m === m.toUpperCase() && m.length > 1) return r.toUpperCase();
