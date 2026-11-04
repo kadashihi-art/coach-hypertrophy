@@ -22,6 +22,7 @@ import {
 import { useClientValue } from "@/lib/use-client-value";
 import { faixaVolume, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { currentIsoWeek } from "@/lib/engine/volume";
+import { e1rmReferencia, seriesEfetivasSemana } from "@/lib/engine/proximidade-falha";
 
 /** T7 — e1RM, PRs, volume 10–20, consistência. ZERO fake — só registros reais. */
 /** 32.5 → "32,5" */
@@ -64,6 +65,13 @@ export default function ProgressoPage() {
           state.registros.some((r) => r.exercicio_id === e.exercicio_id),
       )
     : [];
+
+  // Séries que chegaram perto da falha (até 3 reps sobrando, já calibradas) por músculo nesta semana.
+  const efetivas = temHistorico
+    ? seriesEfetivasSemana(state.registros, state.exercicios, semanaAtual, e1rmReferencia(state.registros))
+    : [];
+  const totEf = efetivas.reduce((a, g) => a + g.efetivas, 0);
+  const totSeries = efetivas.reduce((a, g) => a + g.total, 0);
 
   const concluidas = state.sessoes.filter((s) => s.status === "concluida").length;
   const planejadas4sem = (state.plano?.dias_por_semana ?? 4) * 4;
@@ -179,6 +187,41 @@ export default function ProgressoPage() {
           </div>
         </>
       )}
+
+      <SectionTitle title="Séries perto da falha" />
+      <p className="mb-3 text-xs text-muted">
+        Conta como efetiva a série que terminou com até 3 reps sobrando. Quando o que você fez mostra outra coisa, eu ajusto o RIR marcado.
+      </p>
+      <div data-testid="efetivas-semana"><Card className="card-motion mb-6 space-y-3">
+        {efetivas.length === 0 ? (
+          <p className="text-sm text-muted">Sem séries nesta semana ainda.</p>
+        ) : (
+          <>
+            <p className="text-sm">
+              Nesta semana, <span className="load-num">{totEf}</span> de{" "}
+              <span className="load-num">{totSeries}</span> {totSeries === 1 ? "série ficou" : "séries ficaram"} perto da falha.
+            </p>
+            {efetivas.map((g) => {
+              const pct = g.total ? Math.round((g.efetivas / g.total) * 100) : 0;
+              return (
+                <div key={g.grupo}>
+                  <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                    <span>{labelGrupo(g.grupo)}</span>
+                    <span className="load-num">
+                      {g.efetivas}
+                      <span className="text-muted"> / {g.total} {g.total === 1 ? "série" : "séries"}</span>
+                    </span>
+                  </div>
+                  <ProgressBar value={pct} tone={pct >= 70 ? "go" : "warn"} />
+                </div>
+              );
+            })}
+            {totSeries > 0 && totEf / totSeries < 0.7 ? (
+              <p className="text-xs text-warn">Muitas séries ficaram longe da falha. Leve as próximas até sentir que só sobrariam 1–2 reps.</p>
+            ) : null}
+          </>
+        )}
+      </Card></div>
 
       <SonoAguaSection />
 

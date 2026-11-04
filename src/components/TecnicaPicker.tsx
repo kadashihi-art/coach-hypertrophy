@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { TecnicaFinal } from "@/lib/domain";
+import { useApp } from "@/components/AppProvider";
+import { e1rmReferencia, liberacaoTecnicas } from "@/lib/engine/proximidade-falha";
+import { useClientValue } from "@/lib/use-client-value";
 import { LIMITE_TECNICAS_SESSAO, TECNICAS, infoTecnica, nomeTecnica } from "@/lib/engine/tecnicas";
 
 /**
@@ -27,6 +30,16 @@ export function TecnicaPicker({
   bloqueio?: string | null;
 }) {
   const [aberto, setAberto] = useState(false);
+  const { state } = useApp();
+  const hojeIso = useClientValue(() => new Date().toISOString().slice(0, 10), "2026-01-01");
+  // Técnica só é sugerida quando você já chega perto da falha de forma confiável e está recuperado.
+  const lib = liberacaoTecnicas({
+    registros: state.registros,
+    hojeIso,
+    checkin: state.checkins.find((c) => c.data === hojeIso) ?? null,
+    deload: state.plano?.mesociclo.foco === "deload",
+    e1rmPorExercicio: e1rmReferencia(state.registros),
+  });
   const atual = valor ?? null;
   const cheio = !atual && usadas >= LIMITE_TECNICAS_SESSAO;
   return (
@@ -44,6 +57,11 @@ export function TecnicaPicker({
       {aberto ? (
         <div className="mt-2">
           {bloqueio ? <p className="mb-2 text-[11px] text-muted">{bloqueio}</p> : null}
+          {!bloqueio ? (
+            <p data-testid="tecnica-liberacao" className={`mb-2 text-[11px] leading-snug ${lib.liberado ? "text-go" : "text-warn"}`}>
+              {lib.liberado ? lib.texto : `Ainda não recomendo. ${lib.texto}`}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-1.5">
             <button type="button" disabled={!!bloqueio} onClick={() => onChange(null)} className={`chip-motion text-[11px] ${!atual ? "on" : ""}`}>
               Nenhuma

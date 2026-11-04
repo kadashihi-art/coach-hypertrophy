@@ -39,7 +39,8 @@
     "smoke:abdomen-antebraco": "npx --yes tsx scripts/smoke-abdomen-antebraco.ts",
     "smoke:imagens": "npx --yes tsx scripts/smoke-imagens.ts",
     "smoke:reavaliacao-nivel": "npx --yes tsx scripts/smoke-reavaliacao-nivel.ts",
-    "smoke:sono-agua": "npx --yes tsx scripts/smoke-sono-agua.ts"
+    "smoke:sono-agua": "npx --yes tsx scripts/smoke-sono-agua.ts",
+    "smoke:falha": "npx --yes tsx scripts/smoke-falha.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

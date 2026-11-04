@@ -421,9 +421,8 @@ export default function HojePage() {
               const hist = state.checkins
                 .filter((c) => c.data !== ck.data)
                 .sort((a, b) => b.data.localeCompare(a.data))
-                .slice(0, 5)
-                .map((c) => c.sono_h);
-              const fb = feedbackSono(ck.sono_h, hist);
+                .slice(0, 6);
+              const fb = feedbackSono(ck.sono_h, hist, ck.sono_inicio);
               return (
                 <p className={`mt-1 text-xs ${fb.nivel === "baixo" || fb.nivel === "inconsistente" ? "text-warn" : fb.nivel === "ok" ? "text-go" : "text-muted"}`}>
                   {fb.titulo}. {fb.dica}
