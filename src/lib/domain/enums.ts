@@ -47,6 +47,8 @@ export const PadraoSchema = z.enum([
   "rotacao_externa",
   "core_antiextensao",
   "core_antirotacao",
+  /** Antebraço: flexão/extensão de punho, rosca inversa e carregadas (pegada). */
+  "antebraco_pegada",
 ]);
 export type Padrao = z.infer<typeof PadraoSchema>;
 
@@ -190,6 +192,26 @@ export const GRUPOS_SUPERIORES: GrupoMuscular[] = [
 
 export const VOLUME_MIN = 10;
 export const VOLUME_MAX = 20;
+
+/**
+ * Faixas de volume semanal efetivo por grupo (diretas + 0,5×indiretas).
+ * Padrão 10–20 (VOLUME_MIN/VOLUME_MAX). Abdômen e antebraço são grupos OPCIONAIS
+ * e já recebem bastante trabalho indireto (estabilização, pegada em remadas/roscas),
+ * então usam faixas conservadoras (docs/volume-abdomen-antebraco.md):
+ *  - mínimo 0: nunca gera alerta de "pouco volume";
+ *  - máximo 12: acima disso avisa, porque a recuperação de punho/lombar pesa antes.
+ */
+export const FAIXA_VOLUME_GRUPO: Partial<Record<GrupoMuscular, { min: number; max: number }>> = {
+  abdomen: { min: 0, max: 12 },
+  antebracos: { min: 0, max: 12 },
+};
+
+export function faixaVolume(grupo: string): { min: number; max: number } {
+  return FAIXA_VOLUME_GRUPO[grupo as GrupoMuscular] ?? { min: VOLUME_MIN, max: VOLUME_MAX };
+}
+
+/** Grupos que o gerador só inclui se o usuário pedir (pontos fracos), em dose leve. */
+export const GRUPOS_OPCIONAIS: GrupoMuscular[] = ["abdomen", "antebracos"];
 
 export function incrementoCargaKg(grupoPrimario: GrupoMuscular): number {
   return GRUPOS_SUPERIORES.includes(grupoPrimario) ? 2.5 : 5.0;

@@ -1,6 +1,7 @@
 "use client";
 
 import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
+import { fmtKg } from "@/lib/labels";
 import { parseRestricoes } from "@/lib/plan/restricoes";
 import { resumirExercicio, textoUltimaVez, textoTendencia } from "@/lib/engine/memoria-carga";
 import { guiaPorPadrao } from "@/lib/plan/guia-por-padrao";
@@ -182,6 +183,7 @@ export default function TreinoPage() {
   const faseInicial = presc ? proximaFase(presc, prep, seriesDone) : null;
   const cargaInicial = cargaDaFase(faseInicial);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia os campos do logger quando muda o exercício/fase; reescrever exigiria remontar o componente
     setCarga(cargaInicial);
     setReps(prefillReps);
     setRir(presc?.rir_alvo ?? 2);
@@ -228,7 +230,7 @@ export default function TreinoPage() {
   if (!sess) {
     return (
       <main className="p-5 pt-10">
-        <p className="text-muted">Nenhuma sessão com exercícios.</p>
+        <p className="text-muted">Nenhum treino com exercícios ainda.</p>
         <Link href="/hoje" className="mt-4 block text-accent">
           Voltar ao Hoje
         </Link>
@@ -272,7 +274,7 @@ export default function TreinoPage() {
   if (!presc || !exercise) {
     return (
       <main className="p-5 pt-10">
-        <p className="text-muted">Sem prescrições.</p>
+        <p className="text-muted">Esse treino ainda não tem exercícios.</p>
       </main>
     );
   }
@@ -539,7 +541,7 @@ export default function TreinoPage() {
           <Card className="mb-3 text-sm">
             {guia.setup?.length > 0 && (
               <>
-                <p className="mb-1 text-xs font-bold uppercase text-accent">Setup</p>
+                <p className="mb-1 text-xs font-bold uppercase text-accent">Posição</p>
                 <ul className="mb-2 list-disc pl-4 text-muted">
                   {guia.setup.map((s) => (
                     <li key={s}>{s}</li>
@@ -571,7 +573,7 @@ export default function TreinoPage() {
             )}
             {guia.cues?.length > 0 && (
               <>
-                <p className="mb-1 text-xs font-bold uppercase text-accent">Cues</p>
+                <p className="mb-1 text-xs font-bold uppercase text-accent">Dicas rápidas</p>
                 <ul className="mb-2 list-disc pl-4 text-muted">
                   {guia.cues.map((s) => (
                     <li key={s}>{s}</li>
@@ -637,7 +639,7 @@ export default function TreinoPage() {
                 {s.tecnica ? <span className="text-[10px] font-semibold text-accent">{nomeTecnica(s.tecnica.tipo)}</span> : null}
               </div>
               <span className="num text-sm font-bold">
-                {s.carga_kg} kg · {s.reps} reps · RIR {s.rir_percebido}
+                {fmtKg(s.carga_kg)} kg · {s.reps} reps · RIR {s.rir_percebido}
                 {s.tecnica?.reps_extra.length ? ` + ${s.tecnica.carga_extra_kg ? `${String(s.tecnica.carga_extra_kg).replace(".", ",")} kg × ` : ""}${s.tecnica.reps_extra.join("+")}` : ""}
               </span>
             </div>

@@ -396,6 +396,28 @@ function legsSlots(variant: "a" | "b"): Slot[] {
   ];
 }
 
+/** Slots dos grupos opcionais (abdômen/antebraço). */
+const SLOT_OPCIONAL: Record<"abdomen" | "antebracos", Slot> = {
+  abdomen: { padrao: "core_antiextensao", prefer: ["abdominal_cabo", "crunch_maquina", "elevacao_pernas", "prancha"] },
+  antebracos: { padrao: "antebraco_pegada", prefer: ["rosca_inversa", "rosca_punho", "farmer_walk", "rosca_punho_invertida"] },
+};
+
+function faseDoTemplate(id: string): string {
+  return id.startsWith("f2-") ? "f2" : "f1";
+}
+
+/** Abdômen entra em dia de pernas/full body; antebraço em dia de puxar/superior/full body. 1×/semana por fase. */
+function opcionaisPendentes(perfil: Perfil, tpl: SessaoTemplate, feitos: Set<string>): Array<"abdomen" | "antebracos"> {
+  const pedidos = perfil.grupos_opcionais ?? [];
+  if (!pedidos.length) return [];
+  const tipo = tipoDoTemplate(tpl.id);
+  const fase = faseDoTemplate(tpl.id);
+  const out: Array<"abdomen" | "antebracos"> = [];
+  if (pedidos.includes("abdomen") && !feitos.has(`${fase}:abdomen`) && (tipo === "lower" || tipo === "legs" || tipo === "full")) out.push("abdomen");
+  if (pedidos.includes("antebracos") && !feitos.has(`${fase}:antebracos`) && (tipo === "pull" || tipo === "upper" || tipo === "full")) out.push("antebracos");
+  return out;
+}
+
 function scoreExercise(
   ex: Exercicio,
   slot: Slot,
@@ -552,6 +574,7 @@ export function estimarCargaKg(
     abducao_ombro: 0.12,
     flexao_cotovelo: 0.22,
     extensao_cotovelo: 0.2,
+    antebraco_pegada: 0.12,
   };
 
   let f = patternFactor[padrao] ?? (composto ? 0.4 : 0.2);
@@ -685,6 +708,7 @@ export function gerarPlanoFromPerfil(
   const weeklyDirect = new Map<GrupoMuscular, number>();
   const weeklyIndirect = new Map<GrupoMuscular, number>();
 
+  const opcionaisFeitos = new Set<string>();
   templates.forEach((tpl, idx) => {
     const used = new Set<string>();
     const prescricoes: Prescricao[] = [];
@@ -781,6 +805,59 @@ export function gerarPlanoFromPerfil(
       );
       for (const g of ex.grupos_secundarios) {
         weeklyIndirect.set(g, (weeklyIndirect.get(g) ?? 0) + series);
+      }
+    }
+
+    // Grupos opcionais (abdômen/antebraço): só se o usuário pediu, 1 exercício leve (2 séries)
+    // no primeiro treino compatível de cada fase. Nada muda pra quem não pediu.
+    for (const g of opcionaisPendentes(perfil, tpl, opcionaisFeitos)) {
+      const slot = SLOT_OPCIONAL[g];
+      const ex = pickForSlot(slot, catalog, equips, restr, used);
+      if (!ex) continue;
+      used.add(ex.id);
+      opcionaisFeitos.add(`${faseDoTemplate(tpl.id)}:${g}`);
+      const carga = estimarCargaKg(perfil.peso_kg, perfil.experiencia, ex.padrao, ex.composto, ex.equipamento, {
+        sexo: perfil.sexo,
+        idade: perfil.idade,
+        grupo: ex.grupo_primario,
+      });
+      prescricoes.push({
+        id: `presc-${tpl.id}-${ex.id}`,
+        sessao_id: tpl.id,
+        exercicio_id: ex.id,
+        padrao: ex.padrao,
+        ordem: ordem++,
+        series: 2,
+        faixa_reps: params.faixaIso,
+        rir_alvo: rir,
+        descanso_seg: params.descansoIso,
+        cadencia: "2-0-1-0",
+        tecnica: "padrao",
+        carga: { trabalho_kg: carga, top_set_kg: null, origem: "estimativa_conservadora" },
+        alternativa_equipamento_ocupado: findAlt(catalog, ex.padrao, equips, ex.id, { restr, excludeIds: used, grupo: ex.grupo_primario }),
+        guia_id: ex.guia_id ?? null,
+        evidencia: "pratica",
+      });
+      if (!estadosMap.has(ex.id)) {
+        estadosMap.set(ex.id, {
+          exercicio_id: ex.id,
+          carga_atual_kg: carga,
+          faixa_reps: params.faixaIso,
+          rir_alvo: rir,
+          alvo_proxima_sessao: { carga_kg: carga, faixa_reps: params.faixaIso, rir_alvo: rir },
+          sessoes_sem_progresso: 0,
+          ultima_progressao_em: null,
+          e1rm_estimado_kg: 0,
+          pr_carga_kg: 0,
+          pr_reps: 0,
+          origem_carga: "estimativa_conservadora",
+          primeira_sessao: true,
+          ultimo_top_kg: null,
+          ultimo_back_off_kg: null,
+          ultimo_rir: null,
+          ultima_sessao_em: null,
+          atualizado_em: agora,
+        });
       }
     }
 

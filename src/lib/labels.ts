@@ -6,7 +6,7 @@ export const GRUPO_LABEL: Record<string, string> = {
   peito: "Peito", costas: "Costas", ombros: "Ombros", quadriceps: "Quadríceps",
   isquiotibiais: "Isquiotibiais", gluteos: "Glúteos", panturrilha: "Panturrilha",
   panturrilhas: "Panturrilhas", biceps: "Bíceps", triceps: "Tríceps", abdomen: "Abdômen",
-  core: "Core", trapezio: "Trapézio", antebraco: "Antebraço", lombar: "Lombar",
+  core: "Core", trapezio: "Trapézio", antebraco: "Antebraço", antebracos: "Antebraço", lombar: "Lombar",
 };
 export const EXP_LABEL_TXT: Record<string, string> = {
   iniciante: "iniciante", intermediario: "intermediário", avancado: "avançado",
@@ -14,6 +14,19 @@ export const EXP_LABEL_TXT: Record<string, string> = {
 export const OBJETIVO_LABEL: Record<string, string> = {
   hipertrofia: "hipertrofia", forca: "força", recomposicao: "recomposição", saude: "saúde",
 };
+/** Decisão do Coach por exercício, em texto de gente (sem enum). */
+export const ACAO_LABEL: Record<string, string> = {
+  subir_carga: "Subiu a carga",
+  manter_carga: "Manteve a carga",
+  manter_e_checar: "Manteve e observa",
+  reduzir_carga: "Baixou a carga",
+  suspender: "Pausou o exercício",
+  deload: "Semana leve",
+};
+export function labelAcao(a: string): string {
+  return ACAO_LABEL[a] ?? a.replace(/_/g, " ");
+}
+
 export const EQUIP_LABEL: Record<string, string> = { maquina: "máquina" };
 
 export function labelGrupo(g: string): string {
@@ -44,4 +57,9 @@ export function acentuar(t: string): string {
     if (m === m.toUpperCase() && m.length > 1) return r.toUpperCase();
     return m[0] === m[0].toUpperCase() ? r[0].toUpperCase() + r.slice(1) : r;
   });
+}
+
+/** 32.5 → "32,5" (decimal com vírgula, pt-BR) */
+export function fmtKg(n: number): string {
+  return String(n).replace(".", ",");
 }

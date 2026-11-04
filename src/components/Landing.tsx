@@ -51,6 +51,7 @@ export default function Landing({
     try {
       const saved = localStorage.getItem(LAST_EMAIL_KEY)?.trim().toLowerCase() ?? "";
       if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o último e-mail do localStorage só no cliente, depois da hidratação
         setRemembered(saved);
         if (!initialEmail) setEmail(saved);
       }
@@ -59,9 +60,12 @@ export default function Landing({
     }
   }, [initialEmail]);
 
-  useEffect(() => {
+  // Quando o e-mail inicial muda, ele vira o valor do campo (ajuste no render, sem efeito).
+  const [initialVisto, setInitialVisto] = useState(initialEmail);
+  if (initialEmail !== initialVisto) {
+    setInitialVisto(initialEmail);
     if (initialEmail) setEmail(initialEmail);
-  }, [initialEmail]);
+  }
 
   async function submitMagic(e: FormEvent) {
     e.preventDefault();

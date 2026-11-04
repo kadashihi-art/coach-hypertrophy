@@ -25,7 +25,7 @@ for (const v of V) {
   ok(!/_|motor/.test(v.nome) && !/_/.test(v.variacao ?? ""), `${v.nome}: nome sem id/enum`);
 }
 for (const id of ["leg_press_45", "leg_press_horizontal", "leg_press_articulado"]) ok(V.some((v) => v.id === id), `leg press: ${id} existe`);
-ok(!V.some((v) => v.grupo_primario === "abdomen" || v.grupo_primario === "antebracos"), "sem abdômen/antebraço (lote 5)");
+ok(V.some((v) => v.grupo_primario === "abdomen") && V.some((v) => v.grupo_primario === "antebracos"), "abdômen e antebraço com variações (lote 5)");
 ok(familiaDoExercicio("leg_press_45", C).map((e) => e.id).includes("leg_press") && familiaDoExercicio("leg_press", C).length >= 4, "família base ↔ variações");
 
 // 2) Blob antigo ganha variações no merge

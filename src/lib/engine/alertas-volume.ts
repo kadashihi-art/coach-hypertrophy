@@ -9,7 +9,7 @@ import type {
   Sessao,
   VolumeSemanal,
 } from "@/lib/domain";
-import { VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
+import { faixaVolume } from "@/lib/domain";
 import { currentIsoWeek } from "@/lib/engine/volume";
 import { labelGrupo } from "@/lib/labels";
 
@@ -90,14 +90,15 @@ export function avaliarAlertasVolume(
   for (const grupo of grupos) {
     const cur = volFor(input.volumes_semanais, semana, grupo);
     const ant = volFor(input.volumes_semanais, prev, grupo);
+    const { min: VMIN, max: VMAX } = faixaVolume(grupo);
 
     // —— R10: 2 semanas consecutivas abaixo do mínimo ——
     // Exige registro nas duas semanas (evita falso positivo em plano novo).
     if (
       cur !== null &&
       ant !== null &&
-      cur < VOLUME_MIN &&
-      ant < VOLUME_MIN
+      cur < VMIN &&
+      ant < VMIN
     ) {
       const m = markerOf("R10", grupo, semana);
       if (!ativos.has(m)) {
@@ -106,7 +107,7 @@ export function avaliarAlertasVolume(
           grupo,
           regra: "R10",
           nivel: "N1",
-          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} abaixo de ${VOLUME_MIN} por 2 semanas (${ant} → ${cur} séries).`,
+          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} abaixo de ${VMIN} por 2 semanas (${ant} → ${cur} séries).`,
           recomendacao: `Adicionar ${series(delta)} de ${nomeG(grupo)} nos próximos treinos.`,
           series_efetivas: cur,
           acao: "adicionar_series",
@@ -119,7 +120,7 @@ export function avaliarAlertasVolume(
     }
 
     // —— R11: semana atual acima do máximo ——
-    if (cur !== null && cur > VOLUME_MAX) {
+    if (cur !== null && cur > VMAX) {
       const rir = input.rir_medio_por_grupo?.[grupo];
       const rirCaindo = rir !== undefined && rir < rirAlvo;
       // Sem RIR: ainda alerta N1; com RIR caindo: reforça o motivo
@@ -135,7 +136,7 @@ export function avaliarAlertasVolume(
           grupo,
           regra: "R11",
           nivel: "N1",
-          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} ${cur} > ${VOLUME_MAX}.${motivoRir}`,
+          motivo: `[${m}] Volume efetivo de ${nomeG(grupo)} ${cur} > ${VMAX}.${motivoRir}`,
           recomendacao: `Remover 2 séries de ${nomeG(grupo)} nos próximos treinos.`,
           series_efetivas: cur,
           acao: "remover_series",
@@ -188,7 +189,7 @@ export function aplicarAjusteVolumeNasSessoes(
       return sess;
     }
 
-    let prescricoes = sess.prescricoes.map((p) => ({ ...p }));
+    const prescricoes = sess.prescricoes.map((p) => ({ ...p }));
     let changed = false;
 
     for (const a of alertas) {

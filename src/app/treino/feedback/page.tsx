@@ -75,6 +75,7 @@ export default function FeedbackPage() {
       })),
     };
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- estado de carregamento da busca ao Coach (sincroniza com a API externa)
     setCoachStatus("loading");
     fetch("/api/coach/explain", {
       method: "POST",

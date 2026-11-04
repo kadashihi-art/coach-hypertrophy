@@ -18,7 +18,7 @@ import type {
   Sessao,
   SnapshotSessao,
 } from "@/lib/domain";
-import { VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
+import { FAIXA_VOLUME_GRUPO, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { cargaParaExercicio, findAlt } from "@/lib/plan/alternativa";
 import { estimarCargaKg } from "@/lib/plan/gerar-plano";
 import { parseRestricoes } from "@/lib/plan/restricoes";
@@ -412,6 +412,13 @@ export function avisosVolume(state: AppState, depoisSessao: Sessao): AvisoVolume
     if (va === vd) continue;
     const fmt = (n: number) => String(Math.round(n * 10) / 10).replace(".", ",");
     const nome = labelGrupo(g);
+    // Abdômen/antebraço: faixa conservadora própria (sem aviso de "pouco", máximo 12).
+    const fx = FAIXA_VOLUME_GRUPO[g as keyof typeof FAIXA_VOLUME_GRUPO];
+    if (fx) {
+      if (vd > fx.max)
+        out.push({ grupo: g, antes: va, depois: vd, tipo: "acima", texto: `${nome} vai a ${fmt(vd)} séries por semana (era ${fmt(va)}). Acima de ${fx.max} a recuperação costuma ficar pesada.` });
+      continue;
+    }
     if (vd < AVISO_VOLUME_MIN)
       out.push({ grupo: g, antes: va, depois: vd, tipo: "abaixo", texto: `${nome} fica com ${fmt(vd)} séries por semana (era ${fmt(va)}). Abaixo de ${AVISO_VOLUME_MIN} costuma render menos crescimento.` });
     else if (vd > AVISO_VOLUME_MAX)

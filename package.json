@@ -35,7 +35,8 @@
     "smoke:editar-durante-treino": "npx --yes tsx scripts/smoke-editar-durante-treino.ts",
     "smoke:tecnicas": "npx --yes tsx scripts/smoke-tecnicas.ts",
     "smoke:carga-real": "npx --yes tsx scripts/smoke-carga-real.ts",
-    "smoke:variacoes": "npx --yes tsx scripts/smoke-variacoes.ts"
+    "smoke:variacoes": "npx --yes tsx scripts/smoke-variacoes.ts",
+    "smoke:abdomen-antebraco": "npx --yes tsx scripts/smoke-abdomen-antebraco.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

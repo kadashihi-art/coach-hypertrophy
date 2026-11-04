@@ -1,7 +1,7 @@
 "use client";
 
 import { VolumeBar } from "@/components/VolumeBar";
-import { labelGrupo } from "@/lib/labels";
+import { labelAcao, labelGrupo } from "@/lib/labels";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { apresentarAlerta } from "@/lib/alertas/apresentar";
 import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
@@ -18,23 +18,27 @@ import {
   SectionTitle,
   Stat,
 } from "@/components/ui";
-import { VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
+import { useClientValue } from "@/lib/use-client-value";
+import { faixaVolume, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { currentIsoWeek } from "@/lib/engine/volume";
 
 /** T7 — e1RM, PRs, volume 10–20, consistência. ZERO fake — só registros reais. */
+/** 32.5 → "32,5" */
+function fmtKg(n: number): string {
+  return String(n).replace(".", ",");
+}
+
 export default function ProgressoPage() {
   const { state } = useApp();
   const temHistorico = state.registros.length > 0;
 
-  const [semanaAtual, setSemanaAtual] = useState("2026-W44");
+  // Semana ISO do relógio do aparelho (no servidor usa um valor fixo até hidratar).
+  const semanaAtual = useClientValue(currentIsoWeek, "2026-W44");
   const [barsOn, setBarsOn] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);
   useEffect(() => {
     const id = requestAnimationFrame(() => setBarsOn(true));
     return () => cancelAnimationFrame(id);
-  }, []);
-  useEffect(() => {
-    setSemanaAtual(currentIsoWeek());
   }, []);
 
   const vols = temHistorico
@@ -94,8 +98,8 @@ export default function ProgressoPage() {
 
       <SectionTitle title="Volume semanal efetivo" />
       <p className="mb-3 text-xs text-muted">
-        Faixa alvo {VOLUME_MIN}–{VOLUME_MAX} séries efetivas (diretas +
-        0,5×indiretas)
+        Meta: {VOLUME_MIN} a {VOLUME_MAX} séries por semana em cada músculo (abdômen e antebraço: até 12).
+        Série direta conta 1; quando o músculo só ajuda, conta meia.
       </p>
       <Card className="card-motion mb-6 space-y-4 motion-stagger">
         {vols.length === 0 && (
@@ -104,10 +108,11 @@ export default function ProgressoPage() {
           </p>
         )}
         {vols.map((v, vi) => {
+          const fx = faixaVolume(v.grupo);
           const faixa =
-            v.series_efetivas < VOLUME_MIN
+            v.series_efetivas < fx.min
               ? "abaixo"
-              : v.series_efetivas > VOLUME_MAX
+              : v.series_efetivas > fx.max
                 ? "acima"
                 : "na faixa";
           const tone =
@@ -129,7 +134,7 @@ export default function ProgressoPage() {
                     {v.series_efetivas}
                     <span className="text-muted">
                       {" "}
-                      / {VOLUME_MIN}–{VOLUME_MAX}
+                      / {fx.min}–{fx.max}
                     </span>
                   </span>
                 </div>
@@ -139,7 +144,7 @@ export default function ProgressoPage() {
                   label={labelGrupo(v.grupo)}
                   valor={v.series_efetivas}
                   max={24}
-                  faixa={[VOLUME_MIN, VOLUME_MAX]}
+                  faixa={[fx.min, fx.max]}
                   index={vi}
                   tom={barTone}
                   cabecalho={false}
@@ -174,7 +179,7 @@ export default function ProgressoPage() {
         </>
       )}
 
-      <SectionTitle title="e1RM e PRs" />
+      <SectionTitle title="Força estimada (e1RM) e recordes" />
       <div className="mb-6 space-y-3 motion-stagger">
         {estadosReais.length === 0 && (
           <Card>
@@ -191,12 +196,12 @@ export default function ProgressoPage() {
               className={`flex items-center justify-between gap-3 ${i === 0 ? "pr-pop" : ""}`}
             >
               <div>
-                <p className="font-semibold">{ex?.nome ?? e.exercicio_id}</p>
+                <p className="font-semibold">{ex?.nome ?? "Exercício"}</p>
                 <p className="text-xs text-muted">
                   {e.pr_reps > 0
-                    ? `PR ${e.pr_carga_kg} kg × ${e.pr_reps}`
+                    ? `Recorde ${fmtKg(e.pr_carga_kg)} kg × ${e.pr_reps}`
                     : "Recorde: sem dados ainda"}{" "}
-                  · carga atual {e.carga_atual_kg} kg
+                  · carga atual {fmtKg(e.carga_atual_kg)} kg
                 </p>
               </div>
               <Stat label="e1RM" value={e.pr_reps > 0 && e.e1rm_estimado_kg > 0 ? `${e.e1rm_estimado_kg}` : "—"} mono />
@@ -208,7 +213,7 @@ export default function ProgressoPage() {
       <SectionTitle title="Consistência (4 semanas)" />
       <Card className="mb-6">
         <div className="mb-2 flex justify-between text-sm">
-          <span>Sessões vs planejado</span>
+          <span>Treinos feitos vs planejados</span>
           <span className="load-num font-semibold">{consistenciaPct}%</span>
         </div>
         <ProgressBar value={consistenciaPct} max={100} tone="accent" />
@@ -233,14 +238,13 @@ export default function ProgressoPage() {
           return (
             <Card key={d.id}>
               <div className="mb-1 flex flex-wrap gap-2">
-                <Badge tone="accent">{d.regra}</Badge>
-                <Badge tone="muted">{d.acao.replace(/_/g, " ")}</Badge>
+                <Badge tone={d.acao === "subir_carga" ? "go" : d.acao === "reduzir_carga" || d.acao === "deload" ? "warn" : "muted"}>{labelAcao(d.acao)}</Badge>
                 <EvidenciaBadge evidencia={d.evidencia} />
               </div>
               <p className="text-sm">
-                {ex?.nome} ·{" "}
+                {ex?.nome ?? "Exercício"} ·{" "}
                 <span className="load-num">
-                  {d.carga_anterior_kg}→{d.nova_carga_kg} kg
+                  {fmtKg(d.carga_anterior_kg)} → {fmtKg(d.nova_carga_kg)} kg
                 </span>
               </p>
               <p className="mt-1 text-xs text-muted">{semCodigoRegra(d.motivo)}</p>

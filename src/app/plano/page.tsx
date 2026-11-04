@@ -16,7 +16,7 @@ import {
   SectionTitle,
 } from "@/components/ui";
 import { proximaSessao } from "@/lib/plan/proxima-sessao";
-import { VOLUME_MAX } from "@/lib/domain";
+import { faixaVolume, VOLUME_MAX } from "@/lib/domain";
 import { narrarCargaPrescricao } from "@/lib/llm/coach";
 import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
@@ -42,6 +42,7 @@ export default function PlanoPage() {
     const key = `coach-hypertrophy:plano-visto:${plano.id}`;
     try {
       if (!sessionStorage.getItem(key)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- banner de primeira visita depende do sessionStorage, só existe no cliente
         setBanner(true);
         sessionStorage.setItem(key, "1");
       }
@@ -206,7 +207,7 @@ export default function PlanoPage() {
                 <span className="vol-label">{labelGrupo(grupo)}</span>
                 <div className="flex-1">
                   {barsOn ? (
-                    <VolumeBar label={labelGrupo(grupo)} valor={Math.round(sets)} max={VOLUME_MAX + 4} faixa={[10, 20]} index={gi} cabecalho={false} fina />
+                    <VolumeBar label={labelGrupo(grupo)} valor={Math.round(sets)} max={VOLUME_MAX + 4} faixa={[faixaVolume(grupo).min, faixaVolume(grupo).max]} index={gi} cabecalho={false} fina />
                   ) : (
                     <div className="vb-track mt-1 h-1.5" aria-hidden />
                   )}

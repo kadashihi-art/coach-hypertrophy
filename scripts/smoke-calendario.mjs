@@ -20,6 +20,9 @@ const SHOTS = process.env.SMOKE_SHOTS ?? "";
 const KEY = "coach-hypertrophy:v5";
 const seed = readFileSync(new URL("./fixtures/calendario-state.json", import.meta.url), "utf8");
 // fixture: Lower A concluída em 2026-10-29, sem data_inicio
+// Relógio do navegador fixo no dia seguinte à fixture (São Paulo), pra o calendário abrir
+// sempre em outubro/2026 independente da data em que o smoke roda. SMOKE_HOJE sobrescreve.
+const HOJE = process.env.SMOKE_HOJE ?? "2026-10-30T12:00:00-03:00";
 
 const b = await chromium.launch();
 const fails = [];
@@ -30,8 +33,9 @@ async function rodar(W, H) {
   const email = `teste-cal+preview${Date.now()}w${W}@example.com`;
   contas.push(email);
   const password = randomBytes(12).toString("hex");
-  const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, timezoneId: "America/Sao_Paulo", locale: "pt-BR" });
   const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date(HOJE));
   const erros = [];
   page.on("pageerror", (e) => erros.push(String(e)));
   const saves = [];

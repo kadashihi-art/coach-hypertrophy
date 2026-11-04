@@ -84,7 +84,7 @@ export function acumularVolumeSemanal(
     }
   }
 
-  let next = [...existing];
+  const next = [...existing];
   for (const [grupo, d] of delta) {
     const idx = next.findIndex(
       (v) => v.semana_iso === semanaIso && v.grupo === grupo,

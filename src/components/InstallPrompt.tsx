@@ -25,6 +25,7 @@ export function InstallPrompt({ className = "" }: { className?: string }) {
       // @ts-expect-error iOS Safari
       window.navigator.standalone === true;
     if (standalone) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- display-mode/standalone só existe no navegador
       setHidden(true);
       return;
     }

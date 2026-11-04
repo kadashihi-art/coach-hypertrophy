@@ -159,6 +159,10 @@ export function paraPerfil(base: Perfil, c: PerfilColeta, e: Estrategia, correco
     ...(e.fase2_semanas ? { fase2_semanas: e.fase2_semanas } : {}),
     ...(e.dias_descanso_fixos?.length ? { dias_descanso_fixos: e.dias_descanso_fixos } : {}),
     acordos_plano: acordos,
+    ...(() => {
+      const opc = (c.pontos_fracos ?? []).filter((g): g is "abdomen" | "antebracos" => g === "abdomen" || g === "antebracos");
+      return opc.length ? { grupos_opcionais: [...new Set(opc)] } : {};
+    })(),
   };
 }
 

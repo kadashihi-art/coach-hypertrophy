@@ -199,6 +199,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- marca o estado como não pronto antes de hidratar do armazenamento remoto
     setReady(false);
     void hydrate();
     return () => {
