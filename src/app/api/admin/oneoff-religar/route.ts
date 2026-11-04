@@ -8,12 +8,8 @@ import type { AppState } from "@/lib/domain";
 import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import { blobGetJson, blobPutJson, hasBlobCredentials } from "@/lib/blob";
 import { readUserState, writeUserState } from "@/lib/user-state";
-import {
-  aplicarCorrecao,
-  rascunhoCorrecaoDaSessao,
-  validarCorrecoesNoEstado,
-} from "@/lib/plan/corrigir-concluida";
-import { registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
+import { recalcularAPartirDe, validarCorrecoesNoEstado } from "@/lib/plan/corrigir-concluida";
+import { aplicarRecordes, registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
 import { cargaSugeridaParaExercicio } from "@/lib/engine/memoria-carga";
 
 
@@ -98,26 +94,49 @@ async function calcular() {
     return { ok: false as const, hash, erro: `esperava 1 série candidata, achei ${cands.length}`, cands };
   }
   const c = cands[0]!;
-  const r0 = rascunhoCorrecaoDaSessao(state, c.sessao_id);
-  let movida: (typeof r0.itens)[number]["series"][number] | undefined;
-  const itens = r0.itens.map((it) => {
-    if (it.prescricao_id !== c.presc_cruc) return it;
-    movida = it.series.find((x) => x.id === c.registro_id);
-    return { ...it, series: it.series.filter((x) => x.id !== c.registro_id) };
+  // Cirúrgico: só a série 45×8 muda de bloco (e a numeração do supino). Nenhuma outra série
+  // (ex.: aquecimento/aproximação da remada) é tocada.
+  const sess = state.sessoes.find((x) => x.id === c.sessao_id)!;
+  const antigos = state.registros.filter((r) => r.sessao_id === sess.id);
+  const movida = antigos.find((r) => r.id === c.registro_id)!;
+  const sup = antigos
+    .filter((r) => r.prescricao_id === c.presc_sup && r.id !== movida.id)
+    .sort((a, b) => a.numero - b.numero);
+  let k = sup.findIndex((x) => (RANK[x.tipo_serie] ?? 9) > RANK.top_set!);
+  if (k < 0) k = sup.length;
+  const ordemSup = [...sup.slice(0, k), movida, ...sup.slice(k)];
+  const novoNum = new Map(ordemSup.map((r, i) => [r.id, i + 1]));
+  const novosSid = antigos.map((r) => {
+    if (r.id === movida.id) return { ...r, prescricao_id: c.presc_sup, exercicio_id: SUPINO, numero: novoNum.get(r.id)! };
+    if (novoNum.has(r.id) && novoNum.get(r.id) !== r.numero) return { ...r, numero: novoNum.get(r.id)! };
+    return r;
   });
-  if (!movida) return { ok: false as const, hash, erro: "série não está no rascunho do crucifixo" };
-  const m = movida;
-  const itens2 = itens.map((it) => {
-    if (it.prescricao_id !== c.presc_sup) return it;
-    const s = [...it.series];
-    let k = s.findIndex((x) => (RANK[x.tipo_serie] ?? 9) > RANK.top_set!);
-    if (k < 0) k = s.length;
-    s.splice(k, 0, m);
-    return { ...it, series: s };
-  });
-  const res = aplicarCorrecao(state, { sessao_id: c.sessao_id, itens: itens2 });
-  if (!res.ok) return { ok: false as const, hash, erro: res.erro };
-  const next = res.state;
+  const porId = new Map(novosSid.map((r) => [r.id, r]));
+  let next: AppState = { ...state, registros: state.registros.map((r) => porId.get(r.id) ?? r) };
+  const avisos: string[] = [];
+  if (sess.snapshot_conclusao) {
+    const rec = recalcularAPartirDe(next, sess.id, antigos, sess.prescricoes);
+    next = rec.state;
+    if (rec.parouEm) avisos.push(`cascata parou em ${rec.parouEm.nome}`);
+    if (rec.semBase.length) avisos.push(`sem base: ${rec.semBase.join(", ")}`);
+  } else {
+    avisos.push("sessão sem snapshot: só histórico/recordes");
+  }
+  next = { ...next, estados: aplicarRecordes(next.estados, registrosValidos(next), new Set([SUPINO, CRUCIFIXO])) };
+  const mudadas = state.sessoes.filter((x) => next.sessoes.find((n) => n.id === x.id) !== x);
+  next = {
+    ...next,
+    correcoes_concluidas: [
+      ...(state.correcoes_concluidas ?? []).filter((x) => x.sessao_id !== sess.id),
+      {
+        sessao_id: sess.id,
+        corrigido_em: new Date().toISOString(),
+        com_recalculo: !!sess.snapshot_conclusao,
+        anterior: { sessoes: mudadas, registros_sessao: antigos, estados: state.estados, volumes_semanais: state.volumes_semanais, decisoes: state.decisoes },
+      },
+    ],
+  };
+  const res = { avisos };
   const v = validarCorrecoesNoEstado(next);
   if (v) return { ok: false as const, hash, erro: v };
   const exs = [SUPINO, CRUCIFIXO];
@@ -134,6 +153,9 @@ async function calcular() {
   const estadosMudados = next.estados
     .filter((e) => state.estados.find((x) => x.exercicio_id === e.exercicio_id) !== e)
     .map((e) => e.exercicio_id);
+  const extras = estadosMudados.filter((e) => e !== SUPINO && e !== CRUCIFIXO);
+  if (extras.length) fora.push(`estados fora do escopo mudariam: ${extras.join(", ")}`);
+  const regsMudados = next.registros.filter((r) => !state.registros.includes(r)).map((r) => `${r.id}:${r.exercicio_id}#${r.numero}`);
   return {
     ok: fora.length === 0,
     hash,
@@ -144,6 +166,7 @@ async function calcular() {
     antes,
     depois,
     estados_mudados: estadosMudados,
+    registros_mudados: regsMudados,
     registros: { antes: state.registros.length, depois: next.registros.length },
     avisos: res.avisos,
     next,
