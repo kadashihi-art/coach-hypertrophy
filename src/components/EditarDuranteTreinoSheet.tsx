@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { VariacaoInfo } from "@/components/VariacaoInfo";
+import { TecnicaPicker } from "@/components/TecnicaPicker";
+import { prescricaoAceitaTecnica } from "@/lib/engine/tecnicas";
 import { Button } from "@/components/ui";
 import { Casca, EQUIP, Mini, Passo } from "@/components/EditarTreinoSheet";
 import { labelGrupo } from "@/lib/labels";
@@ -28,6 +30,8 @@ import {
   removerAoVivo,
   trocarAoVivo,
   validarAoVivo,
+  definirTecnicaAoVivo,
+  podeMudarTecnicaAoVivo,
   type RascunhoAoVivo,
 } from "@/lib/treino/editar-durante-treino";
 
@@ -219,6 +223,16 @@ export function EditarDuranteTreinoSheet(props: {
                       </div>
                     ) : null}
                   </div>
+                ) : null}
+                {!it.encerrar && efetivo && prescricaoAceitaTecnica({ tecnica: it.trocar_para ? "padrao" : presc?.tecnica ?? "padrao" }, efetivo) ? (
+                  <TecnicaPicker
+                    exNome={efetivo.nome}
+                    valor={it.tecnica_final}
+                    onChange={(t) => setR(definirTecnicaAoVivo(state, r, i, t))}
+                    usadas={r.itens.filter((x) => x.tecnica_final && !x.encerrar).length}
+                    temProximo={i < r.itens.length - 1}
+                    bloqueio={podeMudarTecnicaAoVivo(state, r, i) ? null : "A última série desse exercício já foi feita."}
+                  />
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {it.encerrar ? (

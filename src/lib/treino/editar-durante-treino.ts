@@ -8,7 +8,8 @@
  * - Aquecimento/aproximação continuam derivados da ordem por `estrutura-series` (sem estado extra).
  */
 import type { AppState, EdicaoAoVivo, EstadoExercicio, Exercicio, Prescricao, Sessao } from "@/lib/domain";
-import { ehSeriePreparatoria } from "@/lib/domain/enums";
+import { ehSeriePreparatoria, type TecnicaFinal } from "@/lib/domain/enums";
+import { exercicioAceitaTecnica, linhaTecnica, validarTecnicasSessao } from "@/lib/engine/tecnicas";
 import { LIMITES_EDICAO, novaPrescricao, padraoParaNovo } from "@/lib/plan/editar-treino";
 import { listarAlternativasTroca, permitido } from "@/lib/plan/trocar-exercicio";
 import { preparatoriasDaSessao } from "@/lib/treino/estrutura-series";
@@ -27,6 +28,8 @@ export type ItemAoVivo = {
   carga_kg: number | null;
   /** Encerrar aqui (exercício já começado): fica só com as séries de trabalho feitas. */
   encerrar: boolean;
+  /** Técnica opcional na última série (lote 4). */
+  tecnica_final?: TecnicaFinal | null;
 };
 
 export type RascunhoAoVivo = { sessao_id: string; atual_id: string | null; itens: ItemAoVivo[] };
@@ -75,8 +78,23 @@ export function rascunhoAoVivo(state: AppState): RascunhoAoVivo | null {
         faixa_reps: [p.faixa_reps[0], p.faixa_reps[1]],
         carga_kg: null,
         encerrar: false,
+        tecnica_final: p.tecnica_final ?? null,
       })),
   };
+}
+
+/** A técnica só pode mudar enquanto a última série de trabalho não foi feita. */
+export function podeMudarTecnicaAoVivo(state: AppState, r: RascunhoAoVivo, idx: number): boolean {
+  const it = r.itens[idx];
+  if (!it || it.encerrar) return false;
+  const ex = state.exercicios.find((e) => e.id === (it.trocar_para ?? it.exercicio_id));
+  if (!exercicioAceitaTecnica(ex)) return false;
+  return feitosDoItem(state, r.sessao_id, it).trabalho < it.series;
+}
+
+export function definirTecnicaAoVivo(state: AppState, r: RascunhoAoVivo, idx: number, tipo: TecnicaFinal | null): RascunhoAoVivo {
+  if (!podeMudarTecnicaAoVivo(state, r, idx)) return r;
+  return mapItem(r, idx, (x) => ({ ...x, tecnica_final: tipo }));
 }
 
 const idsNoRascunho = (r: RascunhoAoVivo) => r.itens.flatMap((i) => [i.exercicio_id, ...(i.trocar_para ? [i.trocar_para] : [])]);
@@ -125,7 +143,8 @@ export function trocarAoVivo(state: AppState, r: RascunhoAoVivo, idx: number, pa
   const it = r.itens[idx]!;
   const { trabalho } = feitosDoItem(state, r.sessao_id, it);
   if (trabalho > 0 && it.series <= trabalho) return r; // nada falta pra trocar
-  return mapItem(r, idx, (x) => ({ ...x, trocar_para: paraId, carga_kg: null }));
+  const novo = state.exercicios.find((e) => e.id === paraId);
+  return mapItem(r, idx, (x) => ({ ...x, trocar_para: paraId, carga_kg: null, tecnica_final: exercicioAceitaTecnica(novo) ? x.tecnica_final ?? null : null }));
 }
 
 export function desfazerTrocaNoRascunho(r: RascunhoAoVivo, idx: number): RascunhoAoVivo {
@@ -238,9 +257,11 @@ export function montarAoVivo(state: AppState, r: RascunhoAoVivo, sufixo = Date.n
 
   for (const it of r.itens) {
     const presc = it.prescricao_id ? antes.find((p) => p.id === it.prescricao_id) : undefined;
+    const tf = it.encerrar ? null : it.tecnica_final ?? null;
     if (!presc) {
-      const p = criar(it.exercicio_id, idNovo(it.exercicio_id), it.series, it.faixa_reps, rirBase);
+      const p = { ...criar(it.exercicio_id, idNovo(it.exercicio_id), it.series, it.faixa_reps, rirBase), tecnica_final: tf };
       out.push(p);
+      if (tf) linhas.push(linhaTecnica(nome(it.exercicio_id), null, tf)!);
       linhas.push(`Adicionado: ${nome(it.exercicio_id)} (${it.series}× ${it.faixa_reps[0]}–${it.faixa_reps[1]} reps, ${fmtKg(p.carga.trabalho_kg)} kg pelo Coach)`);
       continue;
     }
@@ -251,20 +272,22 @@ export function montarAoVivo(state: AppState, r: RascunhoAoVivo, sufixo = Date.n
         linhas.push(`Encerrado: ${nome(presc.exercicio_id)} (sem séries de trabalho; o aquecimento fica no histórico)`);
         continue;
       }
-      out.push({ ...presc, series: trabalho });
+      out.push({ ...presc, series: trabalho, tecnica_final: presc.tecnica_final ?? null });
       if (trabalho !== presc.series) linhas.push(`Encerrado aqui: ${nome(presc.exercicio_id)} fica com ${trabalho} ${trabalho === 1 ? "série" : "séries"}`);
       continue;
     }
     if (it.trocar_para) {
       if (trabalho === 0) {
         const p = criar(it.trocar_para, presc.id, it.series, it.faixa_reps, presc.rir_alvo);
-        out.push({ ...p, descanso_seg: presc.descanso_seg });
+        out.push({ ...p, descanso_seg: presc.descanso_seg, tecnica_final: tf });
         linhas.push(`Trocado: ${nome(presc.exercicio_id)} → ${nome(it.trocar_para)} (${fmtKg(p.carga.trabalho_kg)} kg pelo Coach)`);
+        { const l = linhaTecnica(nome(it.trocar_para), presc.tecnica_final, tf); if (l) linhas.push(l); }
       } else {
         const faltam = Math.max(1, it.series - trabalho);
-        out.push({ ...presc, series: trabalho });
+        out.push({ ...presc, series: trabalho, tecnica_final: null });
         const p = criar(it.trocar_para, idNovo(it.trocar_para), faltam, it.faixa_reps, presc.rir_alvo);
-        out.push({ ...p, descanso_seg: presc.descanso_seg });
+        out.push({ ...p, descanso_seg: presc.descanso_seg, tecnica_final: tf });
+        { const l = linhaTecnica(nome(it.trocar_para), null, tf); if (l) linhas.push(l); }
         if (atual === presc.id) atual = p.id;
         linhas.push(
           `Trocado: ${nome(presc.exercicio_id)} → ${nome(it.trocar_para)}. ` +
@@ -275,7 +298,7 @@ export function montarAoVivo(state: AppState, r: RascunhoAoVivo, sufixo = Date.n
       continue;
     }
     const faixa: [number, number] = [it.faixa_reps[0], it.faixa_reps[1]];
-    let p: Prescricao = { ...presc, series: it.series, faixa_reps: faixa };
+    let p: Prescricao = { ...presc, series: it.series, faixa_reps: faixa, tecnica_final: tf };
     const ms: string[] = [];
     if (presc.series !== it.series) ms.push(`${presc.series} → ${it.series} séries`);
     if (presc.faixa_reps[0] !== faixa[0] || presc.faixa_reps[1] !== faixa[1])
@@ -290,6 +313,7 @@ export function montarAoVivo(state: AppState, r: RascunhoAoVivo, sufixo = Date.n
       };
     }
     if (ms.length) linhas.push(`${nome(presc.exercicio_id)}: ${ms.join(", ")}`);
+    { const l = linhaTecnica(nome(presc.exercicio_id), presc.tecnica_final, tf); if (l) linhas.push(l); }
     out.push(p);
   }
 
@@ -346,6 +370,11 @@ export function validarAoVivo(state: AppState, r: RascunhoAoVivo): string | null
   }
   const ids = idsNoRascunho(r);
   if (new Set(ids).size !== ids.length) return "Tem exercício repetido no treino.";
+  const m = montarAoVivo(state, r, "v");
+  if (m) {
+    const t = validarTecnicasSessao(state, m.prescricoes);
+    if (t) return t;
+  }
   return null;
 }
 

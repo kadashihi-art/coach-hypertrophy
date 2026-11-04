@@ -6,6 +6,7 @@
  *   mesmos exercícios são reaplicadas em ordem. Sem snapshot: só histórico e volume mudam.
  * - Nenhuma regra nova: decidirProgressao/aplicarDecisao/aplicarEstadoNaPrescricao são as do Coach.
  */
+import { volumeExtraDoRegistro } from "@/lib/engine/tecnicas";
 import { z } from "zod";
 import type {
   AppState,
@@ -180,7 +181,7 @@ function deltaSeries(series: RegistroSerie[], exercicios: Exercicio[], sinal: 1 
     const ex = exercicios.find((e) => e.id === s.exercicio_id);
     if (!ex) continue;
     const p = acc.get(ex.grupo_primario) ?? { diretas: 0, indiretas: 0 };
-    p.diretas += sinal;
+    p.diretas += sinal * (1 + volumeExtraDoRegistro(s));
     acc.set(ex.grupo_primario, p);
     for (const sec of ex.grupos_secundarios) {
       const c = acc.get(sec) ?? { diretas: 0, indiretas: 0 };

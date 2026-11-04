@@ -2,6 +2,7 @@
  * T9 — Context builder for Coach chat.
  * Copies ONLY numbers/facts from AppState (motor). Never invents loads.
  */
+import { nomeTecnica } from "@/lib/engine/tecnicas";
 import { AJUSTAR_PLANO_HREF } from "@/lib/nav";
 import type {
   AppState,
@@ -56,6 +57,8 @@ export type CoachContextPrescSnap = {
   rir_alvo: number;
   carga_trabalho_kg: number;
   top_set_kg: number | null;
+  /** Técnica opcional na última série, escolhida pelo usuário (nome em PT). Só leitura. */
+  tecnica_ultima_serie?: string;
 };
 
 export type CoachContext = {
@@ -309,6 +312,7 @@ export function buildCoachContext(
         // From motor/prescrição already anchored on EstadoExercicio
         carga_trabalho_kg: p.carga.trabalho_kg,
         top_set_kg: p.carga.top_set_kg ?? null,
+        ...(p.tecnica_final ? { tecnica_ultima_serie: nomeTecnica(p.tecnica_final) } : {}),
       }));
     proxima_sessao = {
       id: next.id,

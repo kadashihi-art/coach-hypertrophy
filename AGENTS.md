@@ -11,6 +11,7 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
 
 ## Mapa
 - `src/lib/engine/`: motor de progressão. `progression.ts` aplica as regras R1–R12 (brief-produto-v1 §6). Aqui também ficam volume, e1rm, deload/check-in, adaptação ao vivo e alertas de volume.
+  - `tecnicas.ts`: técnicas avançadas opcionais na última série (regras, carga do drop, volume conservador). Ver `docs/tecnicas-avancadas.md`.
 - `src/lib/plan/`: geração do plano. `gerar-plano.ts` e `estrutura.ts` montam o split e o volume. `parq.ts` é o gate do PAR-Q+. `coleta.ts` faz o onboarding conversacional (schema, mais `validarEstrategia`). `negociacao.ts` traz os ajustes propostos pelo coach. Também ficam aqui `remount-plano.ts`, `racional.ts` e `calendario.ts`.
 - `src/lib/llm/`: coach (LLM).
   - `coach.ts` tem os prompts e o provider HTTP.
