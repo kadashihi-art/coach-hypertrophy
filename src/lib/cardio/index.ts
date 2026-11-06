@@ -298,3 +298,5 @@ export function adicionarCardio(state: AppState, entrada: EntradaCardio): AppSta
 export function removerCardio(state: AppState, id: string): AppState {
   return { ...state, cardios: (state.cardios ?? []).filter((c) => c.id !== id) };
 }
+
+export * from "./beneficios";

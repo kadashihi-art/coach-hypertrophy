@@ -21,6 +21,14 @@ import {
   somarDias,
   type EntradaCardio,
 } from "../src/lib/cardio";
+import {
+  AVISO_BENEFICIOS,
+  FAIXAS_BENEFICIO,
+  FONTES_CARDIO,
+  beneficioCurto,
+  faixaCardio,
+  rotuloFaixa,
+} from "../src/lib/cardio/beneficios";
 import { AppStateSchema } from "../src/lib/domain";
 import { inicioDeUso } from "../src/lib/inicio";
 
@@ -200,5 +208,51 @@ ok(
   "detalhe do registro junta tempo, km, kcal e intensidade",
 );
 ok(detalheCardio(criarCardio({ data: HOJE, minutos: 30, tipo: "bike" })) === "30 min", "detalhe só com o que existe");
+
+// benefícios por faixa: limites, cobertura e honestidade do texto
+ok(FAIXAS_BENEFICIO.length === 5, "5 faixas de benefício");
+ok(faixaCardio(0).id === "zero", "0 min → semana zerada");
+ok(faixaCardio(1).id === "inicio" && faixaCardio(149).id === "inicio", "1–149 min → abaixo da recomendação");
+ok(faixaCardio(150).id === "recomendada" && faixaCardio(299).id === "recomendada", "150–299 min → faixa recomendada");
+ok(faixaCardio(300).id === "acima" && faixaCardio(449).id === "acima", "300–449 min → acima da recomendação");
+ok(faixaCardio(450).id === "alto" && faixaCardio(2000).id === "alto", "450+ min → volume alto");
+ok(faixaCardio(-30).id === "zero", "minutos negativos caem na faixa zerada");
+ok(faixaCardio(Number.NaN).id === "zero", "minutos inválidos caem na faixa zerada");
+
+const faixasCobertas = FAIXAS_BENEFICIO.every(
+  (f, i) => i === 0 || f.min === FAIXAS_BENEFICIO[i - 1]!.max! + 1,
+);
+ok(faixasCobertas, "as faixas são contínuas, sem buraco entre elas");
+ok(FAIXAS_BENEFICIO.at(-1)!.max === null, "a última faixa é aberta (450+)");
+ok(
+  FAIXAS_BENEFICIO.every((f) => f.resumo.length > 40 && f.beneficios.length > 0 && f.curto.length > 20),
+  "toda faixa tem resumo, benefícios e frase curta",
+);
+ok(
+  FAIXAS_BENEFICIO.every((f) => f.evidencia === "forte" || f.evidencia === "moderado"),
+  "evidência só forte/moderada (nada de prática disfarçada)",
+);
+ok(FAIXAS_BENEFICIO[2]!.resumo.includes("150–300"), "faixa recomendada cita 150–300 min");
+ok(FAIXAS_BENEFICIO[2]!.resumo.includes("31%"), "faixa recomendada traz o número da meta-análise");
+ok(FAIXAS_BENEFICIO[3]!.resumo.includes("estatisticamente igual"), "faixa acima diz que o ganho extra é pequeno");
+ok(FAIXAS_BENEFICIO[4]!.resumo.includes("achata"), "volume alto admite que o ganho se achata");
+ok(
+  FAIXAS_BENEFICIO.every((f) => !/cura|garantia|comprovad/i.test(`${f.resumo} ${f.curto} ${f.beneficios.join(" ")}`)),
+  "nenhuma faixa promete cura ou garantia",
+);
+ok(AVISO_BENEFICIOS.includes("associação"), "aviso deixa claro que é associação");
+ok(AVISO_BENEFICIOS.includes("não substituem orientação médica"), "aviso não substitui orientação médica");
+ok(FONTES_CARDIO.length >= 5, "fontes listadas");
+ok(
+  FONTES_CARDIO.every((f) => f.rotulo.length > 3 && f.detalhe.length > 20),
+  "toda fonte tem rótulo e detalhe",
+);
+ok(FONTES_CARDIO.some((f) => f.rotulo.includes("OMS")), "OMS aparece nas fontes");
+ok(FONTES_CARDIO.some((f) => f.rotulo.includes("Arem")), "Arem 2015 aparece nas fontes");
+ok(beneficioCurto(0) === FAIXAS_BENEFICIO[0]!.curto, "frase curta do Hoje vem da faixa certa");
+ok(beneficioCurto(180) === FAIXAS_BENEFICIO[2]!.curto, "180 min usa a frase da faixa recomendada");
+ok(rotuloFaixa(FAIXAS_BENEFICIO[0]!) === "0 min", "rótulo da faixa zerada");
+ok(rotuloFaixa(FAIXAS_BENEFICIO[2]!) === "150–299 min/semana", "rótulo da faixa recomendada");
+ok(rotuloFaixa(FAIXAS_BENEFICIO[4]!) === "450+ min/semana", "rótulo da faixa aberta");
 
 console.log(falhas ? `\n${falhas} falha(s)` : "\nsmoke:cardio OK");

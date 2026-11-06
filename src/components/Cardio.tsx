@@ -4,19 +4,25 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { Casca } from "@/components/EditarTreinoSheet";
-import { Badge, Button, Card, NumStepper, ProgressBar, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, EvidenciaBadge, NumStepper, ProgressBar, SectionTitle } from "@/components/ui";
 import { useClientValue } from "@/lib/use-client-value";
 import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
 import {
+  AVISO_BENEFICIOS,
+  FAIXAS_BENEFICIO,
+  FONTES_CARDIO,
   INTENSIDADES_CARDIO,
   TIPOS_CARDIO,
+  beneficioCurto,
   detalheCardio,
   emojiTipoCardio,
+  faixaCardio,
   formatarKcal,
   formatarKm,
   formatarMinutos,
   historicoCardio,
   resumoCardioSemana,
+  rotuloFaixa,
   rotuloTipoCardio,
   semanaLabel,
   type ResumoCardioSemana,
@@ -332,6 +338,62 @@ function SemanaStrip({
   );
 }
 
+/** Benefícios por faixa de minutos — referência honesta, sem promessa. */
+function BeneficiosCardio({ minutos }: { minutos: number }) {
+  const atual = faixaCardio(minutos);
+  return (
+    <Card className="mb-3" data-testid="cardio-beneficios">
+      <details>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+          <span className="text-sm font-semibold">O que essa quantidade de cardio faz</span>
+          <span className="text-[11px] text-accent">ver benefícios</span>
+        </summary>
+
+        <p className="mt-2 text-xs text-muted">
+          Você está em <span className="font-semibold text-bone-50">{atual.titulo.toLowerCase()}</span> (
+          {formatarMinutos(minutos)} por semana).
+        </p>
+
+        <div className="mt-3 space-y-2">
+          {FAIXAS_BENEFICIO.map((f) => (
+            <div
+              key={f.id}
+              className={`rounded-xl border p-3 ${
+                f.id === atual.id ? "border-accent/40 bg-accent/5" : "border-border"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">{f.titulo}</p>
+                <EvidenciaBadge evidencia={f.evidencia} />
+              </div>
+              <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted">{rotuloFaixa(f)}</p>
+              <p className="mt-1 text-xs text-muted">{f.resumo}</p>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs">
+                {f.beneficios.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-3 text-[11px] text-muted">{AVISO_BENEFICIOS}</p>
+
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-semibold text-accent">De onde vêm os números</summary>
+          <ul className="mt-2 space-y-1.5 text-[11px] text-muted">
+            {FONTES_CARDIO.map((f) => (
+              <li key={f.rotulo}>
+                <span className="font-semibold text-bone-50">{f.rotulo}</span> — {f.detalhe}
+              </li>
+            ))}
+          </ul>
+        </details>
+      </details>
+    </Card>
+  );
+}
+
 /** Card compacto no Hoje. */
 export function CardioResumo() {
   const { hoje, meta, semana } = useCardio();
@@ -379,6 +441,7 @@ export function CardioResumo() {
           ) : null}
           <TextoResumo semana={semana} />
         </p>
+        <p className="mt-1 text-xs text-muted">{beneficioCurto(semana.minutos)}</p>
         <div className="mt-3 flex gap-2">
           <Button
             variant="ghost"
@@ -520,6 +583,8 @@ export function CardioSection() {
           {formatarKcal(semana.calorias_kcal) ? ` · ${formatarKcal(semana.calorias_kcal)}` : ""}
         </p>
       </Card>
+
+      <BeneficiosCardio minutos={semana.minutos} />
 
       {semana.registros.length > 0 ? (
         <Card className="mb-3">
