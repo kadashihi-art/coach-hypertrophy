@@ -1,13 +1,20 @@
-/** Smoke cardio: semana seg–dom, total vs meta, histórico, registro/remoção e compatibilidade do estado. */
+/** Smoke cardio: semana seg–dom, meta dividida nos 7 dias, total vs meta, km/kcal, histórico, registro/remoção e compatibilidade do estado. */
 import {
   adicionarCardio,
   criarCardio,
+  detalheCardio,
   fimDaSemana,
+  formatarKcal,
+  formatarKm,
   formatarMinutos,
   historicoCardio,
   inicioDaSemana,
+  metaPorDia,
+  normalizarKcal,
+  normalizarKm,
   removerCardio,
   resumoCardioSemana,
+  rotuloIntensidade,
   rotuloTipoCardio,
   semanaIsoDaData,
   semanaLabel,
@@ -42,10 +49,15 @@ const card = (
   minutos: number,
   tipo: EntradaCardio["tipo"] = "bike",
   id = `${data}-${minutos}`,
-) => criarCardio({ data, minutos, tipo, id, criado_em: `${data}T12:00:00.000Z` });
+  extras: Partial<EntradaCardio> = {},
+) => criarCardio({ data, minutos, tipo, id, criado_em: `${data}T12:00:00.000Z`, ...extras });
 
 const cardios = [
-  card("2026-11-02", 30, "bike"),
+  card("2026-11-02", 30, "bike", "2026-11-02-30", {
+    distancia_km: 12.5,
+    calorias_kcal: 260,
+    intensidade: "moderada",
+  }),
   card("2026-11-04", 20, "caminhada"),
   card("2026-11-01", 60, "corrida"), // semana anterior
   card("2026-11-09", 40, "remo"), // semana seguinte
@@ -59,10 +71,34 @@ ok(r.restante_min === 40 && !r.batido, "faltam 40 min pra meta de 90");
 ok(r.pct === 56, "progresso arredondado (50/90 = 56%)");
 ok(r.semana_iso === "2026-W45", "semana ISO do resumo");
 
+// meta dividida nos 7 dias
+const metas = metaPorDia(90);
+ok(metas.length === 7 && metas.reduce((a, b) => a + b, 0) === 90, "meta de 90 dividida nos 7 dias sem perder minuto");
+ok(metas[0] === 13 && metas[6] === 12, "os minutos que sobram ficam nos primeiros dias (13…12)");
+ok(metaPorDia(0).every((m) => m === 0), "sem meta: 0 em todos os dias");
+ok(metaPorDia(7).every((m) => m === 1), "meta de 7 = 1 min por dia");
+ok(metaPorDia(100).reduce((a, b) => a + b, 0) === 100, "meta quebrada (100) também fecha a soma");
+
+// divisão dia a dia
+ok(r.por_dia.length === 7, "resumo traz os 7 dias");
+ok(r.por_dia[0]!.rotulo === "Seg" && r.por_dia[6]!.rotulo === "Dom", "dias vão de segunda a domingo");
+ok(r.por_dia[0]!.data === "2026-11-02" && r.por_dia[0]!.minutos === 30, "segunda com 30 min");
+ok(r.por_dia[2]!.data === "2026-11-04" && r.por_dia[2]!.minutos === 20, "quarta com 20 min");
+ok(r.por_dia[1]!.minutos === 0 && r.por_dia[1]!.registros.length === 0, "dia sem registro fica zerado");
+ok(r.dias_ativos === 2, "2 dias com cardio na semana");
+ok(r.por_dia[2]!.hoje && !r.por_dia[1]!.hoje, "só o dia de hoje é marcado como hoje");
+ok(r.por_dia[3]!.futuro && !r.por_dia[2]!.futuro, "dias depois de hoje são futuro");
+
+// km e kcal por dia e na semana
+ok(r.distancia_km === 12.5 && r.calorias_kcal === 260, "soma km e kcal da semana");
+ok(r.por_dia[0]!.distancia_km === 12.5 && r.por_dia[0]!.calorias_kcal === 260, "km e kcal ficam no dia certo");
+ok(r.por_dia[1]!.distancia_km === 0 && r.por_dia[1]!.calorias_kcal === 0, "dia sem km/kcal não inventa número");
 const cheio = resumoCardioSemana(cardios, 50, HOJE);
 ok(cheio.batido && cheio.pct === 100 && cheio.restante_min === 0, "meta batida zera o que falta e trava em 100%");
 const semMeta = resumoCardioSemana(cardios, 0, HOJE);
 ok(!semMeta.batido && semMeta.pct === 0 && semMeta.restante_min === 0, "sem meta: sem barra e sem cobrança");
+ok(semMeta.meta_dia_min.every((m) => m === 0), "sem meta: nenhum dia ganha meta inventada");
+ok(semMeta.por_dia[0]!.pct === 0 && !semMeta.por_dia[0]!.batido, "sem meta: dia sem barra e sem 'batido'");
 
 // histórico: atual + anterior, para na semana antes do 1º registro
 const hist = historicoCardio(cardios, HOJE, 90, 8);
@@ -86,9 +122,32 @@ ok(criarCardio({ data: HOJE, minutos: 900, tipo: "outro" }).minutos === 600, "mi
 ok(criarCardio({ data: HOJE, minutos: 0, tipo: "outro" }).minutos === 1, "minutos mínimos de 1");
 ok(criarCardio({ data: HOJE, minutos: 30.6, tipo: "bike" }).minutos === 31, "minutos arredondados");
 
-// schema aceita o registro e rejeita tipo/minutos inválidos
+// km, kcal e intensidade são opcionais e normalizados
+const completo = criarCardio({
+  data: HOJE,
+  minutos: 40,
+  tipo: "corrida",
+  distancia_km: 6.25,
+  calorias_kcal: 380.4,
+  intensidade: "forte",
+});
+ok(completo.distancia_km === 6.25, "km com 2 casas preservado");
+ok(completo.calorias_kcal === 380, "kcal arredondada");
+ok(completo.intensidade === "forte", "intensidade guardada");
+ok(criarCardio({ data: HOJE, minutos: 30, tipo: "bike" }).distancia_km === undefined, "sem km informado → campo vazio");
+ok(normalizarKm(0) === undefined && normalizarKm(-2) === undefined, "km 0/negativo vira não informado");
+ok(normalizarKm(999) === 500, "km limitado a 500");
+ok(normalizarKcal(0) === undefined && normalizarKcal(-10) === undefined, "kcal 0/negativa vira não informado");
+ok(normalizarKcal(9000) === 5000, "kcal limitada a 5000");
+
+// schema aceita o registro e rejeita tipo/minutos/km/kcal/intensidade inválidos
 const valido = AppStateSchema.safeParse({ ...base, cardios: comUm.cardios });
 ok(valido.success, "AppStateSchema aceita cardios");
+const completoNoEstado = AppStateSchema.safeParse({
+  ...base,
+  cardios: [{ ...comUm.cardios![0]!, distancia_km: 5.2, calorias_kcal: 320, intensidade: "leve" }],
+});
+ok(completoNoEstado.success, "AppStateSchema aceita km, kcal e intensidade");
 const tipoInvalido = AppStateSchema.safeParse({
   ...base,
   cardios: [{ ...comUm.cardios![0]!, tipo: "xyz" }],
@@ -99,6 +158,21 @@ const minutosInvalidos = AppStateSchema.safeParse({
   cardios: [{ ...comUm.cardios![0]!, minutos: 0 }],
 });
 ok(!minutosInvalidos.success, "AppStateSchema rejeita minutos fora da faixa");
+const kmInvalido = AppStateSchema.safeParse({
+  ...base,
+  cardios: [{ ...comUm.cardios![0]!, distancia_km: 600 }],
+});
+ok(!kmInvalido.success, "AppStateSchema rejeita km fora da faixa");
+const intensidadeInvalida = AppStateSchema.safeParse({
+  ...base,
+  cardios: [{ ...comUm.cardios![0]!, intensidade: "turbo" }],
+});
+ok(!intensidadeInvalida.success, "AppStateSchema rejeita intensidade desconhecida");
+const antigo = AppStateSchema.safeParse({
+  ...base,
+  cardios: [{ id: "x", data: HOJE, minutos: 30, tipo: "bike", criado_em: "2026-11-04T12:00:00.000Z" }],
+});
+ok(antigo.success, "registro antigo (só minutos) continua válido");
 
 // primeiro uso também considera cardio
 ok(inicioDeUso({ cardios: [{ data: "2026-10-20" }] }) === "2026-10-20", "cardio conta como início de uso");
@@ -114,5 +188,17 @@ ok(formatarMinutos(120) === "2h", "120 → 2h");
 ok(semanaLabel("2026-11-02", "2026-11-08") === "02–08/11", "rótulo dentro do mês");
 ok(semanaLabel("2026-10-26", "2026-11-01") === "26/10–01/11", "rótulo virando o mês");
 ok(rotuloTipoCardio("bike") === "Bike", "rótulo do tipo bike");
+ok(formatarKm(5.2) === "5,2 km", "5.2 → 5,2 km");
+ok(formatarKm(10) === "10 km", "10 → 10 km");
+ok(formatarKm(0) === null && formatarKm(undefined) === null, "km vazio não vira texto");
+ok(formatarKcal(320) === "320 kcal", "320 → 320 kcal");
+ok(formatarKcal(0) === null && formatarKcal(undefined) === null, "kcal vazio não vira texto");
+ok(rotuloIntensidade("moderada") === "Moderada", "rótulo da intensidade");
+ok(rotuloIntensidade(undefined) === null, "sem intensidade: sem rótulo");
+ok(
+  detalheCardio(completo) === "40 min · 6,3 km · 380 kcal · forte",
+  "detalhe do registro junta tempo, km, kcal e intensidade",
+);
+ok(detalheCardio(criarCardio({ data: HOJE, minutos: 30, tipo: "bike" })) === "30 min", "detalhe só com o que existe");
 
 console.log(falhas ? `\n${falhas} falha(s)` : "\nsmoke:cardio OK");

@@ -345,12 +345,21 @@ export const TipoCardioSchema = z.enum([
 ]);
 export type TipoCardio = z.infer<typeof TipoCardioSchema>;
 
+/** Intensidade percebida do cardio. Opcional: só aparece se a pessoa informar. */
+export const IntensidadeCardioSchema = z.enum(["leve", "moderada", "forte"]);
+export type IntensidadeCardio = z.infer<typeof IntensidadeCardioSchema>;
+
 export const CardioSchema = z.object({
   id: z.string(),
   /** Dia do cardio (YYYY-MM-DD, fuso de São Paulo). */
   data: z.string(),
   minutos: z.number().int().min(1).max(600),
   tipo: TipoCardioSchema.default("outro"),
+  /** Distância em km. Opcional — nem todo cardio tem distância (ex.: escada). */
+  distancia_km: z.number().min(0).max(500).optional(),
+  /** Gasto estimado em kcal. Opcional e sempre informado pela pessoa. */
+  calorias_kcal: z.number().int().min(0).max(5000).optional(),
+  intensidade: IntensidadeCardioSchema.optional(),
   criado_em: z.string(),
 });
 export type Cardio = z.infer<typeof CardioSchema>;

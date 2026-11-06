@@ -16,6 +16,7 @@ import type {
   Perfil,
   RegistroSerie,
   DecisaoProgressao,
+  IntensidadeCardio,
   TipoCardio,
 } from "@/lib/domain";
 import {
@@ -80,7 +81,14 @@ type Ctx = {
   completeOnboarding: (partial: Partial<Perfil>) => void;
   saveCheckin: (ck: Omit<Checkin, "id">) => void;
   /** Cardio avulso: minutos contam contra o ideal semanal do perfil. */
-  addCardio: (entrada: { minutos: number; tipo: TipoCardio; data?: string | null }) => void;
+  addCardio: (entrada: {
+    minutos: number;
+    tipo: TipoCardio;
+    data?: string | null;
+    distancia_km?: number | null;
+    calorias_kcal?: number | null;
+    intensidade?: IntensidadeCardio | null;
+  }) => void;
   removeCardio: (id: string) => void;
   startSession: (sessaoId?: string) => void;
   setLoggerPrescricao: (prescricaoId: string) => void;
@@ -419,12 +427,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addCardio = useCallback(
-    (entrada: { minutos: number; tipo: TipoCardio; data?: string | null }) => {
+    (entrada: {
+      minutos: number;
+      tipo: TipoCardio;
+      data?: string | null;
+      distancia_km?: number | null;
+      calorias_kcal?: number | null;
+      intensidade?: IntensidadeCardio | null;
+    }) => {
       setState((s) =>
         adicionarCardioNoEstado(s, {
           minutos: entrada.minutos,
           tipo: entrada.tipo,
           data: entrada.data || hojeIsoSaoPaulo(),
+          distancia_km: entrada.distancia_km,
+          calorias_kcal: entrada.calorias_kcal,
+          intensidade: entrada.intensidade,
         }),
       );
     },
