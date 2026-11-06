@@ -332,6 +332,29 @@ export const CheckinSchema = z.object({
 });
 export type Checkin = z.infer<typeof CheckinSchema>;
 
+/** Cardio registrado fora da musculação (conta só os minutos da semana, não mexe em carga/volume). */
+export const TipoCardioSchema = z.enum([
+  "caminhada",
+  "corrida",
+  "bike",
+  "eliptico",
+  "natacao",
+  "remo",
+  "escada",
+  "outro",
+]);
+export type TipoCardio = z.infer<typeof TipoCardioSchema>;
+
+export const CardioSchema = z.object({
+  id: z.string(),
+  /** Dia do cardio (YYYY-MM-DD, fuso de São Paulo). */
+  data: z.string(),
+  minutos: z.number().int().min(1).max(600),
+  tipo: TipoCardioSchema.default("outro"),
+  criado_em: z.string(),
+});
+export type Cardio = z.infer<typeof CardioSchema>;
+
 export const AlertaSegurancaSchema = z.object({
   id: z.string(),
   data: z.string(),

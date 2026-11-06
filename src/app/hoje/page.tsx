@@ -39,6 +39,7 @@ import {
   resumoSonoCheckin,
 } from "@/lib/domain/sono";
 import { SonoAguaResumo } from "@/components/SonoAgua";
+import { CardioResumo } from "@/components/Cardio";
 import {
   precisaResponderParq,
   parqBloqueiaPrescricao,
@@ -508,6 +509,8 @@ export default function HojePage() {
           <span className="text-xs text-muted">sono, energia, dor →</span>
         </Link>
       )}
+
+      <CardioResumo />
 
       <SonoAguaResumo />
 

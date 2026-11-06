@@ -16,7 +16,12 @@ import type {
   Perfil,
   RegistroSerie,
   DecisaoProgressao,
+  TipoCardio,
 } from "@/lib/domain";
+import {
+  adicionarCardio as adicionarCardioNoEstado,
+  removerCardio as removerCardioDoEstado,
+} from "@/lib/cardio";
 import {
   loadState,
   saveState,
@@ -74,6 +79,9 @@ type Ctx = {
   /** Merge perfil + gera plano determinístico e marca onboarding concluído */
   completeOnboarding: (partial: Partial<Perfil>) => void;
   saveCheckin: (ck: Omit<Checkin, "id">) => void;
+  /** Cardio avulso: minutos contam contra o ideal semanal do perfil. */
+  addCardio: (entrada: { minutos: number; tipo: TipoCardio; data?: string | null }) => void;
+  removeCardio: (id: string) => void;
   startSession: (sessaoId?: string) => void;
   setLoggerPrescricao: (prescricaoId: string) => void;
   logSerie: (
@@ -408,6 +416,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sessoes,
       };
     });
+  }, []);
+
+  const addCardio = useCallback(
+    (entrada: { minutos: number; tipo: TipoCardio; data?: string | null }) => {
+      setState((s) =>
+        adicionarCardioNoEstado(s, {
+          minutos: entrada.minutos,
+          tipo: entrada.tipo,
+          data: entrada.data || hojeIsoSaoPaulo(),
+        }),
+      );
+    },
+    [],
+  );
+
+  const removeCardio = useCallback((id: string) => {
+    setState((s) => removerCardioDoEstado(s, id));
   }, []);
 
   const startSession = useCallback((sessaoId?: string) => {
@@ -995,6 +1020,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
       completeOnboarding,
       saveCheckin,
+      addCardio,
+      removeCardio,
       startSession,
       setLoggerPrescricao,
       logSerie,
@@ -1025,6 +1052,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
       completeOnboarding,
       saveCheckin,
+      addCardio,
+      removeCardio,
       startSession,
       setLoggerPrescricao,
       logSerie,
