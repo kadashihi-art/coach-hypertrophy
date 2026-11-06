@@ -10,11 +10,13 @@
 type SessaoLike = { status: string; data?: string | null; iniciada_em?: string; finalizada_em?: string };
 type RegistroLike = { executado_em?: string };
 type CheckinLike = { data: string };
+type CardioLike = { data: string };
 
 export type FonteInicio = {
   sessoes?: SessaoLike[];
   registros?: RegistroLike[];
   checkins?: CheckinLike[];
+  cardios?: CardioLike[];
 };
 
 const ISO_DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -41,6 +43,10 @@ export function inicioDeUso(s: FonteInicio): string | null {
     if (d) dias.push(d);
   }
   for (const c of s.checkins ?? []) {
+    const d = diaSP(c.data);
+    if (d) dias.push(d);
+  }
+  for (const c of s.cardios ?? []) {
     const d = diaSP(c.data);
     if (d) dias.push(d);
   }

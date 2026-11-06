@@ -10,6 +10,7 @@ export * from "./sono";
 import { z } from "zod";
 import {
   AlertaSegurancaSchema,
+  CardioSchema,
   CheckinSchema,
   DecisaoProgressaoSchema,
   EstadoExercicioSchema,
@@ -81,6 +82,8 @@ export const AppStateSchema = z.object({
   registros: z.array(RegistroSerieSchema).default([]),
   estados: z.array(EstadoExercicioSchema).default([]),
   checkins: z.array(CheckinSchema).default([]),
+  /** Cardio avulso: minutos por dia, contados contra o ideal semanal do perfil. */
+  cardios: z.array(CardioSchema).optional(),
   alertas: z.array(AlertaSegurancaSchema).default([]),
   decisoes: z.array(DecisaoProgressaoSchema).default([]),
   volumes_semanais: z.array(VolumeSemanalSchema).default([]),

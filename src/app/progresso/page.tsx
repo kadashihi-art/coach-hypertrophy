@@ -7,6 +7,7 @@ import { apresentarAlerta } from "@/lib/alertas/apresentar";
 import { proximoTreinoParaAlerta } from "@/lib/alertas/proximo-treino";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 import { SonoAguaSection } from "@/components/SonoAgua";
+import { CardioSection } from "@/components/Cardio";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
@@ -232,6 +233,8 @@ export default function ProgressoPage() {
       </Card></div>
 
       <SonoAguaSection />
+
+      <CardioSection />
 
       <SectionTitle title="Força estimada (e1RM) e recordes" />
       <div className="mb-6 space-y-3 motion-stagger">
