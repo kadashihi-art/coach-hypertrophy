@@ -10,6 +10,8 @@ assert.equal(segundaDaSemana("2026-W01"), "2025-12-29");
 
 // Semana começa na segunda: domingo pertence à semana que abriu na segunda anterior.
 assert.equal(isoWeekDoDia("2026-11-02"), "2026-W45", "segunda abre a semana");
+assert.equal(isoWeekDoDia("2026-11-01"), "2026-W44", "domingo 01/11 fecha a semana anterior (26/10–01/11)");
+assert.equal(isoWeekDe(new Date("2026-11-02T02:30:00.000Z")), "2026-W44", "domingo 01/11 23:30 em SP ainda é a semana anterior");
 assert.equal(isoWeekDoDia("2026-11-08"), "2026-W45", "domingo fecha a mesma semana");
 assert.equal(isoWeekDoDia("2026-11-09"), "2026-W46", "segunda seguinte abre outra semana");
 // Instante UTC convertido para o dia de São Paulo: domingo 23:30 em SP ainda é a semana anterior.
