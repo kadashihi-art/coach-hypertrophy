@@ -84,6 +84,29 @@ assert.deepEqual(treinosParaRegistrar(base).map((x) => x.id), ["UpperA", "LowerA
   assert.equal(dia(u, "2026-11-01").status, "feito");
 }
 
+// 2b) Lower A aberto hoje (em andamento), como no app em 07/11: aparece na lista.
+{
+  const aberto = {
+    ...base,
+    active_sessao_id: "LowerA",
+    sessoes: base.sessoes.map((x) => (x.id === "LowerA" ? { ...x, status: "em_andamento" as const, data: HOJE } : x)),
+  } as St;
+  assert.ok(treinosParaRegistrar(aberto).some((x) => x.id === "LowerA"), "Lower A em andamento aparece");
+  // Sem séries hoje: fecha o em andamento e conclui no dia 02.
+  const st = registrarFeitoNoDia(aberto, ag(aberto), "2026-11-02", null, "LowerA", HOJE);
+  const la = st.sessoes.find((x) => x.id === "LowerA")!;
+  assert.deepEqual([la.status, la.data, st.active_sessao_id], ["concluida", "2026-11-02", null]);
+  assert.equal(dia(st, "2026-11-02").status, "feito");
+  assert.notEqual(dia(st, HOJE).status, "em_andamento", "hoje deixa de estar em andamento");
+  // Com séries hoje: o treino de hoje continua aberto; o dia 02 ganha registro avulso.
+  const comSeries = { ...aberto, registros: [...(aberto.registros ?? []), { id: "r2", sessao_id: "LowerA" }] } as St;
+  const st2 = registrarFeitoNoDia(comSeries, ag(comSeries), "2026-11-02", null, "LowerA", HOJE);
+  const la2 = st2.sessoes.find((x) => x.id === "LowerA")!;
+  assert.deepEqual([la2.status, la2.data, st2.active_sessao_id], ["em_andamento", HOJE, "LowerA"]);
+  assert.equal(dia(st2, "2026-11-02").status, "feito");
+  assert.ok(st2.sessoes.some((x) => ehRegistroAvulso(x.id) && x.data === "2026-11-02"));
+}
+
 // 3) Guardas: hoje/futuro, projeção e treino com séries registradas.
 assert.equal(registrarFeitoNoDia(base, ag(base), HOJE, null, "UpperA", HOJE), base, "hoje não usa o caminho do passado");
 assert.equal(registrarFeitoNoDia(base, ag(base), "2026-11-20", null, "UpperA", HOJE), base, "futuro não muda");

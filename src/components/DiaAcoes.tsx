@@ -42,7 +42,7 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
   const nomeAlvo = opcoes.find((o) => o.id === alvo)?.nome ?? state.sessoes.find((s) => s.id === alvo)?.nome;
   const alvoJaFeito = (() => {
     const st = state.sessoes.find((s) => s.id === alvo)?.status;
-    return st === "concluida" || st === "parcial";
+    return st === "concluida" || st === "parcial" || st === "em_andamento";
   })();
   const ddmm = (iso: string | null | undefined) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
   const manual = doDia ? !!state.sessoes.find((x) => x.id === doDia)?.data_manual : false;
@@ -126,6 +126,8 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
                 {o.nome}
                 {o.id === doDia
                   ? " (deste dia)"
+                  : passado && o.status === "em_andamento"
+                    ? " (em andamento hoje)"
                   : passado && (o.status === "concluida" || o.status === "parcial")
                     ? ` (já feito${o.data ? ` em ${ddmm(o.data)}` : ""})`
                     : o.id === proximo?.id
