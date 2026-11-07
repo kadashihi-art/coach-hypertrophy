@@ -28,4 +28,13 @@ for (const d of [2, 3, 4, 5, 6]) {
 }
 // Híbrido só com 5 dias
 ok(validarEstrategia({ ...a, dias_por_semana: 4 }, { estilo_split: "hibrido_ppl_ul" }).estrategia.estilo_split === "upper_lower", "híbrido 4 dias corrigido");
+// Bloco sempre fecha em 6 semanas no total
+const vc = validarEstrategia(b, { estilo_split: "upper_lower", fase2_estilo: "ppl", fase1_semanas: 8, fase2_semanas: 8 });
+ok(vc.estrategia.fase1_semanas === 5 && vc.estrategia.fase2_semanas === 1, `C: 8+8 → ${vc.estrategia.fase1_semanas}+${vc.estrategia.fase2_semanas}`);
+const vd = validarEstrategia(b, { estilo_split: "upper_lower", fase2_estilo: "ppl" });
+ok(vd.estrategia.fase1_semanas === 3 && vd.estrategia.fase2_semanas === 3, `D: fase 2 sem duração → ${vd.estrategia.fase1_semanas}+${vd.estrategia.fase2_semanas}`);
+const ve = validarEstrategia(b, { estilo_split: "upper_lower" });
+ok(ve.estrategia.fase1_semanas === 6 && !ve.estrategia.fase2_estilo, `E: sem fase 2 → ${ve.estrategia.fase1_semanas} semanas`);
+const vf = validarEstrategia(a, { estilo_split: "full_body", fase2_estilo: "upper_lower" });
+ok(vf.estrategia.fase2_estilo === null && vf.estrategia.fase1_semanas === 6, "F: iniciante mantém 6 semanas de base sem fase 2");
 process.exit(fails ? 1 : 0);

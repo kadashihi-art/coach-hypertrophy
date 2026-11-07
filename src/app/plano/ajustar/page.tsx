@@ -15,6 +15,7 @@ import { PorQueEssePlano } from "@/components/PorQueEssePlano";
 import { NegociacaoPlano } from "@/components/NegociacaoPlano";
 import { CATALOG_EXERCICIOS } from "@/lib/catalog/exercicios";
 import { NOME_ESTILO, type EstiloSplit } from "@/lib/plan/gerar-plano";
+import { dividirSemanasDoPlano, SEMANAS_MESOCICLO } from "@/lib/plan/semanas";
 import {
   PARQ_BLOQUEIO_MSG,
   parqBloqueiaPrescricao,
@@ -78,8 +79,15 @@ export default function MeuTreinoPage() {
   const [negociando, setNegociando] = useState(false);
   const [estilo, setEstilo] = useState<EstiloSplit>(p?.estilo_split ?? "auto");
   const [fase2, setFase2] = useState<Exclude<EstiloSplit, "auto"> | "">(p?.fase2_estilo ?? "");
-  const [fase1Sem, setFase1Sem] = useState(p?.fase1_semanas ?? 4);
-  const [fase2Sem, setFase2Sem] = useState(p?.fase2_semanas ?? 4);
+  const [fase1Sem, setFase1Sem] = useState(() => {
+    if (!p?.fase2_estilo) return Math.ceil(SEMANAS_MESOCICLO / 2);
+    return dividirSemanasDoPlano({
+      fase1: p.fase1_semanas,
+      fase2: p.fase2_semanas,
+      temFase2: true,
+    }).fase1;
+  });
+  const semanas = dividirSemanasDoPlano({ fase1: fase1Sem, temFase2: !!fase2 });
   const racional = useMemo(() => {
     if (!ready || !state.plano) return null;
     try {
@@ -126,8 +134,8 @@ export default function MeuTreinoPage() {
       objetivo,
       estilo_split: estilo,
       fase2_estilo: fase2 || null,
-      fase1_semanas: fase1Sem,
-      fase2_semanas: fase2Sem,
+      fase1_semanas: semanas.fase1,
+      ...(fase2 ? { fase2_semanas: semanas.fase2 } : {}),
     };
   }
 
@@ -321,7 +329,7 @@ export default function MeuTreinoPage() {
         {estilo === "hibrido_ppl_ul" ? (
           <p className="text-[11px] text-muted">PPL + descanso + Upper/Lower (5 treinos; 6 dias adiciona um Full Body). O coach posiciona os descansos.</p>
         ) : null}
-        <p className="text-[11px] text-muted">Fase 2 (opcional): trocar de estilo depois de algumas semanas.</p>
+        <p className="text-[11px] text-muted">Fase 2 (opcional): trocar de estilo dentro do bloco de {SEMANAS_MESOCICLO} semanas.</p>
         <div className="flex flex-wrap gap-2">
           <Chip selected={fase2 === ""} onClick={() => setFase2("")}>Sem fase 2</Chip>
           {(Object.keys(NOME_ESTILO) as EstiloSplit[])
@@ -333,11 +341,24 @@ export default function MeuTreinoPage() {
             ))}
         </div>
         {fase2 ? (
-          <div className="grid grid-cols-2 gap-3">
-            <NumStepper label="Semanas fase 1" value={fase1Sem} onChange={(n) => setFase1Sem(Math.min(16, Math.max(1, n)))} min={1} step={1} />
-            <NumStepper label="Semanas fase 2" value={fase2Sem} onChange={(n) => setFase2Sem(Math.min(16, Math.max(1, n)))} min={1} step={1} />
-          </div>
-        ) : null}
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted">Semanas fase 1</span>
+              <NumStepper
+                value={semanas.fase1}
+                onChange={(n) => setFase1Sem(Math.min(SEMANAS_MESOCICLO - 1, Math.max(1, n)))}
+                min={1}
+                max={SEMANAS_MESOCICLO - 1}
+                step={1}
+              />
+            </div>
+            <p className="text-[11px] text-muted">
+              A fase 2 ocupa as {semanas.fase2} semanas finais. O bloco fecha sempre em {SEMANAS_MESOCICLO} semanas.
+            </p>
+          </>
+        ) : (
+          <p className="text-[11px] text-muted">O plano sempre tem {SEMANAS_MESOCICLO} semanas de treino.</p>
+        )}
       </Card>
 
       <SectionTitle title="Objetivo" />
