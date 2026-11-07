@@ -1,5 +1,6 @@
 import type { AppState, Sessao } from "@/lib/domain";
 import { faseAtiva } from "./estrutura";
+import { feitoNaSemana } from "./repetir";
 
 /** Sessões do plano na ordem do mesociclo (só da fase ativa, se houver fases). */
 export function sessoesDoPlano(state: AppState, hojeIso?: string | null): Sessao[] {
@@ -60,6 +61,13 @@ export function proximaSessao(
       (s) => elegivel(s) && s.status === "planejada",
     );
     if (planejada) return planejada;
+    // Semana seg–dom: treino feito numa semana anterior volta a valer nesta. Sugere o primeiro,
+    // na ordem do plano, que ainda não foi feito nesta semana.
+    const hoje = hojeIso ?? (typeof window !== "undefined" ? hojeIsoSaoPaulo() : null);
+    if (hoje) {
+      const daSemana = ordered.find((s) => elegivel(s) && !feitoNaSemana(s, hoje));
+      if (daSemana) return daSemana;
+    }
   }
 
   const finished = [...ordered]

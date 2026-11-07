@@ -46,6 +46,7 @@ import {
   type AcaoDia,
 } from "@/lib/plan/calendario";
 import { agendaEfetiva } from "@/lib/plan/pendente";
+import { arquivarConclusao } from "@/lib/plan/repetir";
 import { remountPlano } from "@/lib/plan/remount-plano";
 import {
   PARQ_BLOQUEIO_MSG,
@@ -489,10 +490,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         sid = proximaSessao(s)?.id;
       }
       if (!sid) return s;
-      const sess = s.sessoes.find((x) => x.id === sid);
+      let sess = s.sessoes.find((x) => x.id === sid);
       if (!sess) return s;
 
-      // Reinicia sessão concluída: limpa registros dela e reaplica cargas do EstadoExercicio
+      // Repetir na semana: treino feito em outro dia guarda a execução anterior (com as séries)
+      // como registro avulso daquele dia, em vez de apagar. As cargas vêm da memória (estados).
+      if ((sess.status === "concluida" || sess.status === "parcial") && sess.data && sess.data !== hojeIsoSaoPaulo()) {
+        s = arquivarConclusao(s, sid);
+        sess = s.sessoes.find((x) => x.id === sid);
+        if (!sess) return s;
+      }
+
+      // Reinicia sessão concluída no mesmo dia: limpa registros dela e reaplica cargas do EstadoExercicio
       const reiniciando = sess.status === "concluida" || sess.status === "parcial";
       const registros = reiniciando
         ? s.registros.filter((r) => r.sessao_id !== sid)
