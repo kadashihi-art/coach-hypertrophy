@@ -77,6 +77,32 @@ function assert(cond: boolean, msg: string) {
   assert(fSets <= hSets, `força volume semanal sets (${fSets}) ≤ hipertrofia (${hSets})`);
 }
 
+// Case 4: mesociclo tem sempre 6 semanas no total (com ou sem fase 2)
+{
+  const casos: Array<[string, Partial<Perfil>]> = [
+    ["sem fase 2", {}],
+    ["fase 2 sem duração", { fase2_estilo: "upper_lower" }],
+    ["fase 2 4+3", { fase2_estilo: "upper_lower", fase1_semanas: 4, fase2_semanas: 3 }],
+    ["fase 2 16+16", { fase2_estilo: "upper_lower", fase1_semanas: 16, fase2_semanas: 16 }],
+  ];
+  for (const [label, patch] of casos) {
+    const g = gerarPlanoFromPerfil({ ...base, ...patch }, CATALOG_EXERCICIOS);
+    const fases = g.plano.estrutura?.fases ?? [];
+    const soma = fases.reduce((acc, f) => acc + f.semanas, 0);
+    assert(g.plano.mesociclo.total_semanas === 6, `${label}: total 6 semanas (${g.plano.mesociclo.total_semanas})`);
+    assert(soma === 6, `${label}: fases somam 6 (${fases.map((f) => f.semanas).join("+") || "—"})`);
+    assert(
+      fases.every((f) => f.semana_inicio >= 1 && f.semana_inicio + f.semanas - 1 <= 6),
+      `${label}: fases dentro do bloco`,
+    );
+  }
+  const padrao = gerarPlanoFromPerfil({ ...base, fase2_estilo: "upper_lower" }, CATALOG_EXERCICIOS);
+  assert(
+    padrao.plano.estrutura?.fases.map((f) => f.semanas).join("+") === "3+3",
+    "fase 2 sem duração: padrão 3+3",
+  );
+}
+
 if (process.exitCode) {
   console.error("smoke:gerar-plano FAIL");
   process.exit(1);

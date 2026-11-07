@@ -21,6 +21,7 @@ import type {
   FasePlano,
 } from "@/lib/domain";
 import { posicionarDescanso, microcicloTexto } from "./estrutura";
+import { dividirSemanasDoPlano, SEMANAS_MESOCICLO } from "./semanas";
 import { derivarRacional } from "./racional";
 import { findAlt } from "./alternativa";
 import { incrementoCargaKg, type GrupoOpcional } from "@/lib/domain";
@@ -673,8 +674,11 @@ export function gerarPlanoFromPerfil(
   const estilo1: EstiloSplit = perfil.estilo_split ?? "auto";
   const fase1 = templatesPorEstilo(estilo1, diasPerfil);
   const fase2 = perfil.fase2_estilo ? templatesPorEstilo(perfil.fase2_estilo, diasPerfil) : null;
-  const sem1 = fase2 ? perfil.fase1_semanas ?? 4 : 6;
-  const sem2 = fase2 ? perfil.fase2_semanas ?? 4 : 0;
+  const { fase1: sem1, fase2: sem2 } = dividirSemanasDoPlano({
+    fase1: perfil.fase1_semanas,
+    fase2: perfil.fase2_semanas,
+    temFase2: !!fase2,
+  });
   const { divisao, templates: templates1, why } = fase1;
   const dias = templates1.length;
   const faseDefs = [
@@ -917,7 +921,8 @@ export function gerarPlanoFromPerfil(
     dias_por_semana: dias,
     minutos_por_sessao: perfil.minutos_por_sessao,
     mesociclo: {
-      total_semanas: sem1 + sem2,
+      // Regra do bloco: sempre 6 semanas no total (fase 2 inclusa).
+      total_semanas: SEMANAS_MESOCICLO,
       semana_atual: 1,
       foco: "acumulo",
       data_inicio: null,

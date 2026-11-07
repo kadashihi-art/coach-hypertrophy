@@ -46,7 +46,7 @@ ok(fh.descanso_porque.some((d) => /Legs/.test(d)), "híbrido: descanso após Leg
 // 2 fases
 const g2 = gerarPlanoFromPerfil({ ...base, dias_por_semana: 4, estilo_split: "upper_lower", fase2_estilo: "hibrido_ppl_ul", fase1_semanas: 4, fase2_semanas: 3 }, CATALOG_EXERCICIOS);
 const fs = g2.plano.estrutura!.fases;
-ok(fs.length === 2 && fs[1].semana_inicio === 5 && g2.plano.mesociclo.total_semanas === 7, "2 fases: UL 4 sem → híbrido semana 5 (total 7)");
+ok(fs.length === 2 && fs[1].semana_inicio === 5 && g2.plano.mesociclo.total_semanas === 6 && fs[0].semanas + fs[1].semanas === 6, "2 fases: UL 4 sem → híbrido semana 5, bloco fecha em 6");
 ok(!!g2.plano.racional!.fases[1].troca, "2 fases: racional registra troca");
 const p1 = { ...g2.plano, mesociclo: { ...g2.plano.mesociclo, data_inicio: "2026-11-02" } };
 ok(faseAtiva(p1, "2026-11-10")?.id === "fase-1", "fase ativa semana 2 = fase-1");

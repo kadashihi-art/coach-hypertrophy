@@ -7,6 +7,7 @@ import { z } from "zod";
 import { ObjetivoSchema, ExperienciaSchema, EquipamentoSchema, GrupoMuscularSchema, ehGrupoOpcional } from "@/lib/domain/enums";
 import type { Perfil } from "@/lib/domain";
 import { TOM_COACH } from "@/lib/llm/tom";
+import { dividirSemanasDoPlano, SEMANAS_MESOCICLO } from "./semanas";
 
 const Estilo = z.enum(["auto", "full_body", "upper_lower", "ppl", "hibrido_ppl_ul", "hibrido_fb_ul"]);
 export const RESTRICOES_VALIDAS = ["ombro", "lombar", "joelho", "punho"] as const;
@@ -121,7 +122,30 @@ export function validarEstrategia(p: PerfilColeta, estrategiaIn: unknown): { est
   if (e.fase2_estilo) {
     const f2 = check(e.fase2_estilo, "Fase 2");
     e.fase2_estilo = f2 === "auto" ? null : f2;
-    if (p.experiencia === "iniciante" && (e.fase1_semanas ?? 6) < 6) { e.fase1_semanas = 6; correcoes.push("Iniciante: fase 1 com no mínimo 6 semanas antes de trocar."); }
+  }
+  if (e.fase2_estilo && p.experiencia === "iniciante") {
+    // O bloco tem 6 semanas: não sobra tempo para trocar de fase no primeiro ciclo.
+    e.fase2_estilo = null;
+    e.fase2_semanas = undefined;
+    e.fase1_semanas = SEMANAS_MESOCICLO;
+    correcoes.push("Iniciante: 6 semanas de base antes de trocar de fase; a fase 2 fica para o próximo ciclo.");
+  } else if (e.fase2_estilo) {
+    const sem = dividirSemanasDoPlano({
+      fase1: e.fase1_semanas,
+      fase2: e.fase2_semanas,
+      temFase2: true,
+    });
+    if (e.fase1_semanas !== sem.fase1 || e.fase2_semanas !== sem.fase2) {
+      correcoes.push(`Bloco de ${SEMANAS_MESOCICLO} semanas: fase 1 com ${sem.fase1} e fase 2 com ${sem.fase2}.`);
+    }
+    e.fase1_semanas = sem.fase1;
+    e.fase2_semanas = sem.fase2;
+  } else {
+    if (e.fase1_semanas != null && e.fase1_semanas !== SEMANAS_MESOCICLO) {
+      correcoes.push(`Bloco sempre fecha em ${SEMANAS_MESOCICLO} semanas.`);
+    }
+    e.fase1_semanas = SEMANAS_MESOCICLO;
+    e.fase2_semanas = undefined;
   }
   if (e.dias_descanso_fixos) {
     const max = 7 - dias;
@@ -174,7 +198,7 @@ export const COLETA_SYSTEM = [
   "perfil (use exatamente estes nomes/valores): objetivo (hipertrofia|forca|recomposicao|saude), experiencia (iniciante|intermediario|avancado), peso_kg, altura_cm, dias_por_semana (2-6), minutos_por_sessao (20-180), cardio_min_semana, equipamentos (barra|halteres|maquina|cabo|kettlebell|peso_corporal|banco|rack|elastico|outros; academia completa = barra,halteres,maquina,cabo,banco,rack), restricoes (lista de ombro|lombar|joelho|punho; [] se não tem), rotina, sono_estresse, preferencias, nao_gosta (textos curtos), pontos_fracos, pontos_fortes (grupos: peito|costas|ombros|biceps|triceps|quadriceps|isquiotibiais|gluteos|panturrilhas|abdomen|antebracos|trapezio|abdutores|adutores).",
   "Quando tiver o essencial (objetivo, experiência, peso, altura, dias, minutos, equipamento, lesões) e um pouco de contexto, proponha a estratégia e marque pronto=true. Não arraste além de ~8 perguntas.",
   "NUNCA proponha híbridos (hibrido_*) por conta própria nem mencione que vai migrar pra híbrido; só use se a pessoa pedir explicitamente. Use estilo_split exatamente com um dos valores listados e prioridades_musculares com nomes de grupos válidos (ou []).",
-  "estrategia: {estilo_split (full_body|upper_lower|ppl|hibrido_ppl_ul|hibrido_fb_ul), escolha_explicita_usuario (true só se a pessoa pediu esse estilo), fase2_estilo (ou null), fase1_semanas, fase2_semanas, dias_descanso_fixos (posições 0-6, opcional), prioridades_musculares (até 3 grupos), porque (2-4 frases curtas)}.",
+  "estrategia: {estilo_split (full_body|upper_lower|ppl|hibrido_ppl_ul|hibrido_fb_ul), escolha_explicita_usuario (true só se a pessoa pediu esse estilo), fase2_estilo (ou null), fase1_semanas, fase2_semanas, dias_descanso_fixos (posições 0-6, opcional), prioridades_musculares (até 3 grupos), porque (2-4 frases curtas)}. O bloco sempre fecha em 6 semanas no total: sem fase 2, fase 1 = 6; com fase 2, use no máximo 5 semanas na fase 1 e o restante na fase 2 (padrão 3+3).",
   "Nenhum estilo é padrão: escolha pelo indivíduo (frequência ≥2×/semana por grupo, tempo, recuperação, nível, lesões, preferência). Não invente kg, séries ou volume — eu (o plano) calculo depois.",
   "Nunca pergunte nem decida sobre liberação médica: a triagem PAR-Q vem logo depois, à parte. Se a pessoa citar dor forte, sintoma cardíaco etc., registre e recomende avaliação profissional.",
   "Na resposta com pronto=true, resuma em 2–3 frases o que você entendeu e a ideia de divisão, e diga que antes de mostrar o plano tem uma triagem rápida de saúde.",
