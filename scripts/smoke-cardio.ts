@@ -47,9 +47,12 @@ const HOJE = "2026-11-04"; // quarta-feira
 ok(inicioDaSemana("2026-11-04") === "2026-11-02", "quarta → segunda da mesma semana");
 ok(inicioDaSemana("2026-11-02") === "2026-11-02", "segunda continua segunda");
 ok(inicioDaSemana("2026-11-08") === "2026-11-02", "domingo → segunda que abriu a semana");
+ok(inicioDaSemana("2026-11-01") === "2026-10-26", "domingo 01/11 fecha a semana que abriu em 26/10");
 ok(fimDaSemana("2026-11-04") === "2026-11-08", "semana fecha no domingo");
+ok(fimDaSemana("2026-11-01") === "2026-11-01", "a semana do domingo 01/11 termina nele mesmo");
 ok(somarDias("2026-11-02", -7) === "2026-10-26", "semana anterior");
 ok(semanaIsoDaData("2026-11-04") === "2026-W45", "semana ISO de 04/11 = 2026-W45");
+ok(semanaIsoDaData("2026-11-01") === "2026-W44", "domingo 01/11 é 2026-W44, não entra na semana seguinte");
 ok(semanaIsoDaData("2026-11-08") === "2026-W45", "domingo 08/11 pertence à semana que abriu em 02/11");
 ok(semanaIsoDaData("2026-11-09") === "2026-W46", "segunda 09/11 já é a semana seguinte");
 
@@ -80,6 +83,13 @@ ok(r.minutos === 50 && r.registros.length === 2, "só conta os registros da sema
 ok(r.restante_min === 40 && !r.batido, "faltam 40 min pra meta de 90");
 ok(r.pct === 56, "progresso arredondado (50/90 = 56%)");
 ok(r.semana_iso === "2026-W45", "semana ISO do resumo");
+ok(!r.registros.some((c) => c.data === "2026-11-01"), "domingo 01/11 não aparece na semana de 02–08/11");
+
+// Se hoje fosse domingo 01/11, a semana seria 26/10–01/11 e o registro de 60 min entraria nela.
+const domingo01 = resumoCardioSemana(cardios, 90, "2026-11-01");
+ok(domingo01.inicio === "2026-10-26" && domingo01.fim === "2026-11-01", "no domingo 01/11 a semana é 26/10–01/11");
+ok(domingo01.minutos === 60 && domingo01.registros.some((c) => c.data === "2026-11-01"), "treino de domingo conta na semana que terminou nele");
+ok(!domingo01.por_dia.some((d) => d.data === "2026-11-02"), "segunda 02/11 já é outra semana");
 
 // meta dividida nos 7 dias
 const metas = metaPorDia(90);
