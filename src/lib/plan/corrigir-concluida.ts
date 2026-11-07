@@ -27,8 +27,9 @@ import {
   aplicarEstadoNaPrescricao,
   decidirProgressao,
 } from "@/lib/engine/progression";
-import { isoWeekDe, mergeVolumeSessao, volumeSessaoPorGrupo } from "@/lib/engine/volume";
+import { isoWeekDe, isoWeekDoDia, mergeVolumeSessao, volumeSessaoPorGrupo } from "@/lib/engine/volume";
 import { aplicarRecordes, registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
+import { diaSP } from "@/lib/inicio";
 
 /** Limites validados no cliente e no servidor. RIR: o registro aceita até 5 (schema). */
 export const LIMITES_CORRECAO = {
@@ -224,8 +225,10 @@ export function ajustarVolumeSemanal(
 
 function semanaDaSessao(s: Sessao): string {
   if (s.snapshot_conclusao) return s.snapshot_conclusao.semana_iso;
-  const ref = s.finalizada_em ?? (s.data ? `${s.data}T12:00:00` : null);
-  return isoWeekDe(ref ? new Date(ref) : new Date());
+  // `data` é o dia local do treino (domingo = semana da segunda anterior);
+  // `finalizada_em` é instante UTC e é convertido para o dia de São Paulo.
+  if (s.data) return isoWeekDoDia(diaSP(s.data) ?? s.data);
+  return isoWeekDe(s.finalizada_em ? new Date(s.finalizada_em) : new Date());
 }
 
 // ——— Montagem do registro corrigido ———

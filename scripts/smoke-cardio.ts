@@ -50,6 +50,8 @@ ok(inicioDaSemana("2026-11-08") === "2026-11-02", "domingo → segunda que abriu
 ok(fimDaSemana("2026-11-04") === "2026-11-08", "semana fecha no domingo");
 ok(somarDias("2026-11-02", -7) === "2026-10-26", "semana anterior");
 ok(semanaIsoDaData("2026-11-04") === "2026-W45", "semana ISO de 04/11 = 2026-W45");
+ok(semanaIsoDaData("2026-11-08") === "2026-W45", "domingo 08/11 pertence à semana que abriu em 02/11");
+ok(semanaIsoDaData("2026-11-09") === "2026-W46", "segunda 09/11 já é a semana seguinte");
 
 // registros de exemplo
 const card = (

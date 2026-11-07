@@ -43,7 +43,7 @@ export default function ProgressoPage() {
   const registros = state.registros.filter((r) => desdeInicio(r.executado_em, inicio));
   const temHistorico = registros.length > 0;
 
-  // Semana ISO do relógio do aparelho (no servidor usa um valor fixo até hidratar).
+  // Semana ISO (seg–dom) no fuso de São Paulo (no servidor usa um valor fixo até hidratar).
   const semanaAtual = useClientValue(currentIsoWeek, "2026-W44");
   const [barsOn, setBarsOn] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);

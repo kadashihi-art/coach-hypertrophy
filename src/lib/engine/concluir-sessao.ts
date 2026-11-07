@@ -18,6 +18,7 @@ import {
 import {
   acumularVolumeSemanal,
   isoWeekDe,
+  isoWeekDoDia,
   mergeVolumeSessao,
   volumeSessaoPorGrupo,
 } from "@/lib/engine/volume";
@@ -50,7 +51,10 @@ export function concluirSessao(
       let estados = [...s.estados];
       const estadosAntes: EstadoExercicio[] = [];
       // Volume entra na semana do dia do treino (não no momento em que tocou em concluir).
-      const semanaVolume = isoWeekDe(new Date(sess.data ? `${sess.data}T12:00:00` : agoraIso));
+      // Com `sess.data`, o dia já é o calendário local: domingo fica na semana da segunda anterior.
+      const semanaVolume = sess.data
+        ? isoWeekDoDia(sess.data)
+        : isoWeekDe(new Date(agoraIso));
 
       for (const presc of sess.prescricoes) {
         const series = seriesDaPrescricao(seriesSessao, sess.prescricoes, presc);
