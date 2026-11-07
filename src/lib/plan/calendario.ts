@@ -274,13 +274,13 @@ export function treinosParaEscolher(state: AppState): Sessao[] {
 
 /**
  * Dia que já passou: "qual treino você fez?" lista todos os treinos do plano (inclusive os já
- * feitos em outro dia), na ordem do plano. Só os em andamento ficam de fora.
+ * feitos em outro dia e o que está em andamento hoje), na ordem do plano.
  */
 export function treinosParaRegistrar(state: AppState): Sessao[] {
   const ids = state.plano?.sessoes ?? [];
   const doPlano = ids.length ? state.sessoes.filter((s) => ids.includes(s.id)) : state.sessoes;
   return doPlano
-    .filter((s) => s.status !== "em_andamento" && s.prescricoes?.length && !s.id.includes("#"))
+    .filter((s) => s.prescricoes?.length && !s.id.includes("#"))
     .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 }
 
@@ -289,7 +289,10 @@ export function treinosParaRegistrar(state: AppState): Sessao[] {
  * - Treino ainda não feito: conclui com a data do dia (mesmo caminho de "Marcar como feito").
  * - Treino já feito em outro dia: grava um registro avulso daquele dia (sessão própria, sem
  *   prescrições), sem mover a data nem os registros do treino original.
- * Dia futuro, ocorrência projetada, treino em andamento ou dia que já tem treino feito: não muda.
+ * - Treino em andamento sem série registrada (aberto sem treinar): fecha o "em andamento" e
+ *   conclui no dia escolhido. Com série registrada: o treino de hoje continua aberto e o dia
+ *   passado ganha um registro avulso.
+ * Dia futuro, ocorrência projetada ou dia que já tem treino feito: não muda.
  */
 export function registrarFeitoNoDia(
   state: AppState,
@@ -302,12 +305,23 @@ export function registrarFeitoNoDia(
   if (!hoje || data >= hoje) return state;
   if (ehOcorrenciaProjetada(sessaoIdDoDia) || ehOcorrenciaProjetada(escolhido) || escolhido.includes("#")) return state;
   const alvo = state.sessoes.find((x) => x.id === escolhido);
-  if (!alvo || alvo.status === "em_andamento") return state;
+  if (!alvo) return state;
   const jaFeitoNoDia = state.sessoes.some(
     (x) => x.data === data && (x.status === "concluida" || x.status === "parcial"),
   );
   if (jaFeitoNoDia) return state;
-  const feito = alvo.status === "concluida" || alvo.status === "parcial";
+  const comSeries = (state.registros ?? []).some((r) => r.sessao_id === alvo.id);
+  if (alvo.status === "em_andamento" && !comSeries) {
+    const fechado: AppState = {
+      ...state,
+      active_sessao_id: state.active_sessao_id === alvo.id ? null : state.active_sessao_id,
+      sessoes: state.sessoes.map((x) =>
+        x.id === alvo.id ? { ...x, status: "planejada" as const, iniciada_em: undefined } : x,
+      ),
+    };
+    return marcarDia(fechado, agenda, data, sessaoIdDoDia, "feito", escolhido);
+  }
+  const feito = alvo.status === "concluida" || alvo.status === "parcial" || alvo.status === "em_andamento";
   if (!feito) return marcarDia(state, agenda, data, sessaoIdDoDia, "feito", escolhido);
   const id = marcaAvulso(alvo.id, data);
   if (state.sessoes.some((x) => x.id === id)) return state;
