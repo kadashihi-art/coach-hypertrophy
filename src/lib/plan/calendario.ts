@@ -3,7 +3,7 @@
  * Preferimos sessao.data + status (planejada|concluida|pulada).
  */
 import type { AppState, Plano, Sessao } from "@/lib/domain";
-import { ehOcorrenciaProjetada, semanaDaOcorrenciaProjetada } from "./ocorrencia-id";
+import { ehOcorrenciaProjetada, ehRegistroAvulso, marcaAvulso, semanaDaOcorrenciaProjetada } from "./ocorrencia-id";
 
 /** Parse YYYY-MM-DD as UTC noon (avoid TZ flip). */
 export function parseIsoDate(iso: string): Date {
@@ -272,7 +272,92 @@ export function treinosParaEscolher(state: AppState): Sessao[] {
     .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 }
 
-export type AcaoPainel = "feito" | "pular" | "trocar" | "limpar" | "desfazer" | "corrigir";
+/**
+ * Dia que já passou: "qual treino você fez?" lista todos os treinos do plano (inclusive os já
+ * feitos em outro dia), na ordem do plano. Só os em andamento ficam de fora.
+ */
+export function treinosParaRegistrar(state: AppState): Sessao[] {
+  const ids = state.plano?.sessoes ?? [];
+  const doPlano = ids.length ? state.sessoes.filter((s) => ids.includes(s.id)) : state.sessoes;
+  return doPlano
+    .filter((s) => s.status !== "em_andamento" && s.prescricoes?.length && !s.id.includes("#"))
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+}
+
+/**
+ * Registrar que um treino foi feito num dia que já passou.
+ * - Treino ainda não feito: conclui com a data do dia (mesmo caminho de "Marcar como feito").
+ * - Treino já feito em outro dia: grava um registro avulso daquele dia (sessão própria, sem
+ *   prescrições), sem mover a data nem os registros do treino original.
+ * Dia futuro, ocorrência projetada, treino em andamento ou dia que já tem treino feito: não muda.
+ */
+export function registrarFeitoNoDia(
+  state: AppState,
+  agenda: Sessao[],
+  data: string,
+  sessaoIdDoDia: string | null,
+  escolhido: string,
+  hoje: string,
+): AppState {
+  if (!hoje || data >= hoje) return state;
+  if (ehOcorrenciaProjetada(sessaoIdDoDia) || ehOcorrenciaProjetada(escolhido) || escolhido.includes("#")) return state;
+  const alvo = state.sessoes.find((x) => x.id === escolhido);
+  if (!alvo || alvo.status === "em_andamento") return state;
+  const jaFeitoNoDia = state.sessoes.some(
+    (x) => x.data === data && (x.status === "concluida" || x.status === "parcial"),
+  );
+  if (jaFeitoNoDia) return state;
+  const feito = alvo.status === "concluida" || alvo.status === "parcial";
+  if (!feito) return marcarDia(state, agenda, data, sessaoIdDoDia, "feito", escolhido);
+  const id = marcaAvulso(alvo.id, data);
+  if (state.sessoes.some((x) => x.id === id)) return state;
+  const avulso: Sessao = {
+    ...alvo,
+    id,
+    data,
+    data_manual: true,
+    status: "concluida",
+    prescricoes: [],
+    iniciada_em: undefined,
+    finalizada_em: `${data}T12:00:00.000Z`,
+    snapshot_conclusao: undefined,
+    ancoras_sessao: undefined,
+  };
+  return {
+    ...state,
+    sessoes: [...state.sessoes, avulso],
+    dias_limpos: (state.dias_limpos ?? []).filter((d) => d !== data),
+  };
+}
+
+/**
+ * Desmarcar um "feito" que o usuário marcou à mão e não aconteceu. Só vale quando não há série
+ * registrada naquele treino (treino com séries muda por "Corrigir registro").
+ * - Registro avulso: sai do estado.
+ * - Treino do plano: volta para a fila (planejado, sem data).
+ */
+export function podeDesmarcarFeito(state: AppState, sessaoId: string | null | undefined): boolean {
+  if (!sessaoId || ehOcorrenciaProjetada(sessaoId)) return false;
+  const s = state.sessoes.find((x) => x.id === sessaoId);
+  if (!s || s.status !== "concluida") return false;
+  if (ehRegistroAvulso(s.id)) return true;
+  return !(state.registros ?? []).some((r) => r.sessao_id === s.id);
+}
+
+export function desmarcarFeito(state: AppState, sessaoId: string): AppState {
+  if (!podeDesmarcarFeito(state, sessaoId)) return state;
+  if (ehRegistroAvulso(sessaoId)) return { ...state, sessoes: state.sessoes.filter((x) => x.id !== sessaoId) };
+  return {
+    ...state,
+    sessoes: state.sessoes.map((x) =>
+      x.id === sessaoId
+        ? { ...x, status: "planejada" as const, data: null, data_manual: undefined, finalizada_em: undefined }
+        : x,
+    ),
+  };
+}
+
+export type AcaoPainel ="feito" | "pular" | "trocar" | "limpar" | "desfazer" | "corrigir";
 
 /**
  * Ações que o painel do dia mostra (calendário e faixa de Hoje). De hoje em diante, todo dia

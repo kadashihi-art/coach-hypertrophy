@@ -39,8 +39,10 @@ import { gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import {
   agendarSessoes,
   desfazerLimpeza,
+  desmarcarFeito,
   limparDia,
   marcarDia,
+  registrarFeitoNoDia,
   type AcaoDia,
 } from "@/lib/plan/calendario";
 import { agendaEfetiva } from "@/lib/plan/pendente";
@@ -126,6 +128,10 @@ type Ctx = {
   /** Limpar dia no calendário (só após o usuário confirmar). */
   limparDiaCalendario: (data: string, sessaoId: string | null) => { ok: boolean; motivo?: "feito" | "em_andamento" | "projetado"; tirado?: string | null };
   desfazerLimpezaDia: (data: string) => void;
+  /** Dia que já passou: registra qual treino foi feito (só após o toque do usuário). */
+  registrarFeitoDia: (data: string, sessaoIdDoDia: string | null, escolhido: string) => void;
+  /** Desmarca um "feito" marcado à mão sem séries registradas. */
+  desmarcarFeitoDia: (sessaoId: string) => void;
   /** Troca permanente de exercício no plano (só após "Confirmar troca"). */
   trocarExercicio: (deId: string, paraId: string) => boolean;
   /** Editar treino: só após "Confirmar". */
@@ -970,6 +976,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => desfazerLimpeza(s, data));
   }, []);
 
+  const registrarFeitoDia = useCallback((data: string, sessaoIdDoDia: string | null, escolhido: string) => {
+    setState((s) => {
+      const hoje = hojeIsoSaoPaulo();
+      return registrarFeitoNoDia(s, agendaEfetiva(s, hoje).sessoes, data, sessaoIdDoDia, escolhido, hoje);
+    });
+  }, []);
+
+  const desmarcarFeitoDia = useCallback((sessaoId: string) => {
+    setState((s) => desmarcarFeito(s, sessaoId));
+  }, []);
+
   const trocarExercicio = useCallback((deId: string, paraId: string) => {
     const next = aplicarTroca(state, deId, paraId);
     if (!next) return false;
@@ -1054,6 +1071,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       markCalendario,
       limparDiaCalendario,
       desfazerLimpezaDia,
+      registrarFeitoDia,
+      desmarcarFeitoDia,
       trocarExercicio,
       editarSessao,
       desfazerEdicaoSessao,
@@ -1086,6 +1105,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       markCalendario,
       limparDiaCalendario,
       desfazerLimpezaDia,
+      registrarFeitoDia,
+      desmarcarFeitoDia,
       trocarExercicio,
       editarSessao,
       desfazerEdicaoSessao,
