@@ -23,7 +23,8 @@ import {
   proximaSessao,
   sessoesDoPlano,
 } from "@/lib/plan/proxima-sessao";
-import { agendaEfetiva, avisoPendente, sessoesDoCalendario } from "@/lib/plan/pendente";
+import { agendaEfetiva, avisoPendente } from "@/lib/plan/pendente";
+import { projetarOcorrencias } from "@/lib/plan/projecao";
 import { faixaDeDias, TEXTO_STATUS, type StatusFaixa } from "@/lib/plan/faixa";
 import { DiaAcoes } from "@/components/DiaAcoes";
 import { faseAtiva } from "@/lib/plan/estrutura";
@@ -189,7 +190,7 @@ export default function HojePage() {
     : null;
 
   // Semana strip (seg→dom da semana atual, fuso SP)
-  const semana = hoje ? semanaDoCalendario(sessoesDoCalendario(agenda), hoje, state.dias_limpos ?? []) : [];
+  const semana = hoje ? semanaDoCalendario(projetarOcorrencias(state, hoje, agenda), hoje, state.dias_limpos ?? []) : [];
   const consistencia = (() => {
     if (!hoje) return null;
     const ini = addDaysIso(hoje, -27);

@@ -3,6 +3,7 @@
  * Preferimos sessao.data + status (planejada|concluida|pulada).
  */
 import type { AppState, Plano, Sessao } from "@/lib/domain";
+import { ehOcorrenciaProjetada, semanaDaOcorrenciaProjetada } from "./ocorrencia-id";
 
 /** Parse YYYY-MM-DD as UTC noon (avoid TZ flip). */
 export function parseIsoDate(iso: string): Date {
@@ -142,6 +143,10 @@ export type CalendarioDiaView = {
   sessao_id: string | null;
   status: "planejado" | "feito" | "pulado" | "vazio" | "em_andamento" | "limpo";
   nome?: string;
+  /** Ocorrência projetada de uma semana futura (somente leitura no painel do dia). */
+  projetado?: boolean;
+  /** Semana do plano (1-based) de uma ocorrência projetada. */
+  semana?: number;
 };
 
 /** Derive month calendar cells from sessoes[].data + status. */
@@ -189,7 +194,9 @@ export function derivarDias(sessoes: Sessao[], datas: string[], diasLimpos: stri
     if (s.status === "concluida") status = "feito";
     else if (s.status === "pulada") status = "pulado";
     else if (s.status === "em_andamento") status = "em_andamento";
-    out.push({ data: iso, sessao_id: s.id, status, nome: s.nome });
+    const projetado = ehOcorrenciaProjetada(s.id);
+    const semana = projetado ? (semanaDaOcorrenciaProjetada(s.id) ?? undefined) : undefined;
+    out.push({ data: iso, sessao_id: s.id, status, nome: s.nome, ...(projetado ? { projetado, semana } : {}) });
   }
   return out;
 }
@@ -204,7 +211,7 @@ export function mergeEstadosPreservados<
 
 export type ResultadoLimpar =
   | { ok: true; state: AppState; tirado: string | null }
-  | { ok: false; motivo: "feito" | "em_andamento" };
+  | { ok: false; motivo: "feito" | "em_andamento" | "projetado" };
 
 /**
  * Limpar dia (só depois do usuário confirmar). Nunca apaga série registrada nem treino feito.
@@ -214,6 +221,7 @@ export type ResultadoLimpar =
  * - O dia fica marcado como limpo: a agenda do pendente não põe treino nele.
  */
 export function limparDia(state: AppState, data: string, sessaoId: string | null): ResultadoLimpar {
+  if (ehOcorrenciaProjetada(sessaoId)) return { ok: false, motivo: "projetado" };
   const s = sessaoId ? state.sessoes.find((x) => x.id === sessaoId) : undefined;
   if (s?.status === "concluida" || s?.status === "parcial") return { ok: false, motivo: "feito" };
   if (s?.status === "em_andamento") return { ok: false, motivo: "em_andamento" };
@@ -271,6 +279,7 @@ export type AcaoPainel = "feito" | "pular" | "trocar" | "limpar" | "desfazer" | 
  * não feito tem o conjunto completo, mesmo vazio ou limpo. Dia feito: só Corrigir registro.
  */
 export function acoesDoDia(dia: CalendarioDiaView, hoje: string | null): AcaoPainel[] {
+  if (dia.projetado) return [];
   if (dia.status === "feito") return ["corrigir"];
   if (dia.status === "em_andamento") return [];
   if (!hoje || dia.data >= hoje || dia.sessao_id) return ["feito", "pular", "trocar", "limpar", "desfazer"];
@@ -296,6 +305,8 @@ export function marcarDia(
   acao: AcaoDia,
   escolhido?: string | null,
 ): AppState {
+  // Ocorrência projetada é só leitura: nunca vira marcação real de um treino futuro.
+  if (ehOcorrenciaProjetada(sessaoId) || ehOcorrenciaProjetada(escolhido)) return state;
   if (sessaoId?.includes("#")) sessaoId = null; // marca de pulo de dia passado: não é o treino em si
   let alvoId = escolhido ?? sessaoId;
   if (acao === "trazer" && sessaoId && !escolhido) return state;

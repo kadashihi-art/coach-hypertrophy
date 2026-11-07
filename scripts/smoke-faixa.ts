@@ -4,7 +4,8 @@
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { agendaEfetiva, sessoesDoCalendario } from "../src/lib/plan/pendente";
+import { agendaEfetiva } from "../src/lib/plan/pendente";
+import { projetarOcorrencias } from "../src/lib/plan/projecao";
 import { acoesDoDia, derivarCalendario, limparDia, marcarDia, treinosParaEscolher, type AcaoDia } from "../src/lib/plan/calendario";
 import { faixaDeDias, rotuloDia } from "../src/lib/plan/faixa";
 import type { AppState } from "../src/lib/domain";
@@ -34,7 +35,7 @@ const antes = JSON.stringify(st0);
 function coerente(st: AppState, rotulo: string) {
   const faixa = faixaDeDias(st, HOJE);
   assert.ok(faixa.length >= 7, rotulo);
-  const ag = sessoesDoCalendario(agendaEfetiva(st, HOJE));
+  const ag = projetarOcorrencias(st, HOJE);
   const cal = derivarCalendario(ag, 2026, 10, st.dias_limpos ?? []);
   for (const f of faixa) {
     if (!f.dia.data.startsWith("2026-11")) continue;
@@ -100,6 +101,10 @@ console.log("real:", linha(real));
 // Painel: de hoje em diante, conjunto completo sempre (vazio, planejado, pulado, limpo). Feito: só Corrigir.
 const COMPLETO = ["feito", "pular", "trocar", "limpar", "desfazer"];
 for (const f of fr.filter((x) => x.dia.data >= HOJE)) {
+  if (f.dia.projetado) {
+    assert.deepEqual(acoesDoDia(f.dia, HOJE), [], `previsto sem ações ${f.dia.data}`);
+    continue;
+  }
   if (f.dia.status === "feito") assert.deepEqual(acoesDoDia(f.dia, HOJE), ["corrigir"]);
   else assert.deepEqual(acoesDoDia(f.dia, HOJE), COMPLETO, `ações ${f.dia.data}`);
 }

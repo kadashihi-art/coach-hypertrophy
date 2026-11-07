@@ -51,6 +51,7 @@
     "smoke:limpar-dia": "npx --yes tsx scripts/smoke-limpar-dia.ts",
     "smoke:acoes-dias": "npx --yes tsx scripts/smoke-acoes-dias.ts",
     "smoke:faixa": "npx --yes tsx scripts/smoke-faixa.ts",
+    "smoke:projecao": "npx --yes tsx scripts/smoke-projecao.ts",
     "smoke:tipo-carga": "npx --yes tsx scripts/smoke-tipo-carga.ts"
   },
   "dependencies": {

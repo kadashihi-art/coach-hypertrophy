@@ -124,7 +124,7 @@ type Ctx = {
     escolhido?: string | null,
   ) => void;
   /** Limpar dia no calendário (só após o usuário confirmar). */
-  limparDiaCalendario: (data: string, sessaoId: string | null) => { ok: boolean; motivo?: "feito" | "em_andamento"; tirado?: string | null };
+  limparDiaCalendario: (data: string, sessaoId: string | null) => { ok: boolean; motivo?: "feito" | "em_andamento" | "projetado"; tirado?: string | null };
   desfazerLimpezaDia: (data: string) => void;
   /** Troca permanente de exercício no plano (só após "Confirmar troca"). */
   trocarExercicio: (deId: string, paraId: string) => boolean;
