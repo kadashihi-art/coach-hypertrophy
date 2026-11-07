@@ -12,7 +12,8 @@ import {
 import { comparacaoMeta, duracaoDaSessao, resumoDuracao } from "@/lib/engine/duracao-treino";
 import { useClientValue } from "@/lib/use-client-value";
 import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
-import { agendaEfetiva, sessoesDoCalendario } from "@/lib/plan/pendente";
+import { agendaEfetiva } from "@/lib/plan/pendente";
+import { projetarOcorrencias } from "@/lib/plan/projecao";
 import { DiaAcoes } from "@/components/DiaAcoes";
 
 /** "2026-10-29" → "Qui, 29 out" (pt-BR, sem pontos). */
@@ -78,8 +79,15 @@ export default function CalendarioPage() {
 
   const hojeCal = useClientValue<string | null>(hojeIsoSaoPaulo, null);
   // Treino não feito anda pra frente (só leitura); pulo explícito continua no dia.
+  // As 6 semanas do mesociclo são projetadas desde o início (a virada de fase inclusa).
   const days = useMemo(
-    () => derivarCalendario(sessoesDoCalendario(agendaEfetiva(state, hojeCal)), year, month0, state.dias_limpos ?? []),
+    () =>
+      derivarCalendario(
+        projetarOcorrencias(state, hojeCal, agendaEfetiva(state, hojeCal)),
+        year,
+        month0,
+        state.dias_limpos ?? [],
+      ),
     [state, hojeCal, year, month0],
   );
 
@@ -101,6 +109,7 @@ export default function CalendarioPage() {
   const hojeIso = useClientValue<string | null>(hojeIsoSaoPaulo, null);
   const next = hydrated ? proximaSessao(state, hojeIso) : undefined;
   const dataInicio = state.plano?.mesociclo?.data_inicio;
+  const fases = state.plano?.estrutura?.fases ?? [];
 
   function prevMonth() {
     setDeslocMes((d) => d - 1);
@@ -122,6 +131,16 @@ export default function CalendarioPage() {
           : "Defina a data de início em Meu treino."}{" "}
         {next ? `· Próximo: ${next.nome}` : ""}
       </p>
+      {fases.length > 1 ? (
+        <p className="mb-3 text-xs text-muted" data-testid="fases-calendario">
+          {fases
+            .map(
+              (f) =>
+                `${f.nome}: semanas ${f.semana_inicio}–${f.semana_inicio + f.semanas - 1}`,
+            )
+            .join(" · ")}
+        </p>
+      ) : null}
 
       <div className="mb-3 flex gap-2">
         <Button variant="ghost" className="min-h-10 flex-1 text-sm" onClick={prevMonth} aria-label="Mês anterior">
@@ -151,11 +170,12 @@ export default function CalendarioPage() {
                 setSelectedData(d.data);
               }}
               data-status={d.status}
-              aria-label={`${dataHumana(d.data)}${d.nome ? ` · ${d.nome}` : ""} · ${STATUS_LABEL[d.status]}`}
+              data-projetado={d.projetado ? "1" : undefined}
+              aria-label={`${dataHumana(d.data)}${d.nome ? ` · ${d.nome}` : ""} · ${STATUS_LABEL[d.status]}${d.projetado ? ` (previsto, semana ${d.semana ?? "?"})` : ""}`}
               className={`aspect-square rounded-xl text-xs font-bold transition ${statusColor(d.status)} ${
-                selected?.data === d.data ? "ring-2 ring-accent" : ""
-              }`}
-              title={d.nome ?? STATUS_LABEL[d.status]}
+                d.projetado ? "opacity-75" : ""
+              } ${selected?.data === d.data ? "ring-2 ring-accent" : ""}`}
+              title={d.nome ? `${d.nome}${d.projetado ? ` · previsto (semana ${d.semana ?? "?"})` : ""}` : STATUS_LABEL[d.status]}
             >
               {dayNum}
             </button>
@@ -170,6 +190,10 @@ export default function CalendarioPage() {
         <Badge tone="muted">vazio</Badge>
         <Badge tone="muted">limpo</Badge>
       </div>
+      <p className="mb-4 text-[11px] text-faint">
+        Dias esmaecidos são as próximas semanas do plano, já previstas com a virada de fase.
+        Eles abrem em modo leitura e viram dias normais quando a semana chega.
+      </p>
 
       {selected ? (
         <section data-testid="card-dia" aria-label="Dia selecionado">

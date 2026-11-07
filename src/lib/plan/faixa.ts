@@ -4,7 +4,8 @@
  */
 import type { AppState } from "@/lib/domain";
 import { addDaysIso, derivarDias, type CalendarioDiaView } from "@/lib/plan/calendario";
-import { agendaEfetiva, sessoesDoCalendario } from "@/lib/plan/pendente";
+import { agendaEfetiva } from "@/lib/plan/pendente";
+import { projetarOcorrencias } from "@/lib/plan/projecao";
 
 export type StatusFaixa = "feito" | "pendente" | "planejado" | "folga" | "pulado" | "limpo" | "em_andamento";
 
@@ -54,7 +55,8 @@ export function statusFaixa(dia: CalendarioDiaView, pendentes: Set<string>, hoje
 export function faixaDeDias(state: AppState, hoje: string | null | undefined): DiaFaixa[] {
   if (!hoje) return [];
   const agenda = agendaEfetiva(state, hoje);
-  const datas = agenda.sessoes.map((s) => s.data).filter((d): d is string => !!d).sort();
+  const sessoes = projetarOcorrencias(state, hoje, agenda);
+  const datas = sessoes.map((s) => s.data).filter((d): d is string => !!d).sort();
   const inicioPlano = state.plano?.mesociclo?.data_inicio ?? datas[0];
   if (!inicioPlano) return [];
   let ini = inicioPlano < addDaysIso(hoje, -28) ? addDaysIso(hoje, -28) : inicioPlano;
@@ -65,7 +67,7 @@ export function faixaDeDias(state: AppState, hoje: string | null | undefined): D
   const lista: string[] = [];
   for (let d = ini; d <= fim; d = addDaysIso(d, 1)) lista.push(d);
   const pend = new Set(agenda.pendentes.map((p) => p.sessao_id));
-  return derivarDias(sessoesDoCalendario(agenda), lista, state.dias_limpos ?? []).map((dia) => ({
+  return derivarDias(sessoes, lista, state.dias_limpos ?? []).map((dia) => ({
     dia,
     rotulo: rotuloDia(dia.data),
     status: statusFaixa(dia, pend, hoje),

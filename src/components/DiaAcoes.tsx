@@ -50,6 +50,15 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
   if (selected.status === "em_andamento") {
     return <p className="mt-3 text-xs text-muted" data-testid="acoes-dia" data-acoes="">Treino em andamento.</p>;
   }
+  if (selected.projetado) {
+    return (
+      <div className="mt-3" data-testid="acoes-dia" data-acoes="">
+        <p className="text-xs text-muted">
+          Previsto para a semana {selected.semana ?? "—"} do plano. As ações abrem quando essa semana chegar.
+        </p>
+      </div>
+    );
+  }
   if (!dataInicio) {
     return (
       <p className="mt-3 text-xs text-muted">
@@ -119,7 +128,15 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
                 onClick={() => {
                   const r = limparDiaCalendario(selected.data, doDia);
                   setConfirmarLimpar(false);
-                  setAviso(r.ok ? (r.tirado ? `Dia de folga. ${r.tirado} voltou para a fila.` : "Dia de folga.") : "Este dia tem treino feito ou em andamento e não mudou.");
+                  setAviso(
+                    r.ok
+                      ? r.tirado
+                        ? `Dia de folga. ${r.tirado} voltou para a fila.`
+                        : "Dia de folga."
+                      : r.motivo === "projetado"
+                        ? "Esse dia é previsto de uma semana futura e ainda não dá para mudar."
+                        : "Este dia tem treino feito ou em andamento e não mudou.",
+                  );
                 }}
               >
                 Confirmar
