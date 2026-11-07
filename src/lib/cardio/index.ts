@@ -7,7 +7,7 @@
  * então dá pra ver o que falta em cada dia sem inventar número: quem registra é a pessoa.
  */
 import type { AppState, Cardio, IntensidadeCardio, TipoCardio } from "@/lib/domain";
-import { isoWeekDe } from "@/lib/engine/volume";
+import { isoWeekDoDia } from "@/lib/engine/volume";
 
 const ISO_DIA = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -33,9 +33,9 @@ export function fimDaSemana(iso: string): string {
   return somarDias(inicioDaSemana(iso), 6);
 }
 
-/** Semana ISO de um dia "YYYY-MM-DD" (mesma conta de currentIsoWeek). */
+/** Semana ISO de um dia "YYYY-MM-DD" (seg–dom; domingo fica na semana da segunda anterior). */
 export function semanaIsoDaData(iso: string): string {
-  return isoWeekDe(new Date(`${iso}T12:00:00`));
+  return isoWeekDoDia(iso);
 }
 
 export const TIPOS_CARDIO: { tipo: TipoCardio; label: string; emoji: string }[] = [

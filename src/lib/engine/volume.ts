@@ -11,12 +11,20 @@ import type {
   VolumeSemanal,
 } from "@/lib/domain";
 import { volumeEfetivo, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
+import { diaSP } from "@/lib/inicio";
 import { volumeExtraDoRegistro } from "./tecnicas";
 
 export { volumeEfetivo, VOLUME_MAX, VOLUME_MIN };
 
-function isoWeek(d = new Date()): string {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+/**
+ * Semana ISO de um dia "YYYY-MM-DD" — segunda a domingo, calendário puro.
+ * Domingo pertence à semana que começou na segunda anterior.
+ * Não usa fuso do aparelho: a data já é o dia local.
+ */
+export function isoWeekDoDia(dia: string): string {
+  const [y, m, d] = dia.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  const date = new Date(Date.UTC(y, m - 1, d));
   const day = date.getUTCDay() || 7;
   date.setUTCDate(date.getUTCDate() + 4 - day);
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
@@ -24,13 +32,18 @@ function isoWeek(d = new Date()): string {
   return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-/** Semana ISO de uma data (mesma conta de currentIsoWeek). */
+/**
+ * Semana ISO de um instante, no calendário de São Paulo (não no fuso do aparelho).
+ * Ex.: domingo 23:30 em SP = segunda 02:30 UTC → continua na semana do domingo.
+ */
 export function isoWeekDe(d: Date): string {
-  return isoWeek(d);
+  if (Number.isNaN(d.getTime())) return "";
+  const dia = diaSP(d.toISOString());
+  return dia ? isoWeekDoDia(dia) : "";
 }
 
 export function currentIsoWeek(): string {
-  return isoWeek(new Date());
+  return isoWeekDe(new Date());
 }
 
 /** Conta séries de trabalho (exclui aquecimento) por grupo nesta sessão. */
