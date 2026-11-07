@@ -9,7 +9,6 @@ import {
   acoesDoDia,
   podeDesmarcarFeito,
   proximoDaFila,
-  treinosParaEscolher,
   treinosParaRegistrar,
   type CalendarioDiaView,
 } from "@/lib/plan/calendario";
@@ -34,16 +33,21 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
   const doDia = selected.sessao_id && !selected.sessao_id.includes("#") ? selected.sessao_id : null;
   // Dia que já passou: "qual treino você fez?" lista todos os treinos do plano, inclusive os já feitos.
   const passado = !!hojeCal && selected.data < hojeCal;
-  const opcoes = passado ? treinosParaRegistrar(state) : treinosParaEscolher(state);
+  // Qualquer dia: dá para escolher qualquer treino do plano, inclusive um já feito (repetir na
+  // semana). A execução anterior fica guardada no dia em que foi feita.
+  const opcoes = treinosParaRegistrar(state);
   const proximo = proximoDaFila(state, agendaEfetiva(state, hojeCal).sessoes);
   const padrao = doDia ?? proximo?.id ?? opcoes[0]?.id ?? "";
   const [escolha, setEscolha] = useState<string>(padrao);
   const alvo = opcoes.find((o) => o.id === escolha) ? escolha : padrao;
   const nomeAlvo = opcoes.find((o) => o.id === alvo)?.nome ?? state.sessoes.find((s) => s.id === alvo)?.nome;
-  const alvoJaFeito = (() => {
-    const st = state.sessoes.find((s) => s.id === alvo)?.status;
-    return st === "concluida" || st === "parcial" || st === "em_andamento";
-  })();
+  const alvoStatus = state.sessoes.find((s) => s.id === alvo)?.status;
+  const alvoEmAndamento = alvoStatus === "em_andamento";
+  // No passado, "trocar/planejar" não vale para treino já feito ou aberto; de hoje em diante,
+  // repetir é permitido (só o treino aberto agora não muda de dia).
+  const alvoBloqueado = passado
+    ? alvoStatus === "concluida" || alvoStatus === "parcial" || alvoEmAndamento
+    : alvoEmAndamento;
   const ddmm = (iso: string | null | undefined) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
   const manual = doDia ? !!state.sessoes.find((x) => x.id === doDia)?.data_manual : false;
   const podeDesfazer = selected.status === "limpo" || manual;
@@ -126,10 +130,10 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
                 {o.nome}
                 {o.id === doDia
                   ? " (deste dia)"
-                  : passado && o.status === "em_andamento"
+                  : o.status === "em_andamento"
                     ? " (em andamento hoje)"
-                  : passado && (o.status === "concluida" || o.status === "parcial")
-                    ? ` (já feito${o.data ? ` em ${ddmm(o.data)}` : ""})`
+                  : o.status === "concluida" || o.status === "parcial"
+                    ? ` (já feito${o.data ? ` em ${ddmm(o.data)}` : ""}${passado ? "" : " · repetir"})`
                     : o.id === proximo?.id
                       ? " (próximo da fila)"
                       : ""}
@@ -141,17 +145,17 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
         <p className="text-xs text-muted">Todos os treinos do plano já foram feitos.</p>
       )}
       {acoes.includes("feito") ? (
-        <Button variant="go" className="min-h-11 text-sm" data-acao="feito" disabled={!alvo} onClick={() => fazer("feito")}>
+        <Button variant="go" className="min-h-11 text-sm" data-acao="feito" disabled={!alvo || (!passado && alvoEmAndamento)} onClick={() => fazer("feito")}>
           {passado ? "Registrar como feito" : "Marcar como feito"}
         </Button>
       ) : null}
       {acoes.includes("pular") ? (
-        <Button variant={selected.status === "pulado" ? "warn" : "ghost"} aria-pressed={selected.status === "pulado"} className="min-h-11 text-sm" data-acao="pular" disabled={!alvo} onClick={() => fazer("pular")}>
+        <Button variant={selected.status === "pulado" ? "warn" : "ghost"} aria-pressed={selected.status === "pulado"} className="min-h-11 text-sm" data-acao="pular" disabled={!alvo || alvoEmAndamento} onClick={() => fazer("pular")}>
           {selected.status === "pulado" ? "✓ Pulado" : "Pular"}
         </Button>
       ) : null}
       {acoes.includes("trocar") ? (
-        <Button variant="ghost" className="min-h-11 text-sm" data-acao="trocar" disabled={!alvo || alvoJaFeito || (alvo === doDia && selected.status === "planejado" && manual)} onClick={() => fazer("trocar")}>
+        <Button variant="ghost" className="min-h-11 text-sm" data-acao="trocar" disabled={!alvo || alvoBloqueado || (alvo === doDia && selected.status === "planejado" && manual)} onClick={() => fazer("trocar")}>
           {doDia && alvo !== doDia ? `Trocar para ${nomeAlvo ?? "este treino"}` : `Planejar ${nomeAlvo ?? "treino"} aqui`}
         </Button>
       ) : null}

@@ -3,6 +3,7 @@
  * Preferimos sessao.data + status (planejada|concluida|pulada).
  */
 import type { AppState, Plano, Sessao } from "@/lib/domain";
+import { arquivarConclusao } from "./repetir";
 import { ehOcorrenciaProjetada, ehRegistroAvulso, marcaAvulso, semanaDaOcorrenciaProjetada } from "./ocorrencia-id";
 
 /** Parse YYYY-MM-DD as UTC noon (avoid TZ flip). */
@@ -394,7 +395,8 @@ export function acoesDoDia(dia: CalendarioDiaView, hoje: string | null): AcaoPai
  * - desfazer: tira a marcação à mão; o treino volta a seguir a agenda (pulado vira planejado).
  * - trazer: dia vazio recebe o próximo treino da fila.
  * - trocar: o treino escolhido vai para o dia; o que estava ali volta para a fila.
- * Treino em andamento nunca muda. Treino feito só muda por "Corrigir registro" (aqui não).
+ * Treino em andamento nunca muda. Treino feito no próprio dia só muda por "Corrigir registro".
+ * Treino feito em outro dia pode ser repetido aqui: a execução anterior vira registro avulso.
  */
 export function marcarDia(
   state: AppState,
@@ -412,8 +414,15 @@ export function marcarDia(
   if (!alvoId && acao !== "desfazer") alvoId = proximoDaFila(state, agenda)?.id ?? null;
   if (acao === "trocar") acao = "planejar";
   if (!alvoId) return state;
-  const atual = state.sessoes.find((x) => x.id === alvoId);
+  let atual = state.sessoes.find((x) => x.id === alvoId);
   if (!atual || atual.status === "em_andamento") return state;
+  // Repetir: treino já feito em outro dia vai para este dia; a execução anterior fica guardada
+  // como registro avulso do dia antigo (com as séries), sem sumir do calendário.
+  if ((atual.status === "concluida" || atual.status === "parcial") && atual.data !== data && acao !== "desfazer") {
+    state = arquivarConclusao(state, atual.id);
+    atual = state.sessoes.find((x) => x.id === alvoId);
+    if (!atual) return state;
+  }
   const feito = atual.status === "concluida" || atual.status === "parcial";
   if (feito && acao !== "feito") return state;
   // Outro treino que ocupava o dia sai dele e volta para a fila (nunca um feito).
