@@ -19,7 +19,7 @@ export type AlertaApresentado = {
   urgencia: Urgencia;
   acao?: AcaoAlerta;
   /** Tipo de alerta (só para lógica de tela; nunca exibir). */
-  tipo: "volume_baixo" | "volume_alto" | "recuperacao" | "agua" | "sono" | "deload" | "plato" | "parq" | "outro";
+  tipo: "volume_baixo" | "volume_alto" | "recuperacao" | "agua" | "proteina" | "sono" | "deload" | "plato" | "parq" | "outro";
 };
 
 type AlertaLike = { nivel: string; motivo: string; recomendacao: string };

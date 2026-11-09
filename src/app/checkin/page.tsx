@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import { Button, NumStepper } from "@/components/ui";
 import { AGUA_MIN_ML } from "@/lib/engine/checkin-deload";
+import { metaProteina, pesoAtual } from "@/lib/sono-agua/avaliacao";
 import {
   calcularDuracaoSono,
   feedbackSono,
@@ -52,6 +53,12 @@ export default function CheckinPage() {
   const [prontidao, setProntidao] = useState(4);
   const [peso, setPeso] = useState<number | null>(null);
   const [aguaMl, setAguaMl] = useState<number | null>(null);
+  const [proteinaG, setProteinaG] = useState<number | null>(null);
+  // Chips de proteína a partir da meta (peso × g/kg do objetivo); sem peso, valores comuns.
+  const metaProt = metaProteina(pesoAtual(state.checkins, state.perfil?.peso_kg), state.perfil?.objetivo ?? state.plano?.objetivo);
+  const protChips = metaProt
+    ? [...new Set([0.6, 0.8, 1, (metaProt.max_g / metaProt.min_g)].map((f) => Math.round((metaProt.min_g * f) / 10) * 10))]
+    : [80, 100, 120, 150, 180];
   const [dorRegiao, setDorRegiao] = useState<string | null>(null);
   const [showPeso, setShowPeso] = useState(false);
   const [showDor, setShowDor] = useState(false);
@@ -84,6 +91,7 @@ export default function CheckinPage() {
       prontidao,
       peso_kg: peso ?? undefined,
       agua_ml: aguaMl ?? undefined,
+      proteina_g: proteinaG ?? undefined,
       dor: dorRegiao ? [{ regiao: dorRegiao }] : [],
     });
     router.push("/hoje");
@@ -192,6 +200,31 @@ export default function CheckinPage() {
       {aguaBaixa && (
         <p className="mt-2 text-xs text-muted">
           💧 Menos de {String(AGUA_MIN_ML / 1000).replace(".", ",")} L de água. Seu treino não muda, mas beba um pouco antes de começar.
+        </p>
+      )}
+
+      <p className="mb-2 mt-6 text-xs text-muted">
+        Proteína ontem (opcional){metaProt ? ` · meta ${metaProt.min_g}–${metaProt.max_g} g` : ""}
+      </p>
+      <div className="flex gap-2">
+        {protChips.map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => setProteinaG(proteinaG === g ? null : g)}
+            className={`chip-motion min-w-0 flex-1 rounded-xl border py-2.5 text-[13px] font-semibold ${
+              proteinaG === g
+                ? "on border-accent bg-[rgba(184,255,60,.12)] text-accent"
+                : "border-line text-bone-50"
+            }`}
+          >
+            {g} g
+          </button>
+        ))}
+      </div>
+      {metaProt && proteinaG != null && proteinaG < metaProt.min_g && (
+        <p className="mt-2 text-xs text-muted">
+          🍗 Abaixo de {metaProt.min_g} g. Sem proteína suficiente o treino rende menos músculo.
         </p>
       )}
 

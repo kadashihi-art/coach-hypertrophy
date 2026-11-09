@@ -11,11 +11,13 @@ import {
   SONO_MAX_H,
   SONO_MIN_H,
   avaliarAgua,
+  avaliarProteina,
   avaliarSono,
   estadoVazio,
   horaDoEixo,
   litros,
   metaAguaMl,
+  metaProteina,
   pesoAtual,
   serieDias,
   type DiaSonoAgua,
@@ -38,12 +40,16 @@ export function useSonoAgua(janela: 7 | 14) {
   const hoje = useClientValue(hojeUtc, "");
   return useMemo(() => {
     const dias = hoje ? serieDias(state.checkins, hoje, janela, inicioDeUso(state)) : [];
-    const meta = metaAguaMl(pesoAtual(state.checkins, state.perfil?.peso_kg));
+    const peso = pesoAtual(state.checkins, state.perfil?.peso_kg);
+    const meta = metaAguaMl(peso);
+    const metaProt = metaProteina(peso, state.perfil?.objetivo ?? state.plano?.objetivo);
     return {
       dias,
       meta,
+      metaProt,
       sono: avaliarSono(dias, janela),
       agua: avaliarAgua(dias, meta, janela),
+      proteina: avaliarProteina(dias, metaProt, janela),
       vazio: hoje ? estadoVazio(dias, janela) : null,
     };
   }, [state, hoje, janela]);
@@ -188,12 +194,12 @@ function Legenda({ itens }: { itens: { cor: string; txt: string }[] }) {
 /** Seção completa do Progresso. */
 export function SonoAguaSection() {
   const [janela, setJanela] = useState<7 | 14>(7);
-  const { dias, meta, sono, agua, vazio } = useSonoAgua(janela);
-  const temAlgum = dias.some((d) => d.sono_h != null || d.agua_ml != null);
+  const { dias, meta, metaProt, sono, agua, proteina, vazio } = useSonoAgua(janela);
+  const temAlgum = dias.some((d) => d.sono_h != null || d.agua_ml != null || d.proteina_g != null);
   return (
     <section id="sono-agua" className="mb-6 scroll-mt-6" data-testid="secao-sono-agua">
       <SectionTitle
-        title="Sono e água"
+        title="Sono, água e proteína"
         action={
           <div className="flex rounded-full border border-line p-0.5 text-xs" role="tablist">
             {([7, 14] as const).map((j) => (
@@ -224,6 +230,15 @@ export function SonoAguaSection() {
         <div className="space-y-3">
           {sono ? <Avaliacao a={sono} testId="avaliacao-sono" /> : null}
           {agua ? <Avaliacao a={agua} testId="avaliacao-agua" /> : null}
+          {proteina ? <Avaliacao a={proteina} testId="avaliacao-proteina" /> : null}
+          {metaProt && !proteina ? (
+            <Card>
+              <p className="text-sm font-semibold">🍗 Proteína</p>
+              <p className="text-xs text-muted" data-testid="meta-proteina">
+                Sua meta: {metaProt.min_g}–{metaProt.max_g} g por dia. Registre no check-in por alguns dias que eu acompanho a média.
+              </p>
+            </Card>
+          ) : null}
           <Card>
             <p className="text-sm font-semibold">🌙 Horas por noite</p>
             <GraficoDuracao dias={dias} />
@@ -249,13 +264,13 @@ export function SonoAguaSection() {
 
 /** Resumo curto no Hoje: só a avaliação mais importante da semana. */
 export function SonoAguaResumo() {
-  const { sono, agua } = useSonoAgua(7);
+  const { sono, agua, proteina } = useSonoAgua(7);
   const ordem = { bloqueio: 0, atencao: 1, info: 2 } as const;
-  const top = [sono, agua].filter((x): x is AlertaApresentado => !!x).sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia])[0];
+  const top = [sono, agua, proteina].filter((x): x is AlertaApresentado => !!x).sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia])[0];
   if (!top) return null;
   return (
     <Link href="/progresso#sono-agua" className="motion-press mb-4 block" data-testid="resumo-sono-agua">
-      <AlertaCard alerta={{ ...top, acao: undefined, dica: "Ver gráficos de sono e água →" }} testId="resumo-sono-agua-card" />
+      <AlertaCard alerta={{ ...top, acao: undefined, dica: "Ver sono, água e proteína →" }} testId="resumo-sono-agua-card" />
     </Link>
   );
 }

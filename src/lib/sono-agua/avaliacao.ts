@@ -14,6 +14,7 @@ type CheckinLike = {
   sono_inicio?: string | null;
   sono_fim?: string | null;
   agua_ml?: number | null;
+  proteina_g?: number | null;
   peso_kg?: number | null;
   prontidao?: number;
 };
@@ -36,6 +37,7 @@ export type DiaSonoAgua = {
   inicio: string | null;
   fim: string | null;
   agua_ml: number | null;
+  proteina_g: number | null;
 };
 
 /** "2026-11-04" − n dias (UTC, sem fuso). */
@@ -80,6 +82,7 @@ export function serieDias(checkins: CheckinLike[], hojeIso: string, dias: number
       inicio: temSono ? (c!.sono_inicio ?? null) : null,
       fim: temSono ? (c!.sono_fim ?? null) : null,
       agua_ml: c && typeof c.agua_ml === "number" ? c.agua_ml : null,
+      proteina_g: c && typeof c.proteina_g === "number" ? c.proteina_g : null,
     });
   }
   return out;
@@ -255,5 +258,63 @@ export function estadoVazio(dias: DiaSonoAgua[], janela: 7 | 14): { titulo: stri
   return {
     titulo: "Quase lá",
     texto: `Você já tem ${plural(noites, "noite")} registrada${noites === 1 ? "" : "s"}. Mais ${plural(faltam, "check-in")} e eu monto a avaliação ${janela === 7 ? "da semana" : "das 2 semanas"}.`,
+  };
+}
+
+// ───────── proteína ─────────
+
+/**
+ * Faixa diária de proteína (g/kg de peso), por objetivo. Fontes em docs/sono-agua.md:
+ * - Morton et al. 2018 (meta-análise): o ganho de massa com treino de força para de subir perto
+ *   de 1,6 g/kg/dia (IC 95% até ~2,2 g/kg).
+ * - Helms et al. 2014 / ISSN 2017: em déficit (recomposição) vale ir mais alto, 2,0–2,4 g/kg,
+ *   pra preservar massa magra.
+ * - Saúde geral com treino: 1,2–1,6 g/kg.
+ * O dia "bate a meta" com pelo menos o mínimo da faixa.
+ */
+export const PROTEINA_G_POR_KG: Record<string, { min: number; max: number }> = {
+  hipertrofia: { min: 1.6, max: 2.2 },
+  forca: { min: 1.6, max: 2.2 },
+  recomposicao: { min: 2.0, max: 2.4 },
+  saude: { min: 1.2, max: 1.6 },
+};
+
+export type MetaProteina = { min_g: number; max_g: number; g_por_kg: { min: number; max: number } };
+
+/** Faixa em gramas (arredondada a 5 g). null sem peso. */
+export function metaProteina(pesoKg: number | null | undefined, objetivo?: string | null): MetaProteina | null {
+  if (!pesoKg || !Number.isFinite(pesoKg) || pesoKg <= 0) return null;
+  const f = PROTEINA_G_POR_KG[objetivo ?? ""] ?? PROTEINA_G_POR_KG.hipertrofia!;
+  const r5 = (g: number) => Math.round(g / 5) * 5;
+  return { min_g: r5(pesoKg * f.min), max_g: r5(pesoKg * f.max), g_por_kg: f };
+}
+
+export type ResumoProteina = { dias: number; batidos: number; media_g: number | null };
+
+export function resumirProteina(dias: DiaSonoAgua[], meta: MetaProteina): ResumoProteina {
+  const com = dias.filter((d) => d.proteina_g != null).map((d) => d.proteina_g!);
+  return { dias: com.length, batidos: com.filter((g) => g >= meta.min_g).length, media_g: media(com) };
+}
+
+const gKg = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+
+export function avaliarProteina(dias: DiaSonoAgua[], meta: MetaProteina | null, janela: 7 | 14): AlertaApresentado | null {
+  if (!meta) return null;
+  const r = resumirProteina(dias, meta);
+  if (r.dias < minimoRegistros(janela) || r.media_g == null) return null;
+  const per = periodo(janela);
+  const faixa = `${meta.min_g}–${meta.max_g} g`;
+  const base = `${per} você bateu o mínimo de ${meta.min_g} g de proteína em ${r.batidos} de ${plural(r.dias, "dia")} registrado${r.dias === 1 ? "" : "s"}, com média de ${Math.round(r.media_g)} g por dia.`;
+  const pct = r.batidos / r.dias;
+  if (pct >= 0.7) {
+    return { tipo: "proteina", urgencia: "info", titulo: "Proteína em dia", porque: base, dica: `Boa. A faixa que mais ajuda a crescer é ${faixa} por dia (${gKg(meta.g_por_kg.min)}–${gKg(meta.g_por_kg.max)} g por kg).` };
+  }
+  return {
+    tipo: "proteina",
+    urgencia: pct < 0.4 ? "atencao" : "info",
+    titulo: "Proteína abaixo da meta",
+    porque: base,
+    dica: `Sem proteína suficiente o treino rende menos músculo. Mire em ${faixa} por dia, dividido em 3–5 refeições de uns 30–40 g. Faltam em média ${Math.max(0, Math.round(meta.min_g - r.media_g))} g por dia.`,
+    acao: ACAO_CHECKIN,
   };
 }
