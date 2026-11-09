@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import { ehSemanaDeload, mesocicloEfetivo } from "@/lib/plan/mesociclo";
+import { aplicarRampaVolume, resumoRampa, voltarParaBase } from "@/lib/engine/rampa-volume";
 import {
   AlertaCard,
   Button,
@@ -123,6 +124,22 @@ export default function HojePage() {
     ? state.checkins.find((c) => c.data === hojeIso)
     : undefined;
 
+  // Prévia da rampa de volume (o mesmo cálculo do início do treino). Em andamento já está aplicada.
+  const rampaPreview = useMemo(() => {
+    if (!sess || !hojeIso || sess.status === "em_andamento") return null;
+    return aplicarRampaVolume({
+      prescricoes: voltarParaBase(sess.prescricoes),
+      exercicios: state.exercicios,
+      estados: state.estados,
+      mesociclo: meso,
+      experiencia: state.perfil?.experiencia,
+      checkin: ck ?? null,
+      sessoesDaSemana: sessoesDoPlano(state, hojeIso),
+      registros: state.registros,
+      hojeIso,
+    });
+  }, [sess, hojeIso, state, meso, ck]);
+
   const deloadPreview = useMemo(() => {
     if (!sess || !hojeIso) return null;
     // Sessão já em andamento: prescricoes já podem estar ajustadas —
@@ -131,15 +148,16 @@ export default function HojePage() {
       checkin: ck ?? null,
       mesociclo: meso,
       estados: state.estados,
-      prescricoes: sess.prescricoes,
+      prescricoes: rampaPreview?.prescricoes ?? sess.prescricoes,
       exercicios: state.exercicios,
       data: hojeIso,
     });
-  }, [sess, ck, meso, state.estados, state.exercicios, hojeIso]);
+  }, [sess, ck, meso, state.estados, state.exercicios, hojeIso, rampaPreview]);
 
-  const deloadResumo = deloadPreview
-    ? resumoAjusteDeload(deloadPreview)
-    : null;
+  const deloadResumo =
+    [rampaPreview ? resumoRampa(rampaPreview, state.exercicios) : null, deloadPreview ? resumoAjusteDeload(deloadPreview) : null]
+      .filter(Boolean)
+      .join(" ") || null;
 
   const parqBloqueado = parqBloqueiaPrescricao(state.perfil);
   const parqPendente = precisaResponderParq(state.perfil);

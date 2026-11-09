@@ -6,6 +6,7 @@
  *   é derivada da nova ordem por `estrutura-series`, sem estado extra.
  * - Histórico (registros) e EstadoExercicio nunca são apagados.
  */
+import { seriesBase } from "@/lib/engine/rampa-volume";
 import { z } from "zod";
 import { TecnicaFinalSchema, type TecnicaFinal } from "@/lib/domain/enums";
 import { exercicioAceitaTecnica, linhaTecnica, validarTecnicasSessao } from "@/lib/engine/tecnicas";
@@ -112,7 +113,8 @@ export function rascunhoDaSessao(s: Sessao): Rascunho {
       .sort((a, b) => a.ordem - b.ordem)
       .map((p) => ({
         exercicio_id: p.exercicio_id,
-        series: p.series,
+        // Base do plano (sem o ajuste só daquele dia: rampa de volume / check-in).
+        series: seriesBase(p),
         faixa_reps: [p.faixa_reps[0], p.faixa_reps[1]],
         tecnica_final: p.tecnica_final ?? null,
       })),
@@ -328,7 +330,13 @@ export function montarSessao(state: AppState, sessao: Sessao, r: Rascunho): { se
     const atual = sessao.prescricoes.find((p) => p.exercicio_id === it.exercicio_id);
     const faixa: [number, number] = [it.faixa_reps[0], it.faixa_reps[1]];
     const tecnica_final = it.tecnica_final ?? null;
-    if (atual) return { ...atual, ordem: i + 1, series: it.series, faixa_reps: faixa, tecnica_final };
+    if (atual) {
+      // Séries iguais à base: nada muda (mantém o ajuste do dia). Mudou: o valor vira a nova base.
+      if (it.series === seriesBase(atual)) return { ...atual, ordem: i + 1, faixa_reps: faixa, tecnica_final };
+      const { ajuste_series_dia: _a, ...semAjuste } = atual;
+      void _a;
+      return { ...semAjuste, ordem: i + 1, series: it.series, faixa_reps: faixa, tecnica_final };
+    }
     const ex = catalog.find((e) => e.id === it.exercicio_id)!;
     const { prescricao, estadoNovo } = novaPrescricao(state, sessao, ex, {
       id: `presc-${sessao.id}-${ex.id}`,

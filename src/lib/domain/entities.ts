@@ -123,6 +123,12 @@ export const PrescricaoSchema = z.object({
   alternativa_equipamento_ocupado: z.string().nullable().default(null),
   guia_id: z.string().nullable().default(null),
   evidencia: EvidenciaSchema.default("moderado"),
+  /**
+   * Séries a mais (+) ou a menos (−) só no treino de hoje (rampa de volume, check-in ruim).
+   * A base do plano é `series − ajuste_series_dia`. As sessões se repetem toda semana, então o
+   * ajuste do dia nunca vira base: cada início de treino recalcula a partir da base.
+   */
+  ajuste_series_dia: z.number().int().optional(),
 });
 export type Prescricao = z.infer<typeof PrescricaoSchema>;
 
