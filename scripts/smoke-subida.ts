@@ -94,6 +94,34 @@ function decidir(e: EstadoExercicio, ss: RegistroSerie[], grupo: GrupoMuscular =
   ok(c.cabe, "sem carga externa: regra de salto não se aplica");
 }
 
+// 8) Precisão: série feita mais leve não prova a carga cheia.
+{
+  const ss = series(60, [12, 12, 12], [2]);
+  ss[2] = { ...ss[2]!, carga_kg: 50 };
+  const d = decidir(estado(60, [8, 12]), ss);
+  ok(d.acao === "manter_carga" && /série 3 foi com 50 kg/.test(d.motivo), `série 3 com 50 kg segura a subida (got ${d.regra} ${d.acao})`);
+}
+
+// 9) Precisão: back-off (mais leve de propósito) não entra na conta do R1.
+{
+  const ss = [...series(60, [12, 12], [2]), ...series(50, [9], [2], "back_off").map((s) => ({ ...s, id: "bo", numero: 3 }))];
+  const d = decidir(estado(60, [8, 12]), ss);
+  ok(d.regra === "R1" && d.nova_carga_kg === 62.5, `back-off abaixo da faixa não trava a subida (got ${d.regra} ${d.nova_carga_kg})`);
+}
+
+// 10) Precisão: RIR corrigido pela queda de reps.
+{
+  // Marcou RIR 3 em tudo, mas despencou 12 → 8 na mesma carga: estava perto da falha.
+  const perto = decidir(estado(60, [8, 12], 2), series(60, [12, 8, 8], [3, 3, 3]));
+  ok(/RIR ajustado pela queda de reps: série 1 marcada RIR 3, considerei 2/.test(perto.motivo), `queda forte corrige o RIR e explica: "${perto.motivo}"`);
+  // Marcou "falha" (RIR 0) mas repetiu as reps: sobrava. Com a 1ª corrigida, o R1 tolerante sobe.
+  const sobra = decidir(estado(60, [8, 12], 1), series(60, [12, 12, 11], [0, 0, 0]));
+  ok(sobra.regra === "R1" && sobra.acao === "subir_carga", `"falha" que repete reps conta como sobra (got ${sobra.regra} ${sobra.acao})`);
+  // Sem queda estranha, nada muda.
+  const normal = decidir(estado(60, [8, 12]), series(60, [12, 12, 12], [2]));
+  ok(!/RIR ajustado/.test(normal.motivo), "sem sinal forte, o RIR relatado vale");
+}
+
 if (falhas > 0) {
   console.error(`smoke:subida FALHOU (${falhas})`);
   process.exit(1);

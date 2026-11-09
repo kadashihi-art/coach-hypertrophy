@@ -18,6 +18,7 @@ import { roundToStep } from "./ancorar-carga";
 import { e1rmEpley, melhorE1rm } from "./e1rm";
 import { recordeDasSeries, RECORDE_VAZIO } from "./recordes";
 import { ehSemanaDeload } from "@/lib/plan/mesociclo";
+import { calibrarSerie } from "./proximidade-falha";
 
 export type ProgressionInput = {
   exercicio_id: string;
@@ -269,7 +270,41 @@ export function calibrarCargaInicial(args: {
 export function decidirProgressao(
   input: ProgressionInput,
 ): DecisaoProgressao {
-  const series = trabalho(input.series);
+  const { series, ajustes } = rirPelaQueda(trabalho(input.series));
+  const d = decidir(input, series);
+  if (ajustes.length === 0 || !REGRAS_COM_RIR.has(d.regra)) return d;
+  const txt = ajustes
+    .map((a) => `série ${a.numero} marcada RIR ${a.relatado}, considerei ${a.considerado}`)
+    .join("; ");
+  return { ...d, motivo: `${d.motivo} (RIR ajustado pela queda de reps: ${txt}.)` };
+}
+
+/** Regras cuja decisão depende do RIR (as outras não ganham a nota de RIR ajustado). */
+const REGRAS_COM_RIR = new Set<DecisaoProgressao["regra"]>(["R1", "R2", "R3", "R8", "R12"]);
+
+/**
+ * RIR de cada série corrigido pela queda de reps na série seguinte com a mesma carga
+ * (calibrarSerie, sem e1RM histórico). Ex.: marcou RIR 3 e caiu 3+ reps na próxima → estava
+ * perto; marcou RIR ≤ 1 e repetiu as reps → sobrava. Só muda com sinal forte (2+ reps).
+ * O e1RM histórico fica de fora de propósito: ele fica velho justo quando a pessoa melhora,
+ * e leria um PR como "mais perto da falha", freando a progressão.
+ */
+export function rirPelaQueda(series: RegistroSerie[]): {
+  series: RegistroSerie[];
+  ajustes: { numero: number; relatado: number; considerado: number }[];
+} {
+  const ord = [...series].sort((a, b) => a.numero - b.numero);
+  const ajustes: { numero: number; relatado: number; considerado: number }[] = [];
+  const out = ord.map((s, i) => {
+    const c = calibrarSerie({ serie: s, proxima: ord[i + 1] ?? null });
+    if (c.rir_interpretado === s.rir_percebido) return s;
+    ajustes.push({ numero: s.numero, relatado: s.rir_percebido, considerado: c.rir_interpretado });
+    return { ...s, rir_percebido: c.rir_interpretado };
+  });
+  return { series: out, ajustes };
+}
+
+function decidir(input: ProgressionInput, series: RegistroSerie[]): DecisaoProgressao {
   const estado = input.estado;
   const [piso, topo] = estado.faixa_reps;
   const inc = incrementoCargaKg(input.grupo_primario);
@@ -516,7 +551,11 @@ export function decidirProgressao(
   const abaixoPiso = series.filter((s) => s.reps < piso).length;
   // Estrutura trabalho → top → back-off: R1–R3 avaliam o top (reps/RIR do top vs alvo).
   const tops = series.filter((s) => s.tipo_serie === "top_set");
-  const avaliadas = tops.length > 0 ? tops : series;
+  // Sem top set, avalia as séries de trabalho (back-off é mais leve de propósito e não entra).
+  const semBackOff = series.filter((s) => s.tipo_serie !== "back_off");
+  const avaliadas = tops.length > 0 ? tops : semBackOff.length > 0 ? semBackOff : series;
+  // Série avaliada feita com menos carga que a âncora não prova a carga cheia.
+  const maisLeves = avaliadas.filter((s) => s.carga_kg < carga - 0.01);
   const rirBaixo = avaliadas.filter((s) => s.rir_percebido < estado.rir_alvo).length;
   // Reps acima do topo não tiram da faixa (acontece quando a subida espera um salto caber).
   const todasNaFaixa = avaliadas.every((s) => s.reps >= piso);
@@ -556,6 +595,17 @@ export function decidirProgressao(
     ordenadas.every((x) => x.reps >= Math.max(piso, topo - 2)) &&
     somaReps >= topo * ordenadas.length - (ordenadas.length - 1) &&
     ultimaOrd.rir_percebido >= estado.rir_alvo - 1;
+  if ((r1Estrito || r1Tolerante) && maisLeves.length > 0) {
+    const ex = maisLeves[0]!;
+    return base(
+      input,
+      "R2",
+      "manter_carga",
+      carga,
+      `Reps no topo, mas a série ${ex.numero} foi com ${ex.carga_kg} kg (abaixo de ${carga} kg). Pra subir, todas as séries precisam sair na carga cheia. Manter ${carga} kg.`,
+      "forte",
+    );
+  }
   if (r1Estrito || r1Tolerante) {
     const um = Math.round((carga + inc) * 10) / 10;
     const c1 = subidaCabe({ cargaKg: carga, novaKg: um, series: avaliadas, faixaReps: estado.faixa_reps, rirAlvo: estado.rir_alvo });
