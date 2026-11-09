@@ -158,6 +158,50 @@ export function cargaDeloadKg(carga: number, step: number): number {
   return r < carga ? r : carga;
 }
 
+/**
+ * Salto relativo máximo para subir "no automático". O degrau do equipamento é fixo
+ * (2,5 kg superiores / 5 kg inferiores): em carga leve ele vira um salto enorme
+ * (6 → 8,5 kg = +42% numa elevação lateral). Acima disto, a subida só sai quando cabe.
+ */
+export const SALTO_RELATIVO_MAX = 0.1;
+/** Reps além do topo da faixa aceitas antes de subir mesmo com salto grande (evita travar para sempre). */
+export const REPS_ALEM_DO_TOPO_MAX = 4;
+
+/** Melhor e1RM com RIR (reps até a falha ≈ reps + RIR) das séries. 0 sem carga externa. */
+function e1rmComRir(series: RegistroSerie[]): number {
+  let best = 0;
+  for (const s of series) {
+    if (!(s.carga_kg > 0) || !(s.reps > 0)) continue;
+    best = Math.max(best, s.carga_kg * (1 + (s.reps + Math.max(0, s.rir_percebido)) / 30));
+  }
+  return best;
+}
+
+/**
+ * A carga nova cabe? Salto ≤ SALTO_RELATIVO_MAX: sim. Salto maior: só quando a conta
+ * (e1RM com RIR, Epley) prevê o piso da faixa na carga nova com o RIR alvo, ou quando a
+ * 1ª série já passou REPS_ALEM_DO_TOPO_MAX reps do topo. Sem carga externa: sempre cabe.
+ */
+export function subidaCabe(args: {
+  cargaKg: number;
+  novaKg: number;
+  series: RegistroSerie[];
+  faixaReps: [number, number];
+  rirAlvo: number;
+}): { cabe: boolean; salto: number; repsPrevistas: number | null } {
+  const { cargaKg, novaKg, series, faixaReps, rirAlvo } = args;
+  if (!(cargaKg > 0) || !(novaKg > cargaKg)) return { cabe: true, salto: 0, repsPrevistas: null };
+  const salto = (novaKg - cargaKg) / cargaKg;
+  if (salto <= SALTO_RELATIVO_MAX + 1e-9) return { cabe: true, salto, repsPrevistas: null };
+  const e1 = e1rmComRir(series);
+  const repsPrevistas = e1 > 0 ? Math.floor(30 * (e1 / novaKg - 1) - Math.max(0, rirAlvo) + 1e-9) : 0;
+  const primeira = [...series].sort((a, b) => a.numero - b.numero)[0];
+  const passouDoTopo = !!primeira && primeira.reps >= faixaReps[1] + REPS_ALEM_DO_TOPO_MAX;
+  return { cabe: repsPrevistas >= faixaReps[0] || passouDoTopo, salto, repsPrevistas };
+}
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
 /** Carga realmente levantada na série-âncora (top → trabalho mais pesada). null sem série válida. */
 export function cargaRealDaSessao(series: RegistroSerie[]): number | null {
   const a = pickTopSetAnchor(series.filter((s) => s.carga_kg > 0 && s.reps > 0));
@@ -398,9 +442,26 @@ export function decidirProgressao(
       );
     }
 
+    // Salto grande em carga leve: segura a carga e progride por reps até a carga nova caber.
+    const novaTop = Math.round((topKg + inc) * 10) / 10;
+    const querSubir = rir <= 1 || (reps >= topo && rir <= 2);
+    if (querSubir) {
+      const c = subidaCabe({ cargaKg: topKg, novaKg: novaTop, series: [anchor], faixaReps: estado.faixa_reps, rirAlvo: estado.rir_alvo });
+      if (!c.cabe) {
+        return base(
+          input,
+          "R8",
+          "manter_carga",
+          topKg,
+          `Top set ${topKg} kg pronto pra subir, mas ${inc} kg é um salto de ${pct(c.salto)} nessa carga. Manter ${topKg} kg e buscar mais reps (até ${topo + REPS_ALEM_DO_TOPO_MAX}) antes de subir.`,
+          "moderado",
+        );
+      }
+    }
+
     // RIR ≤ 1 e reps OK → sobe (Iury: RIR≤1 sobe)
     if (rir <= 1) {
-      const nova = Math.round((topKg + inc) * 10) / 10;
+      const nova = novaTop;
       const boNova = sugerirBackOffKg(nova, input.grupo_primario);
       return base(
         input,
@@ -415,7 +476,7 @@ export function decidirProgressao(
 
     // R1-elegível na banda R8: topo da faixa + RIR ≤ 2
     if (reps >= topo && rir <= 2) {
-      const nova = Math.round((topKg + inc) * 10) / 10;
+      const nova = novaTop;
       const boNova = sugerirBackOffKg(nova, input.grupo_primario);
       return base(
         input,
@@ -457,7 +518,8 @@ export function decidirProgressao(
   const tops = series.filter((s) => s.tipo_serie === "top_set");
   const avaliadas = tops.length > 0 ? tops : series;
   const rirBaixo = avaliadas.filter((s) => s.rir_percebido < estado.rir_alvo).length;
-  const todasNaFaixa = avaliadas.every((s) => s.reps >= piso && s.reps <= topo);
+  // Reps acima do topo não tiram da faixa (acontece quando a subida espera um salto caber).
+  const todasNaFaixa = avaliadas.every((s) => s.reps >= piso);
   const todasNoTopo = avaliadas.every((s) => s.reps >= topo);
   const ultima = avaliadas[avaliadas.length - 1]!;
   const rirUltimaOk = ultima.rir_percebido >= estado.rir_alvo;
@@ -478,16 +540,52 @@ export function decidirProgressao(
   }
 
   // —— R1 Dupla progressão ——
-  if (todasNoTopo && avaliadas.every((s) => s.reps >= piso) && rirUltimaOk) {
-    // Muita sobra (RIR ≥ alvo + 2 em todas) → 2 degraus; senão 1. Nunca mais que isso por sessão.
-    const folga = avaliadas.every((s) => s.rir_percebido >= estado.rir_alvo + 2);
-    const nova = Math.round((carga + (folga ? 2 : 1) * inc) * 10) / 10;
+  // Estrito: todas no topo e RIR da última ≥ alvo.
+  // Tolerante (a fadiga derruba as séries de trás na mesma carga): 1ª série no topo com
+  // RIR ≥ alvo, as outras a no máximo 2 reps do topo, perdendo em média até 1 rep por
+  // série, e a última com RIR ≥ alvo − 1.
+  const ordenadas = [...avaliadas].sort((a, b) => a.numero - b.numero);
+  const primeira = ordenadas[0]!;
+  const ultimaOrd = ordenadas[ordenadas.length - 1]!;
+  const somaReps = ordenadas.reduce((a, x) => a + x.reps, 0);
+  const r1Estrito = todasNoTopo && rirUltimaOk;
+  const r1Tolerante =
+    ordenadas.length >= 2 &&
+    primeira.reps >= topo &&
+    primeira.rir_percebido >= estado.rir_alvo &&
+    ordenadas.every((x) => x.reps >= Math.max(piso, topo - 2)) &&
+    somaReps >= topo * ordenadas.length - (ordenadas.length - 1) &&
+    ultimaOrd.rir_percebido >= estado.rir_alvo - 1;
+  if (r1Estrito || r1Tolerante) {
+    const um = Math.round((carga + inc) * 10) / 10;
+    const c1 = subidaCabe({ cargaKg: carga, novaKg: um, series: avaliadas, faixaReps: estado.faixa_reps, rirAlvo: estado.rir_alvo });
+    if (!c1.cabe) {
+      return base(
+        input,
+        "R2",
+        "manter_carga",
+        carga,
+        `Pronto pra subir, mas ${inc} kg é um salto de ${pct(c1.salto)} em ${carga} kg. Manter a carga e buscar mais reps (até ${topo + REPS_ALEM_DO_TOPO_MAX}) antes de subir.`,
+        "forte",
+      );
+    }
+    // Muita sobra (RIR ≥ alvo + 2 em todas, no estrito) → 2 degraus, se o salto total couber; senão 1.
+    const folga = r1Estrito && avaliadas.every((x) => x.rir_percebido >= estado.rir_alvo + 2);
+    const dois = Math.round((carga + 2 * inc) * 10) / 10;
+    const doisCabe =
+      folga &&
+      (carga <= 0 ||
+        ((dois - carga) / carga <= SALTO_RELATIVO_MAX + 1e-9 &&
+          subidaCabe({ cargaKg: carga, novaKg: dois, series: avaliadas, faixaReps: estado.faixa_reps, rirAlvo: estado.rir_alvo }).cabe));
+    const nova = doisCabe ? dois : um;
     return base(
       input,
       "R1",
       "subir_carga",
       nova,
-      `Todas as séries no topo da faixa (${topo}) e RIR da última ≥ alvo (${estado.rir_alvo}). Subir ${inc} kg; reiniciar faixa.`,
+      r1Estrito
+        ? `Todas as séries no topo da faixa (${topo}) e RIR da última ≥ alvo (${estado.rir_alvo}). Subir ${Math.round((nova - carga) * 10) / 10} kg; reiniciar faixa.`
+        : `1ª série no topo (${topo}) com RIR ${primeira.rir_percebido} e as outras perto dele (${ordenadas.map((x) => x.reps).join("/")}). Subir ${inc} kg; reiniciar faixa.`,
       "forte",
       true,
     );
