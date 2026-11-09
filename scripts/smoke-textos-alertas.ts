@@ -76,7 +76,7 @@ const presc = { id: "p1", sessao_id: "s1", exercicio_id: "supino", padrao: "empu
 const d = avaliarCheckinDeload({
   checkin: { id: "c", data: "2026-11-04", sono_h: 5.5, prontidao: 2, agua_ml: 1000, dor: [] } as never,
   mesociclo: { semana_atual: 5, total_semanas: 6, foco: "acumulo" } as never,
-  estados: [{ exercicio_id: "supino", sessoes_sem_progresso: 4 } as never],
+  estados: [{ exercicio_id: "supino", sessoes_sem_progresso: 4, ultimo_desempenho: { carga_kg: 60, reps_na_carga: [8, 8], e1rm_kg: 76 } } as never],
   prescricoes: [presc],
   exercicios: [ex],
   data: "2026-11-04",

@@ -285,6 +285,17 @@ export const AlvoProximaSessaoSchema = z.object({
 export type AlvoProximaSessao = z.infer<typeof AlvoProximaSessaoSchema>;
 
 /** MEMÓRIA principal do app */
+/** Resumo de uma sessão de um exercício (séries de trabalho), usado só para medir progresso. */
+export const DesempenhoSessaoSchema = z.object({
+  /** Carga da série-âncora (top, senão a de trabalho mais pesada). */
+  carga_kg: z.number().nonnegative(),
+  /** Reps das séries feitas nessa carga, na ordem. */
+  reps_na_carga: z.array(z.number().int().nonnegative()),
+  /** Melhor e1RM (Epley) das séries de trabalho; 0 sem carga externa. */
+  e1rm_kg: z.number().nonnegative(),
+});
+export type DesempenhoSessao = z.infer<typeof DesempenhoSessaoSchema>;
+
 export const EstadoExercicioSchema = z.object({
   exercicio_id: z.string(),
   carga_atual_kg: z.number().nonnegative(),
@@ -303,6 +314,11 @@ export const EstadoExercicioSchema = z.object({
   ultimo_back_off_kg: z.number().nonnegative().nullable().default(null),
   ultimo_rir: z.number().int().min(0).max(5).nullable().default(null),
   ultima_sessao_em: z.string().nullable().default(null),
+  /**
+   * Desempenho da última sessão: base para ver progresso por reps/e1RM (não só por carga).
+   * Ausente em estado antigo → o contador de platô ainda não é confiável (R5 espera 1 sessão).
+   */
+  ultimo_desempenho: DesempenhoSessaoSchema.nullish(),
   atualizado_em: z.string(),
 });
 export type EstadoExercicio = z.infer<typeof EstadoExercicioSchema>;

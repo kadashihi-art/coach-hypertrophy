@@ -12,6 +12,7 @@ import type {
 } from "@/lib/domain";
 import { incrementoCargaKg } from "@/lib/domain";
 import { roundToStep } from "@/lib/engine/ancorar-carga";
+import { emPlato } from "@/lib/engine/progression";
 
 export const AGUA_MIN_ML = 1500;
 
@@ -105,7 +106,7 @@ export function avaliarCheckinDeload(args: {
   const principais = r9 ? idsPrincipais(prescricoes, exercicios) : new Set<string>();
   const platôIds = new Set(
     estados
-      .filter((e) => e.sessoes_sem_progresso >= 3)
+      .filter((e) => emPlato(e))
       .map((e) => e.exercicio_id),
   );
 

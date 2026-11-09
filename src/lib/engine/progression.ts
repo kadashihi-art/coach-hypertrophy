@@ -6,6 +6,7 @@ import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import type {
   Checkin,
   DecisaoProgressao,
+  DesempenhoSessao,
   EstadoExercicio,
   GrupoMuscular,
   Prescricao,
@@ -93,6 +94,67 @@ function base(
     motivo,
     evidencia,
   };
+}
+
+/** Margem mínima de e1RM (kg) para contar como melhora, evitando ruído de arredondamento. */
+const E1RM_EPS = 0.05;
+
+/**
+ * Resumo da sessão para medir progresso: carga da âncora, reps nas séries dessa
+ * carga (na ordem) e melhor e1RM. Preparatórias e séries sem reps ficam de fora.
+ * Peso corporal (0 kg) entra só pelas reps. null sem série válida.
+ */
+export function desempenhoDaSessao(series: RegistroSerie[]): DesempenhoSessao | null {
+  const work = trabalho(series)
+    .filter((s) => s.reps > 0)
+    .slice()
+    .sort((a, b) => a.numero - b.numero);
+  const anchor = pickTopSetAnchor(work);
+  if (!anchor) return null;
+  const carga = anchor.carga_kg;
+  return {
+    carga_kg: carga,
+    reps_na_carga: work.filter((s) => s.carga_kg >= carga - 1e-9).map((s) => s.reps),
+    e1rm_kg: recordeDasSeries(work).e1rm_estimado_kg,
+  };
+}
+
+/**
+ * Houve progresso em relação à sessão anterior? Conta como progresso:
+ * - e1RM da melhor série maior (mais carga ou mais reps); ou
+ * - mesma carga (ou mais) e mais reps somadas nas séries comparáveis (as primeiras N,
+ *   N = menor número de séries feitas nessa carga entre as duas sessões).
+ * Fazer +1 rep na dupla progressão (R2) é progresso — não é platô.
+ */
+export function houveProgresso(
+  atual: DesempenhoSessao | null,
+  anterior: DesempenhoSessao | null | undefined,
+): boolean {
+  if (!atual || !anterior) return false;
+  if (atual.e1rm_kg > anterior.e1rm_kg + E1RM_EPS) return true;
+  if (atual.carga_kg + 1e-9 < anterior.carga_kg) return false;
+  const k = Math.min(atual.reps_na_carga.length, anterior.reps_na_carga.length);
+  if (k === 0) return false;
+  const soma = (xs: number[]) => xs.slice(0, k).reduce((a, b) => a + b, 0);
+  const sa = soma(atual.reps_na_carga);
+  const sp = soma(anterior.reps_na_carga);
+  return atual.carga_kg > anterior.carga_kg + 1e-9 ? sa >= sp : sa > sp;
+}
+
+/**
+ * Platô (R5): 3+ sessões seguidas sem progresso. Só vale com o desempenho registrado:
+ * em estado antigo o contador contava +1 rep como "sem progresso" e não é confiável.
+ */
+export function emPlato(
+  estado: Pick<EstadoExercicio, "sessoes_sem_progresso" | "ultimo_desempenho">,
+): boolean {
+  return estado.sessoes_sem_progresso >= 3 && !!estado.ultimo_desempenho;
+}
+
+/** Carga do deload: ~−10% no degrau do equipamento. Se o degrau não deixa descer, mantém (o deload fica nas séries). */
+export function cargaDeloadKg(carga: number, step: number): number {
+  const r = roundToStep(carga * 0.9, step);
+  return r < carga ? r : carga;
 }
 
 /** Carga realmente levantada na série-âncora (top → trabalho mais pesada). null sem série válida. */
@@ -249,19 +311,19 @@ export function decidirProgressao(
       input,
       "R6",
       "deload",
-      Math.round(carga * 0.9 * 10) / 10,
+      cargaDeloadKg(carga, inc),
       `Semana ${meso.semana_atual} de ${meso.total_semanas} (foco ${meso.foco}). Deload: −10% carga, −2 séries.`,
       "contextual",
     );
   }
 
   // —— R5 Deload por platô ——
-  if (estado.sessoes_sem_progresso >= 3) {
+  if (emPlato(estado)) {
     return base(
       input,
       "R5",
       "deload",
-      Math.round(carga * 0.9 * 10) / 10,
+      cargaDeloadKg(carga, inc),
       "3 sessões consecutivas sem progressão. Deload: −10% carga, −1 série, 1 semana.",
       "moderado",
     );
@@ -513,7 +575,25 @@ export function aplicarDecisao(
   decisao: DecisaoProgressao,
   series?: RegistroSerie[],
 ): EstadoExercicio {
-  const progrediu = decisao.acao === "subir_carga";
+  // Progresso = subir carga OU melhorar o desempenho (reps/e1RM) frente à sessão anterior.
+  const atual = series ? desempenhoDaSessao(series) : null;
+  const desempAnterior = estado.ultimo_desempenho ?? null;
+  const progrediuDesempenho = desempAnterior
+    ? houveProgresso(atual, desempAnterior)
+    : // Estado antigo sem desempenho: compara com o PR real (se houver).
+      !!atual && estado.pr_reps > 0 && atual.e1rm_kg > estado.e1rm_estimado_kg + E1RM_EPS;
+  const progrediu = decisao.acao === "subir_carga" || progrediuDesempenho;
+  // Deload e calibração recomeçam a contagem; dor (R7) e prontidão baixa (R9) não contam como platô.
+  const zera = progrediu || decisao.acao === "deload" || decisao.regra === "R12";
+  const neutra = decisao.regra === "R7" || decisao.regra === "R9";
+  const sessoesSemProgresso = zera
+    ? 0
+    : !desempAnterior
+      ? // Contador antigo não é confiável (contava +1 rep como platô): recomeça daqui.
+        neutra ? 0 : 1
+      : neutra
+        ? estado.sessoes_sem_progresso
+        : estado.sessoes_sem_progresso + 1;
   // R12 sem série válida não calibra de fato: mantém a pendência para a próxima
   // sessão (só quando existe carga externa; peso corporal/core já está calibrado).
   const calibracaoAdiada =
@@ -541,9 +621,8 @@ export function aplicarDecisao(
       faixa_reps: estado.faixa_reps,
       rir_alvo: estado.rir_alvo,
     },
-    sessoes_sem_progresso: progrediu
-      ? 0
-      : estado.sessoes_sem_progresso + 1,
+    sessoes_sem_progresso: sessoesSemProgresso,
+    ultimo_desempenho: atual ?? desempAnterior,
     ultima_progressao_em: progrediu
       ? decisao.data
       : estado.ultima_progressao_em,
