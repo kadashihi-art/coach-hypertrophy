@@ -1,6 +1,6 @@
 /** Smoke sono-agua: virada da noite, média, regularidade, meta de água, janelas 7/14, estado vazio e textos sem código. */
 import {
-  avaliarAgua, avaliarSono, desvio, estadoVazio, horaDoEixo, metaAguaMl, minutosEixoNoite,
+  avaliarAgua, avaliarProteina, avaliarSono, desvio, estadoVazio, horaDoEixo, metaAguaMl, metaProteina, minutosEixoNoite,
   pesoAtual, resumirAgua, resumirSono, serieDias,
 } from "../src/lib/sono-agua/avaliacao";
 import { calcularDuracaoSono, feedbackSono } from "../src/lib/domain/sono";
@@ -108,6 +108,26 @@ for (const t of textos) {
   if (/\(R\d+\)|R9/.test(t)) p.push("R9");
   if (/\d+(\.\d+)? ?h\b/.test(t) && /\d\.\d/.test(t)) p.push("decimal com ponto");
   ok(p.length === 0, `texto limpo: "${t.slice(0, 70)}"${p.length ? " → " + p.join(", ") : ""}`);
+}
+
+// proteína
+{
+  const m = metaProteina(80, "hipertrofia")!;
+  ok(m.min_g === 130 && m.max_g === 175, `80 kg hipertrofia: 1,6–2,2 g/kg → ${m.min_g}–${m.max_g} g`);
+  ok(metaProteina(80, "recomposicao")!.min_g === 160, "recomposição: mínimo 2,0 g/kg");
+  ok(metaProteina(null, "hipertrofia") === null, "sem peso: sem meta");
+  const pck = (n: number, g?: number) => ({ ...ck(n, "23:00", "07:00"), proteina_g: g });
+  const boa = serieDias([0, 1, 2, 3].map((n) => pck(n, 150)), HOJE, 7);
+  const aP = avaliarProteina(boa, m, 7)!;
+  ok(aP.titulo === "Proteína em dia" && aP.urgencia === "info", `4 dias com 150 g: ${aP.titulo}`);
+  const baixa = serieDias([0, 1, 2, 3].map((n) => pck(n, 90)), HOJE, 7);
+  const aB = avaliarProteina(baixa, m, 7)!;
+  ok(aB.titulo === "Proteína abaixo da meta" && aB.urgencia === "atencao" && /Faltam em média 40 g/.test(aB.dica ?? ""), `90 g/dia: ${aB.dica}`);
+  ok(avaliarProteina(serieDias([pck(0, 90)], HOJE, 7), m, 7) === null, "só 1 dia registrado: ainda sem avaliação");
+  for (const a of [aP, aB]) {
+    const p = problemas(`${a.titulo} ${a.porque} ${a.dica ?? ""}`);
+    ok(p.length === 0, `texto de proteína limpo${p.length ? " → " + p.join(", ") : ""}`);
+  }
 }
 
 console.log("\nexemplos:");

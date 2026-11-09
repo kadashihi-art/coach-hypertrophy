@@ -6,6 +6,7 @@ import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import type {
   Checkin,
   DecisaoProgressao,
+  DesempenhoSessao,
   EstadoExercicio,
   GrupoMuscular,
   Prescricao,
@@ -16,6 +17,8 @@ import { incrementoCargaKg, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { roundToStep } from "./ancorar-carga";
 import { e1rmEpley, melhorE1rm } from "./e1rm";
 import { recordeDasSeries, RECORDE_VAZIO } from "./recordes";
+import { ehSemanaDeload } from "@/lib/plan/mesociclo";
+import { calibrarSerie } from "./proximidade-falha";
 
 export type ProgressionInput = {
   exercicio_id: string;
@@ -26,7 +29,7 @@ export type ProgressionInput = {
   checkin?: Checkin | null;
   /** Volume efetivo do grupo nas últimas 2 semanas (mais recente primeiro). */
   volume_semanal_grupo?: VolumeSemanal[];
-  /** Semana atual e total do mesociclo (R6). */
+  /** Semana EFETIVA (mesocicloEfetivo) e total do mesociclo (R6). */
   mesociclo?: { semana_atual: number; total_semanas: number; foco: string };
   /** Técnica da prescrição (R8). */
   tecnica?: string;
@@ -95,6 +98,111 @@ function base(
   };
 }
 
+/** Margem mínima de e1RM (kg) para contar como melhora, evitando ruído de arredondamento. */
+const E1RM_EPS = 0.05;
+
+/**
+ * Resumo da sessão para medir progresso: carga da âncora, reps nas séries dessa
+ * carga (na ordem) e melhor e1RM. Preparatórias e séries sem reps ficam de fora.
+ * Peso corporal (0 kg) entra só pelas reps. null sem série válida.
+ */
+export function desempenhoDaSessao(series: RegistroSerie[]): DesempenhoSessao | null {
+  const work = trabalho(series)
+    .filter((s) => s.reps > 0)
+    .slice()
+    .sort((a, b) => a.numero - b.numero);
+  const anchor = pickTopSetAnchor(work);
+  if (!anchor) return null;
+  const carga = anchor.carga_kg;
+  return {
+    carga_kg: carga,
+    reps_na_carga: work.filter((s) => s.carga_kg >= carga - 1e-9).map((s) => s.reps),
+    e1rm_kg: recordeDasSeries(work).e1rm_estimado_kg,
+  };
+}
+
+/**
+ * Houve progresso em relação à sessão anterior? Conta como progresso:
+ * - e1RM da melhor série maior (mais carga ou mais reps); ou
+ * - mesma carga (ou mais) e mais reps somadas nas séries comparáveis (as primeiras N,
+ *   N = menor número de séries feitas nessa carga entre as duas sessões).
+ * Fazer +1 rep na dupla progressão (R2) é progresso — não é platô.
+ */
+export function houveProgresso(
+  atual: DesempenhoSessao | null,
+  anterior: DesempenhoSessao | null | undefined,
+): boolean {
+  if (!atual || !anterior) return false;
+  if (atual.e1rm_kg > anterior.e1rm_kg + E1RM_EPS) return true;
+  if (atual.carga_kg + 1e-9 < anterior.carga_kg) return false;
+  const k = Math.min(atual.reps_na_carga.length, anterior.reps_na_carga.length);
+  if (k === 0) return false;
+  const soma = (xs: number[]) => xs.slice(0, k).reduce((a, b) => a + b, 0);
+  const sa = soma(atual.reps_na_carga);
+  const sp = soma(anterior.reps_na_carga);
+  return atual.carga_kg > anterior.carga_kg + 1e-9 ? sa >= sp : sa > sp;
+}
+
+/**
+ * Platô (R5): 3+ sessões seguidas sem progresso. Só vale com o desempenho registrado:
+ * em estado antigo o contador contava +1 rep como "sem progresso" e não é confiável.
+ */
+export function emPlato(
+  estado: Pick<EstadoExercicio, "sessoes_sem_progresso" | "ultimo_desempenho">,
+): boolean {
+  return estado.sessoes_sem_progresso >= 3 && !!estado.ultimo_desempenho;
+}
+
+/** Carga do deload: ~−10% no degrau do equipamento. Se o degrau não deixa descer, mantém (o deload fica nas séries). */
+export function cargaDeloadKg(carga: number, step: number): number {
+  const r = roundToStep(carga * 0.9, step);
+  return r < carga ? r : carga;
+}
+
+/**
+ * Salto relativo máximo para subir "no automático". O degrau do equipamento é fixo
+ * (2,5 kg superiores / 5 kg inferiores): em carga leve ele vira um salto enorme
+ * (6 → 8,5 kg = +42% numa elevação lateral). Acima disto, a subida só sai quando cabe.
+ */
+export const SALTO_RELATIVO_MAX = 0.1;
+/** Reps além do topo da faixa aceitas antes de subir mesmo com salto grande (evita travar para sempre). */
+export const REPS_ALEM_DO_TOPO_MAX = 4;
+
+/** Melhor e1RM com RIR (reps até a falha ≈ reps + RIR) das séries. 0 sem carga externa. */
+function e1rmComRir(series: RegistroSerie[]): number {
+  let best = 0;
+  for (const s of series) {
+    if (!(s.carga_kg > 0) || !(s.reps > 0)) continue;
+    best = Math.max(best, s.carga_kg * (1 + (s.reps + Math.max(0, s.rir_percebido)) / 30));
+  }
+  return best;
+}
+
+/**
+ * A carga nova cabe? Salto ≤ SALTO_RELATIVO_MAX: sim. Salto maior: só quando a conta
+ * (e1RM com RIR, Epley) prevê o piso da faixa na carga nova com o RIR alvo, ou quando a
+ * 1ª série já passou REPS_ALEM_DO_TOPO_MAX reps do topo. Sem carga externa: sempre cabe.
+ */
+export function subidaCabe(args: {
+  cargaKg: number;
+  novaKg: number;
+  series: RegistroSerie[];
+  faixaReps: [number, number];
+  rirAlvo: number;
+}): { cabe: boolean; salto: number; repsPrevistas: number | null } {
+  const { cargaKg, novaKg, series, faixaReps, rirAlvo } = args;
+  if (!(cargaKg > 0) || !(novaKg > cargaKg)) return { cabe: true, salto: 0, repsPrevistas: null };
+  const salto = (novaKg - cargaKg) / cargaKg;
+  if (salto <= SALTO_RELATIVO_MAX + 1e-9) return { cabe: true, salto, repsPrevistas: null };
+  const e1 = e1rmComRir(series);
+  const repsPrevistas = e1 > 0 ? Math.floor(30 * (e1 / novaKg - 1) - Math.max(0, rirAlvo) + 1e-9) : 0;
+  const primeira = [...series].sort((a, b) => a.numero - b.numero)[0];
+  const passouDoTopo = !!primeira && primeira.reps >= faixaReps[1] + REPS_ALEM_DO_TOPO_MAX;
+  return { cabe: repsPrevistas >= faixaReps[0] || passouDoTopo, salto, repsPrevistas };
+}
+
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+
 /** Carga realmente levantada na série-âncora (top → trabalho mais pesada). null sem série válida. */
 export function cargaRealDaSessao(series: RegistroSerie[]): number | null {
   const a = pickTopSetAnchor(series.filter((s) => s.carga_kg > 0 && s.reps > 0));
@@ -162,7 +270,41 @@ export function calibrarCargaInicial(args: {
 export function decidirProgressao(
   input: ProgressionInput,
 ): DecisaoProgressao {
-  const series = trabalho(input.series);
+  const { series, ajustes } = rirPelaQueda(trabalho(input.series));
+  const d = decidir(input, series);
+  if (ajustes.length === 0 || !REGRAS_COM_RIR.has(d.regra)) return d;
+  const txt = ajustes
+    .map((a) => `série ${a.numero} marcada RIR ${a.relatado}, considerei ${a.considerado}`)
+    .join("; ");
+  return { ...d, motivo: `${d.motivo} (RIR ajustado pela queda de reps: ${txt}.)` };
+}
+
+/** Regras cuja decisão depende do RIR (as outras não ganham a nota de RIR ajustado). */
+const REGRAS_COM_RIR = new Set<DecisaoProgressao["regra"]>(["R1", "R2", "R3", "R8", "R12"]);
+
+/**
+ * RIR de cada série corrigido pela queda de reps na série seguinte com a mesma carga
+ * (calibrarSerie, sem e1RM histórico). Ex.: marcou RIR 3 e caiu 3+ reps na próxima → estava
+ * perto; marcou RIR ≤ 1 e repetiu as reps → sobrava. Só muda com sinal forte (2+ reps).
+ * O e1RM histórico fica de fora de propósito: ele fica velho justo quando a pessoa melhora,
+ * e leria um PR como "mais perto da falha", freando a progressão.
+ */
+export function rirPelaQueda(series: RegistroSerie[]): {
+  series: RegistroSerie[];
+  ajustes: { numero: number; relatado: number; considerado: number }[];
+} {
+  const ord = [...series].sort((a, b) => a.numero - b.numero);
+  const ajustes: { numero: number; relatado: number; considerado: number }[] = [];
+  const out = ord.map((s, i) => {
+    const c = calibrarSerie({ serie: s, proxima: ord[i + 1] ?? null });
+    if (c.rir_interpretado === s.rir_percebido) return s;
+    ajustes.push({ numero: s.numero, relatado: s.rir_percebido, considerado: c.rir_interpretado });
+    return { ...s, rir_percebido: c.rir_interpretado };
+  });
+  return { series: out, ajustes };
+}
+
+function decidir(input: ProgressionInput, series: RegistroSerie[]): DecisaoProgressao {
   const estado = input.estado;
   const [piso, topo] = estado.faixa_reps;
   const inc = incrementoCargaKg(input.grupo_primario);
@@ -238,30 +380,28 @@ export function decidirProgressao(
     );
   }
 
-  // —— R6 Deload programado ——
+  // —— R6 Deload programado (última semana do bloco) ——
+  // A carga do dia já vem −10% pelo ajuste do check-in; aqui a base do exercício fica
+  // guardada (não cai a cada treino da semana) para a volta depois do deload.
   const meso = input.mesociclo;
-  if (
-    meso &&
-    meso.semana_atual >= meso.total_semanas - 1 &&
-    (meso.foco === "acumulo" || meso.foco === "intensificacao")
-  ) {
+  if (ehSemanaDeload(meso)) {
     return base(
       input,
       "R6",
       "deload",
-      Math.round(carga * 0.9 * 10) / 10,
-      `Semana ${meso.semana_atual} de ${meso.total_semanas} (foco ${meso.foco}). Deload: −10% carga, −2 séries.`,
+      estado.carga_atual_kg,
+      `Semana ${meso!.semana_atual} de ${meso!.total_semanas} (foco ${meso!.foco}): deload programado. Treino do dia −10% de carga; a base de ${estado.carga_atual_kg} kg fica guardada para a próxima semana.`,
       "contextual",
     );
   }
 
   // —— R5 Deload por platô ——
-  if (estado.sessoes_sem_progresso >= 3) {
+  if (emPlato(estado)) {
     return base(
       input,
       "R5",
       "deload",
-      Math.round(carga * 0.9 * 10) / 10,
+      cargaDeloadKg(carga, inc),
       "3 sessões consecutivas sem progressão. Deload: −10% carga, −1 série, 1 semana.",
       "moderado",
     );
@@ -337,9 +477,26 @@ export function decidirProgressao(
       );
     }
 
+    // Salto grande em carga leve: segura a carga e progride por reps até a carga nova caber.
+    const novaTop = Math.round((topKg + inc) * 10) / 10;
+    const querSubir = rir <= 1 || (reps >= topo && rir <= 2);
+    if (querSubir) {
+      const c = subidaCabe({ cargaKg: topKg, novaKg: novaTop, series: [anchor], faixaReps: estado.faixa_reps, rirAlvo: estado.rir_alvo });
+      if (!c.cabe) {
+        return base(
+          input,
+          "R8",
+          "manter_carga",
+          topKg,
+          `Top set ${topKg} kg pronto pra subir, mas ${inc} kg é um salto de ${pct(c.salto)} nessa carga. Manter ${topKg} kg e buscar mais reps (até ${topo + REPS_ALEM_DO_TOPO_MAX}) antes de subir.`,
+          "moderado",
+        );
+      }
+    }
+
     // RIR ≤ 1 e reps OK → sobe (Iury: RIR≤1 sobe)
     if (rir <= 1) {
-      const nova = Math.round((topKg + inc) * 10) / 10;
+      const nova = novaTop;
       const boNova = sugerirBackOffKg(nova, input.grupo_primario);
       return base(
         input,
@@ -354,7 +511,7 @@ export function decidirProgressao(
 
     // R1-elegível na banda R8: topo da faixa + RIR ≤ 2
     if (reps >= topo && rir <= 2) {
-      const nova = Math.round((topKg + inc) * 10) / 10;
+      const nova = novaTop;
       const boNova = sugerirBackOffKg(nova, input.grupo_primario);
       return base(
         input,
@@ -394,9 +551,14 @@ export function decidirProgressao(
   const abaixoPiso = series.filter((s) => s.reps < piso).length;
   // Estrutura trabalho → top → back-off: R1–R3 avaliam o top (reps/RIR do top vs alvo).
   const tops = series.filter((s) => s.tipo_serie === "top_set");
-  const avaliadas = tops.length > 0 ? tops : series;
+  // Sem top set, avalia as séries de trabalho (back-off é mais leve de propósito e não entra).
+  const semBackOff = series.filter((s) => s.tipo_serie !== "back_off");
+  const avaliadas = tops.length > 0 ? tops : semBackOff.length > 0 ? semBackOff : series;
+  // Série avaliada feita com menos carga que a âncora não prova a carga cheia.
+  const maisLeves = avaliadas.filter((s) => s.carga_kg < carga - 0.01);
   const rirBaixo = avaliadas.filter((s) => s.rir_percebido < estado.rir_alvo).length;
-  const todasNaFaixa = avaliadas.every((s) => s.reps >= piso && s.reps <= topo);
+  // Reps acima do topo não tiram da faixa (acontece quando a subida espera um salto caber).
+  const todasNaFaixa = avaliadas.every((s) => s.reps >= piso);
   const todasNoTopo = avaliadas.every((s) => s.reps >= topo);
   const ultima = avaliadas[avaliadas.length - 1]!;
   const rirUltimaOk = ultima.rir_percebido >= estado.rir_alvo;
@@ -417,16 +579,63 @@ export function decidirProgressao(
   }
 
   // —— R1 Dupla progressão ——
-  if (todasNoTopo && avaliadas.every((s) => s.reps >= piso) && rirUltimaOk) {
-    // Muita sobra (RIR ≥ alvo + 2 em todas) → 2 degraus; senão 1. Nunca mais que isso por sessão.
-    const folga = avaliadas.every((s) => s.rir_percebido >= estado.rir_alvo + 2);
-    const nova = Math.round((carga + (folga ? 2 : 1) * inc) * 10) / 10;
+  // Estrito: todas no topo e RIR da última ≥ alvo.
+  // Tolerante (a fadiga derruba as séries de trás na mesma carga): 1ª série no topo com
+  // RIR ≥ alvo, as outras a no máximo 2 reps do topo, perdendo em média até 1 rep por
+  // série, e a última com RIR ≥ alvo − 1.
+  const ordenadas = [...avaliadas].sort((a, b) => a.numero - b.numero);
+  const primeira = ordenadas[0]!;
+  const ultimaOrd = ordenadas[ordenadas.length - 1]!;
+  const somaReps = ordenadas.reduce((a, x) => a + x.reps, 0);
+  const r1Estrito = todasNoTopo && rirUltimaOk;
+  const r1Tolerante =
+    ordenadas.length >= 2 &&
+    primeira.reps >= topo &&
+    primeira.rir_percebido >= estado.rir_alvo &&
+    ordenadas.every((x) => x.reps >= Math.max(piso, topo - 2)) &&
+    somaReps >= topo * ordenadas.length - (ordenadas.length - 1) &&
+    ultimaOrd.rir_percebido >= estado.rir_alvo - 1;
+  if ((r1Estrito || r1Tolerante) && maisLeves.length > 0) {
+    const ex = maisLeves[0]!;
+    return base(
+      input,
+      "R2",
+      "manter_carga",
+      carga,
+      `Reps no topo, mas a série ${ex.numero} foi com ${ex.carga_kg} kg (abaixo de ${carga} kg). Pra subir, todas as séries precisam sair na carga cheia. Manter ${carga} kg.`,
+      "forte",
+    );
+  }
+  if (r1Estrito || r1Tolerante) {
+    const um = Math.round((carga + inc) * 10) / 10;
+    const c1 = subidaCabe({ cargaKg: carga, novaKg: um, series: avaliadas, faixaReps: estado.faixa_reps, rirAlvo: estado.rir_alvo });
+    if (!c1.cabe) {
+      return base(
+        input,
+        "R2",
+        "manter_carga",
+        carga,
+        `Pronto pra subir, mas ${inc} kg é um salto de ${pct(c1.salto)} em ${carga} kg. Manter a carga e buscar mais reps (até ${topo + REPS_ALEM_DO_TOPO_MAX}) antes de subir.`,
+        "forte",
+      );
+    }
+    // Muita sobra (RIR ≥ alvo + 2 em todas, no estrito) → 2 degraus, se o salto total couber; senão 1.
+    const folga = r1Estrito && avaliadas.every((x) => x.rir_percebido >= estado.rir_alvo + 2);
+    const dois = Math.round((carga + 2 * inc) * 10) / 10;
+    const doisCabe =
+      folga &&
+      (carga <= 0 ||
+        ((dois - carga) / carga <= SALTO_RELATIVO_MAX + 1e-9 &&
+          subidaCabe({ cargaKg: carga, novaKg: dois, series: avaliadas, faixaReps: estado.faixa_reps, rirAlvo: estado.rir_alvo }).cabe));
+    const nova = doisCabe ? dois : um;
     return base(
       input,
       "R1",
       "subir_carga",
       nova,
-      `Todas as séries no topo da faixa (${topo}) e RIR da última ≥ alvo (${estado.rir_alvo}). Subir ${inc} kg; reiniciar faixa.`,
+      r1Estrito
+        ? `Todas as séries no topo da faixa (${topo}) e RIR da última ≥ alvo (${estado.rir_alvo}). Subir ${Math.round((nova - carga) * 10) / 10} kg; reiniciar faixa.`
+        : `1ª série no topo (${topo}) com RIR ${primeira.rir_percebido} e as outras perto dele (${ordenadas.map((x) => x.reps).join("/")}). Subir ${inc} kg; reiniciar faixa.`,
       "forte",
       true,
     );
@@ -513,7 +722,25 @@ export function aplicarDecisao(
   decisao: DecisaoProgressao,
   series?: RegistroSerie[],
 ): EstadoExercicio {
-  const progrediu = decisao.acao === "subir_carga";
+  // Progresso = subir carga OU melhorar o desempenho (reps/e1RM) frente à sessão anterior.
+  const atual = series ? desempenhoDaSessao(series) : null;
+  const desempAnterior = estado.ultimo_desempenho ?? null;
+  const progrediuDesempenho = desempAnterior
+    ? houveProgresso(atual, desempAnterior)
+    : // Estado antigo sem desempenho: compara com o PR real (se houver).
+      !!atual && estado.pr_reps > 0 && atual.e1rm_kg > estado.e1rm_estimado_kg + E1RM_EPS;
+  const progrediu = decisao.acao === "subir_carga" || progrediuDesempenho;
+  // Deload e calibração recomeçam a contagem; dor (R7) e prontidão baixa (R9) não contam como platô.
+  const zera = progrediu || decisao.acao === "deload" || decisao.regra === "R12";
+  const neutra = decisao.regra === "R7" || decisao.regra === "R9";
+  const sessoesSemProgresso = zera
+    ? 0
+    : !desempAnterior
+      ? // Contador antigo não é confiável (contava +1 rep como platô): recomeça daqui.
+        neutra ? 0 : 1
+      : neutra
+        ? estado.sessoes_sem_progresso
+        : estado.sessoes_sem_progresso + 1;
   // R12 sem série válida não calibra de fato: mantém a pendência para a próxima
   // sessão (só quando existe carga externa; peso corporal/core já está calibrado).
   const calibracaoAdiada =
@@ -541,9 +768,8 @@ export function aplicarDecisao(
       faixa_reps: estado.faixa_reps,
       rir_alvo: estado.rir_alvo,
     },
-    sessoes_sem_progresso: progrediu
-      ? 0
-      : estado.sessoes_sem_progresso + 1,
+    sessoes_sem_progresso: sessoesSemProgresso,
+    ultimo_desempenho: atual ?? desempAnterior,
     ultima_progressao_em: progrediu
       ? decisao.data
       : estado.ultima_progressao_em,

@@ -30,6 +30,7 @@ import {
 import { inicioDeUso } from "@/lib/inicio";
 import { calcularDuracaoTreino } from "@/lib/engine/duracao-treino";
 import { aplicarRecordes, registrosValidos, seriesDaPrescricao } from "@/lib/engine/recordes";
+import { mesocicloEfetivo } from "@/lib/plan/mesociclo";
 
 export function concluirSessao(
   s: AppState,
@@ -47,6 +48,8 @@ export function concluirSessao(
         (c) => c.data === (sess.data ?? new Date().toISOString().slice(0, 10)),
       );
       const seriesSessao = s.registros.filter((r) => r.sessao_id === sid);
+      // Semana real do bloco no dia do treino (a salva no plano fica sempre em 1).
+      const mesoSessao = mesocicloEfetivo(s, sess.data ?? dataDecisao);
       const novasDecisoes: DecisaoProgressao[] = [];
       let estados = [...s.estados];
       const estadosAntes: EstadoExercicio[] = [];
@@ -96,7 +99,7 @@ export function concluirSessao(
             estado,
             checkin: ck,
             volume_semanal_grupo: vols,
-            mesociclo: s.plano?.mesociclo,
+            mesociclo: mesoSessao ?? undefined,
             tecnica: presc.tecnica,
           }),
           // Data da sessão, não do relógio: o replay usa a mesma referência.
@@ -142,7 +145,7 @@ export function concluirSessao(
         estados_antes: estadosAntes,
         checkin: ck ?? null,
         volumes_semanais_antes: s.volumes_semanais,
-        mesociclo: s.plano?.mesociclo ?? null,
+        mesociclo: mesoSessao,
         semana_iso: semanaVolume,
       };
 

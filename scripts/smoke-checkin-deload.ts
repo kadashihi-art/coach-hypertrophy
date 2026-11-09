@@ -179,6 +179,7 @@ const estadoPlatô: EstadoExercicio = {
   ultimo_back_off_kg: 52.5,
   ultimo_rir: 2,
   ultima_sessao_em: null,
+  ultimo_desempenho: { carga_kg: 60, reps_na_carga: [8, 8, 8], e1rm_kg: 76 },
   atualizado_em: new Date().toISOString(),
 };
 const r5 = avaliarCheckinDeload({

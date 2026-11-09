@@ -11,8 +11,11 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
 
 ## Mapa
 - `src/lib/engine/`: motor de progressão. `progression.ts` aplica as regras R1–R12 (brief-produto-v1 §6). Aqui também ficam volume, e1rm, deload/check-in, adaptação ao vivo e alertas de volume.
+  - `rampa-volume.ts`: +séries ao longo do bloco (ajuste só do dia, em `ajuste_series_dia`; a base do plano não muda).
   - `tecnicas.ts`: técnicas avançadas opcionais na última série (regras, carga do drop, volume conservador). Ver `docs/tecnicas-avancadas.md`.
 - `src/lib/plan/`: geração do plano. `gerar-plano.ts` e `estrutura.ts` montam o split e o volume. `parq.ts` é o gate do PAR-Q+. `coleta.ts` faz o onboarding conversacional (schema, mais `validarEstrategia`). `negociacao.ts` traz os ajustes propostos pelo coach. Também ficam aqui `remount-plano.ts`, `racional.ts` e `calendario.ts`.
+  - `sugestao-exercicio.ts`: sinais do histórico (já fez, tendência, travado, dor recente) para ranquear a troca e desempatar o gerador ao refazer o plano.
+  - `mesociclo.ts`: semana real do bloco pela data (`mesocicloEfetivo`). O `semana_atual` salvo fica em 1; use sempre o efetivo. Deload programado (R6) só na última semana.
 - `src/lib/nivel/reavaliacao.ts`: reavaliação de nível (determinística, só leitura). Cartão em `/hoje` (`ReavaliacaoNivelCard`); muda o plano só com "Confirmar e remontar". Ver `docs/reavaliacao-nivel.md`.
 - `src/lib/llm/`: coach (LLM).
   - `coach.ts` tem os prompts e o provider HTTP.

@@ -24,6 +24,7 @@ import {
 } from "@/lib/plan/gerar-plano";
 import type { RestricaoKey } from "@/lib/plan/restricoes";
 import { labelGrupo } from "@/lib/labels";
+import { pontosHistorico, sinalDoExercicio, textoMemoria, type FonteHistorico } from "@/lib/plan/sugestao-exercicio";
 
 const EQUIP_TXT: Record<string, string> = {
   barra: "a barra",
@@ -49,6 +50,12 @@ export type AlternativaTroca = {
   explicacao: string;
   /** true quando os músculos auxiliares mudam (o músculo-alvo continua igual). */
   secundarios_mudam: boolean;
+  /** O que o app lembra desse exercício ("Você já fez: 40 kg × 10 reps…" / aviso de dor). null = nunca fez. */
+  memoria?: string | null;
+  /** Primeira da lista quando o histórico indica uma escolha clara. */
+  recomendado?: boolean;
+  /** Por que é a recomendada (texto curto). */
+  motivo_recomendacao?: string | null;
 };
 
 export type PreviaTroca = {
@@ -113,13 +120,18 @@ function explicar(de: Exercicio, para: Exercicio, perfil: Perfil | null | undefi
   return t;
 }
 
-/** Alternativas do MESMO padrão e MESMO músculo-alvo, respeitando equipamento e restrições. */
+/**
+ * Alternativas do MESMO padrão e MESMO músculo-alvo, respeitando equipamento e restrições.
+ * Com `historico`, a ordem usa o que você já fez: exercício conhecido e evoluindo sobe,
+ * travado ou caindo desce um pouco, com dor recente vai pro fim (com aviso).
+ */
 export function listarAlternativasTroca(args: {
   exercicioId: string;
   catalog: Exercicio[];
   perfil: Perfil | null | undefined;
   /** ids já presentes na(s) sessão(ões) onde a troca acontece (evita duplicar). */
   excluir?: string[];
+  historico?: FonteHistorico;
 }): AlternativaTroca[] {
   const de = args.catalog.find((e) => e.id === args.exercicioId);
   if (!de) return [];
@@ -138,11 +150,35 @@ export function listarAlternativasTroca(args: {
       secundarios_mudam: !mesmoConjunto(e.grupos_secundarios, de.grupos_secundarios),
     }));
   // variações do mesmo exercício primeiro, depois mesmos auxiliares (volume idêntico), depois o resto
-  return lista.sort(
+  const base = lista.sort(
     (a, b) =>
       Number(!mesmaFamilia(de, a.exercicio)) - Number(!mesmaFamilia(de, b.exercicio)) ||
       Number(a.secundarios_mudam) - Number(b.secundarios_mudam),
   );
+  if (!args.historico) return base;
+  const hist = args.historico;
+  // Pontos: estrutura (família +6, mesmos auxiliares +3) + histórico. Empate mantém a ordem acima.
+  const pont = base.map((a, i) => {
+    const sinal = sinalDoExercicio(a.exercicio, hist);
+    const pts =
+      (mesmaFamilia(de, a.exercicio) ? 6 : 0) + (a.secundarios_mudam ? 0 : 3) + pontosHistorico(sinal);
+    return { a: { ...a, memoria: textoMemoria(sinal, a.exercicio) }, pts, i, sinal };
+  });
+  pont.sort((x, y) => y.pts - x.pts || x.i - y.i);
+  const top = pont[0];
+  const feito = top?.sinal.memoria && top.sinal.memoria.sessoes > 0 && !top.sinal.dor_em && !top.sinal.travado;
+  return pont.map((p, idx) => {
+    if (idx !== 0 || !feito) return p.a;
+    const tend = p.sinal.memoria?.tendencia_pct ?? null;
+    return {
+      ...p.a,
+      recomendado: true,
+      motivo_recomendacao:
+        tend != null && tend >= 0.5
+          ? "Você já faz e vem evoluindo nele: dá pra seguir a progressão de onde parou."
+          : "Você já fez e eu sei sua carga: começa sem chute.",
+    };
+  });
 }
 
 /** Volume semanal planejado por músculo (diretas + 0,5×indiretas), a partir das prescrições. */

@@ -39,3 +39,15 @@ O feedback do check-in (`feedbackSono`) também perdeu o código de regra que ap
 - National Academies (IOM). *Dietary Reference Intakes for Water, Potassium, Sodium, Chloride, and Sulfate*, 2005.
 - ACSM. *Exercise and Fluid Replacement* (Sawka MN et al., Med Sci Sports Exerc, 2007;39(2):377–390).
 - A regra prática de 30–35 ml/kg/dia é usada em orientação clínica e nutricional como estimativa; aqui é só referência de meta, sem efeito no treino.
+
+## Proteína
+Código: `metaProteina`, `avaliarProteina` em `src/lib/sono-agua/avaliacao.ts`. Só leitura: não muda carga, séries nem progressão.
+- Meta diária por objetivo, em g por kg do peso mais recente (check-in, senão perfil), arredondada a 5 g:
+  hipertrofia e força 1,6–2,2 · recomposição 2,0–2,4 · saúde 1,2–1,6.
+- O dia bate a meta com pelo menos o mínimo da faixa. O check-in pergunta a proteína do dia anterior (opcional).
+- Avaliação da semana com a mesma régua da água: 3+ dias registrados (7 dias) ou 5+ (14 dias); 70%+ dos dias na meta = em dia.
+
+Fontes:
+- Morton RW et al. *A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength.* Br J Sports Med, 2018;52(6):376–384 — ganho para de subir perto de 1,6 g/kg/dia (IC 95% até ~2,2).
+- Helms ER et al. *A systematic review of dietary protein during caloric restriction in resistance trained lean athletes.* Int J Sport Nutr Exerc Metab, 2014;24(2):127–138 — 2,3–3,1 g/kg de massa magra em déficit.
+- Jäger R et al. *ISSN Position Stand: protein and exercise.* J Int Soc Sports Nutr, 2017;14:20 — 1,4–2,0 g/kg/dia; 20–40 g por refeição.

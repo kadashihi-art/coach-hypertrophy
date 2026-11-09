@@ -1,7 +1,7 @@
 "use client";
 
 import { labelSplit, humanizarSplits } from "@/lib/plan/split-label";
-import { acentuar, labelEquipamento, labelFoco, labelGrupo, labelObjetivo } from "@/lib/labels";
+import { acentuar, labelEquipamento, labelFoco, labelGrupo, labelObjetivo, rotuloSemanaBloco } from "@/lib/labels";
 import { VolumeBar } from "@/components/VolumeBar";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { useEffect, useMemo, useState } from "react";
@@ -15,7 +15,9 @@ import {
   EvidenciaBadge,
   SectionTitle,
 } from "@/components/ui";
-import { proximaSessao } from "@/lib/plan/proxima-sessao";
+import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
+import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
+import { useClientValue } from "@/lib/use-client-value";
 import { faixaVolume, VOLUME_MAX } from "@/lib/domain";
 import { narrarCargaPrescricao } from "@/lib/llm/coach";
 import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
@@ -35,6 +37,9 @@ export default function PlanoPage() {
   const router = useRouter();
   const plano = state.plano;
   const next = proximaSessao(state);
+  // Semana real do bloco (a salva no plano fica em 1). Data só no cliente, com o estado pronto.
+  const hojePlano = useClientValue(() => hojeIsoSaoPaulo(), "");
+  const meso = mesocicloEfetivo(state, hojePlano || null) ?? plano?.mesociclo;
   const [banner, setBanner] = useState(false);
   const [barsOn, setBarsOn] = useState(false);
   const [trocar, setTrocar] = useState<string | null>(null);
@@ -148,19 +153,19 @@ export default function PlanoPage() {
           <div>
             <p className="text-xs text-muted">Mesociclo</p>
             <p className="font-semibold">
-              Semana {plano.mesociclo.semana_atual}/{plano.mesociclo.total_semanas}
+              {rotuloSemanaBloco(meso ?? plano.mesociclo)}
             </p>
           </div>
-          <Badge tone="accent">{labelFoco(plano.mesociclo.foco)}</Badge>
+          <Badge tone="accent">{labelFoco(focoDoDia(meso ?? plano.mesociclo))}</Badge>
         </div>
         <div className="mt-3 flex gap-1">
           {Array.from({ length: plano.mesociclo.total_semanas }).map((_, i) => (
             <div
               key={i}
               className={`h-2 flex-1 rounded-full ${
-                i + 1 < plano.mesociclo.semana_atual
+                i + 1 < (meso ?? plano.mesociclo).semana_atual
                   ? "bg-accent/40"
-                  : i + 1 === plano.mesociclo.semana_atual
+                  : i + 1 === (meso ?? plano.mesociclo).semana_atual
                     ? "bg-accent"
                     : "bg-ink-700"
               }`}

@@ -430,6 +430,7 @@ function scoreExercise(
   equips: Set<string>,
   restr: Set<RestricaoKey>,
   used: Set<string>,
+  historico?: Map<string, number>,
 ): number {
   if (used.has(ex.id)) return -1000;
   if (!exerciseAllowed(ex, equips, restr)) return -1000;
@@ -467,6 +468,9 @@ function scoreExercise(
   const ei = prefOrder.indexOf(ex.equipamento);
   if (ei >= 0) score += (prefOrder.length - ei);
 
+  // Histórico (só ao refazer o plano): já fez e evolui sobe; travado desce; dor recente afunda.
+  score += historico?.get(ex.id) ?? 0;
+
   return score;
 }
 
@@ -486,6 +490,7 @@ function pickForSlot(
   equips: Set<string>,
   restr: Set<RestricaoKey>,
   used: Set<string>,
+  historico?: Map<string, number>,
 ): Exercicio | null {
   const tryPadroes: Padrao[] = [slot.padrao, ...(FALLBACK_PADROES[slot.padrao] ?? [])];
   for (const padrao of tryPadroes) {
@@ -495,7 +500,7 @@ function pickForSlot(
     let bestScore = 0;
     for (const ex of catalog) {
       if (ex.base_id) continue; // variações só entram por escolha do usuário
-      const s = scoreExercise(ex, trySlot, equips, restr, used);
+      const s = scoreExercise(ex, trySlot, equips, restr, used, historico);
       if (s > bestScore) {
         bestScore = s;
         best = ex;
@@ -665,6 +670,10 @@ function buildJustificativa(args: {
 export function gerarPlanoFromPerfil(
   perfil: Perfil,
   catalog: Exercicio[],
+  opts: {
+    /** Pontos por exercício vindos do histórico (pontosHistoricoPorExercicio). Ausente = plano novo, sem viés. */
+    historico?: Map<string, number>;
+  } = {},
 ): PlanoGerado {
   if (parqBloqueiaPrescricao(perfil)) {
     throw new Error(PARQ_BLOQUEIO_MSG);
@@ -727,7 +736,7 @@ export function gerarPlanoFromPerfil(
 
     for (const slot of tpl.slots) {
       if (prescricoes.length >= targetN) break;
-      const ex = pickForSlot(slot, catalog, equips, restr, used);
+      const ex = pickForSlot(slot, catalog, equips, restr, used, opts.historico);
       if (!ex) {
         if (slot.prefer?.[0]) omittedNotes.push(`sem sub para ${slot.prefer[0]}`);
         continue;
@@ -823,7 +832,7 @@ export function gerarPlanoFromPerfil(
     // no primeiro treino compatível de cada fase. Nada muda pra quem não pediu.
     for (const g of opcionaisPendentes(perfil, tpl, opcionaisFeitos)) {
       const slot = SLOT_OPCIONAL[g];
-      const ex = pickForSlot(slot, catalog, equips, restr, used);
+      const ex = pickForSlot(slot, catalog, equips, restr, used, opts.historico);
       if (!ex) continue;
       used.add(ex.id);
       opcionaisFeitos.add(`${faseDoTemplate(tpl.id)}:${g}`);

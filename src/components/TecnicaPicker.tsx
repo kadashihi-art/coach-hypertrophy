@@ -1,5 +1,6 @@
 "use client";
 
+import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { useState } from "react";
 import type { TecnicaFinal } from "@/lib/domain";
 import { useApp } from "@/components/AppProvider";
@@ -37,7 +38,7 @@ export function TecnicaPicker({
     registros: state.registros,
     hojeIso,
     checkin: state.checkins.find((c) => c.data === hojeIso) ?? null,
-    deload: state.plano?.mesociclo.foco === "deload",
+    deload: focoDoDia(mesocicloEfetivo(state, hojeIso)) === "deload",
   });
   const atual = valor ?? null;
   const cheio = !atual && usadas >= LIMITE_TECNICAS_SESSAO;

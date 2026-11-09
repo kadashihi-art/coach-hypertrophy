@@ -44,7 +44,16 @@ export function TrocarExercicioSheet({
 
   const de = state.exercicios.find((e) => e.id === deId) ?? null;
   const alternativas = useMemo(
-    () => (deId ? listarAlternativasTroca({ exercicioId: deId, catalog: state.exercicios, perfil: state.perfil, excluir: idsNasSessoesDe(state, deId) }) : []),
+    () =>
+      deId
+        ? listarAlternativasTroca({
+            exercicioId: deId,
+            catalog: state.exercicios,
+            perfil: state.perfil,
+            excluir: idsNasSessoesDe(state, deId),
+            historico: { registros: state.registros, estados: state.estados, hojeIso: new Date().toISOString() },
+          })
+        : [],
     [deId, state],
   );
   const previa = useMemo(() => (deId && paraId ? previaTroca(state, deId, paraId) : null), [deId, paraId, state]);
@@ -122,7 +131,7 @@ export function TrocarExercicioSheet({
               </p>
             ) : (
               <div className="motion-stagger space-y-2">
-                <ListaExerciciosOrdenada itens={alternativas} exercicio={(a) => a.exercicio} chave={(a) => a.exercicio.id} render={(a) => (
+                <ListaExerciciosOrdenada sugerido itens={alternativas} exercicio={(a) => a.exercicio} chave={(a) => a.exercicio.id} render={(a) => (
                   <button
                     key={a.exercicio.id}
                     type="button"
@@ -136,7 +145,17 @@ export function TrocarExercicioSheet({
                       <VariacaoInfo ex={a.exercicio} state={state} />
                       <span className="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted">{EQUIP[a.exercicio.equipamento]}</span>
                     </div>
+                    {a.recomendado ? (
+                      <p className="mt-1 text-xs font-semibold text-accent" data-testid="alt-recomendada">
+                        ★ Recomendado · {a.motivo_recomendacao}
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-xs leading-relaxed text-muted">{llm[a.exercicio.id] ?? a.explicacao}</p>
+                    {a.memoria ? (
+                      <p className={`mt-1 text-xs ${a.memoria.startsWith("Você marcou dor") ? "text-warn" : "text-bone-50/80"}`} data-testid="alt-memoria">
+                        {a.memoria}
+                      </p>
+                    ) : null}
                   </button>
                 )} />
               </div>

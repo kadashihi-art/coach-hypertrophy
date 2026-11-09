@@ -34,7 +34,7 @@ import {
 import { seedState } from "@/lib/seed";
 import { useSession } from "next-auth/react";
 import { aplicarEstadoNaPrescricao } from "@/lib/engine/progression";
-import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
+import { hojeIsoSaoPaulo, proximaSessao, sessoesDoPlano } from "@/lib/plan/proxima-sessao";
 import { gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import {
   agendarSessoes,
@@ -73,6 +73,8 @@ import {
   type Rascunho,
 } from "@/lib/plan/editar-treino";
 import { avaliarCheckinDeload } from "@/lib/engine/checkin-deload";
+import { mesocicloEfetivo } from "@/lib/plan/mesociclo";
+import { aplicarRampaVolume, marcarAjusteDoDia, voltarParaBase } from "@/lib/engine/rampa-volume";
 import { incrementoCargaKg } from "@/lib/domain";
 
 type Ctx = {
@@ -416,10 +418,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           data: ck.data,
         });
 
-        // Se R9 sumiu, basePresc já restaurou +1; deload sem R9 mantém
+        // Se R9 sumiu, basePresc já restaurou +1; deload sem R9 mantém.
+        // O ajuste do dia acompanha a mudança (a base do plano não muda).
+        const antes = new Map(active.prescricoes.map((p) => [p.id, p]));
+        const comAjuste = deload.prescricoes.map((p) => {
+          const a = antes.get(p.id);
+          if (!a) return p;
+          const ajuste = (a.ajuste_series_dia ?? 0) + (p.series - a.series);
+          const { ajuste_series_dia: _x, ...rest } = p;
+          void _x;
+          return ajuste ? { ...rest, ajuste_series_dia: ajuste } : rest;
+        });
         sessoes = s.sessoes.map((x) =>
           x.id === active.id
-            ? { ...x, prescricoes: deload.prescricoes }
+            ? { ...x, prescricoes: comAjuste }
             : x,
         );
       }
@@ -508,22 +520,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : s.registros;
 
       const hojeIso = new Date().toISOString().slice(0, 10);
-      const basePresc = sess.prescricoes.map((p) => {
+      // Séries partem sempre da base do plano: o ajuste do treino anterior não acumula.
+      const basePresc = voltarParaBase(sess.prescricoes).map((p) => {
         const est = s.estados.find((e) => e.exercicio_id === p.exercicio_id);
         if (!est) return p;
         return aplicarEstadoNaPrescricao(p, est);
       });
 
       const ckHoje = s.checkins.find((c) => c.data === hojeIso) ?? null;
+      const mesoHoje = mesocicloEfetivo(s, hojeIso);
+      const rampa = aplicarRampaVolume({
+        prescricoes: basePresc,
+        exercicios: s.exercicios,
+        estados: s.estados,
+        mesociclo: mesoHoje,
+        experiencia: s.perfil?.experiencia,
+        checkin: ckHoje,
+        sessoesDaSemana: sessoesDoPlano(s, hojeIsoSaoPaulo()),
+        registros: s.registros,
+        hojeIso,
+      });
       const deload = avaliarCheckinDeload({
         checkin: ckHoje,
-        mesociclo: s.plano?.mesociclo,
+        mesociclo: mesoHoje,
         estados: s.estados,
-        prescricoes: basePresc,
+        prescricoes: rampa.prescricoes,
         exercicios: s.exercicios,
         data: hojeIso,
       });
-      const prescricoes = deload.prescricoes;
+      const prescricoes = marcarAjusteDoDia(basePresc, deload.prescricoes);
 
       // Alertas de R5/R6/AGUA do dia (R9 já pode ter vindo do check-in)
       const alertas = [...s.alertas];
