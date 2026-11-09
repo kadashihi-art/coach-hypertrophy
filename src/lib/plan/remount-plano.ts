@@ -17,6 +17,7 @@ import type {
   VolumeSemanal,
 } from "@/lib/domain";
 import { cargaSugeridaParaExercicio } from "@/lib/engine/memoria-carga";
+import { pontosHistoricoPorExercicio } from "@/lib/plan/sugestao-exercicio";
 import { gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import { derivarRacional } from "@/lib/plan/racional";
 import { parqBloqueiaPrescricao, PARQ_BLOQUEIO_MSG } from "@/lib/plan/parq";
@@ -203,7 +204,11 @@ export async function remountPlano(args: {
     throw new Error(PARQ_BLOQUEIO_MSG);
   }
 
-  const gerado = gerarPlanoFromPerfil(args.perfil, args.catalog);
+  // Refazer o plano lembra do que você já fez: exercício conhecido e evoluindo tem preferência.
+  const historico = args.registros?.length
+    ? pontosHistoricoPorExercicio(args.catalog, { registros: args.registros, estados: args.estadosAnteriores, hojeIso: new Date().toISOString() })
+    : undefined;
+  const gerado = gerarPlanoFromPerfil(args.perfil, args.catalog, { historico });
   let plano = gerado.plano;
   let sessoes = gerado.sessoes;
   let fonte: RemountResult["fonte"] = "motor";

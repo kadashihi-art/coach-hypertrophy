@@ -14,21 +14,25 @@ export function ListaExerciciosOrdenada<T>({
   render,
   chave,
   className = "space-y-2",
+  sugerido = false,
 }: {
   itens: T[];
   exercicio: (t: T) => Pick<Exercicio, "nome" | "grupo_primario">;
   render: (t: T) => ReactNode;
   chave: (t: T) => string;
   className?: string;
+  /** Lista já vem ranqueada (histórico): abre em "Sugeridos", mantendo a ordem recebida. */
+  sugerido?: boolean;
 }) {
-  const [modo, setModo] = useState<ModoOrdem>(ORDEM_PADRAO);
+  const [modo, setModo] = useState<ModoOrdem>(sugerido ? "sugerido" : ORDEM_PADRAO);
+  const modos: ModoOrdem[] = sugerido ? ["sugerido", "grupo", "az"] : ["grupo", "az"];
   if (itens.length === 0) return null;
   const grupos = agruparPorGrupo(itens, exercicio);
   return (
     <div data-testid="lista-exercicios" data-ordem={modo}>
       <div className="mb-3 flex items-center gap-2" role="radiogroup" aria-label="Ordenar lista">
         <span className="text-xs text-muted">Ordenar:</span>
-        {(["grupo", "az"] as const).map((m) => (
+        {modos.map((m) => (
           <button
             key={m}
             type="button"
@@ -42,7 +46,11 @@ export function ListaExerciciosOrdenada<T>({
           </button>
         ))}
       </div>
-      {modo === "az" ? (
+      {modo === "sugerido" ? (
+        <div className={className}>
+          {itens.map((t) => <Fragment key={chave(t)}>{render(t)}</Fragment>)}
+        </div>
+      ) : modo === "az" ? (
         <div className={className}>
           {ordenarAZ(itens, exercicio).map((t) => <Fragment key={chave(t)}>{render(t)}</Fragment>)}
         </div>

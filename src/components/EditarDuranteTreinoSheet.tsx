@@ -118,7 +118,7 @@ export function EditarDuranteTreinoSheet(props: {
           <p className="rounded-2xl border border-border bg-ink-900 p-4 text-sm text-muted">Não achei outra opção segura com o mesmo movimento pro seu equipamento.</p>
         ) : (
           <div className="space-y-2">
-            <ListaExerciciosOrdenada itens={alts} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
+            <ListaExerciciosOrdenada sugerido itens={alts} exercicio={(e) => e} chave={(e) => e.id} render={(e) => (
               <button key={e.id} type="button" data-testid="aovivo-alt" onClick={() => { setR(trocarAoVivo(state, r, idx, e.id)); setModo("editar"); }} className="w-full rounded-2xl border border-border bg-ink-900 px-4 py-3 text-left text-sm">
                 <ExercicioThumb ex={e} size={40} className="float-right ml-3" />
               <span className="font-semibold text-bone-50">{e.nome}</span>

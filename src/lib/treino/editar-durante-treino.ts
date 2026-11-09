@@ -135,6 +135,7 @@ export function alternativasAoVivo(state: AppState, r: RascunhoAoVivo, idx: numb
     catalog: state.exercicios,
     perfil: state.perfil,
     excluir: idsNoRascunho(r),
+    historico: { registros: state.registros ?? [], estados: state.estados, hojeIso: new Date().toISOString() },
   }).map((a) => a.exercicio);
 }
 

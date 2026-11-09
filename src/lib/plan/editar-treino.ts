@@ -204,6 +204,7 @@ export function alternativasParaItem(state: AppState, r: Rascunho, idx: number):
     catalog: state.exercicios,
     perfil: state.perfil,
     excluir: r.itens.map((i) => i.exercicio_id),
+    historico: { registros: state.registros ?? [], estados: state.estados, hojeIso: new Date().toISOString() },
   }).map((a) => a.exercicio);
 }
 

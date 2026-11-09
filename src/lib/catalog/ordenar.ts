@@ -2,9 +2,10 @@ import type { Exercicio } from "@/lib/domain";
 import { labelGrupo } from "@/lib/labels";
 
 /** Ordenação da lista de exercícios (Adicionar e Trocar). Só muda a exibição; nada é gravado. */
-export type ModoOrdem = "grupo" | "az";
+/** "sugerido" = a ordem que chegou (ranking pelo histórico), só onde a lista tem ranking. */
+export type ModoOrdem = "sugerido" | "grupo" | "az";
 export const ORDEM_PADRAO: ModoOrdem = "grupo";
-export const ROTULO_ORDEM: Record<ModoOrdem, string> = { grupo: "Por grupo", az: "A–Z" };
+export const ROTULO_ORDEM: Record<ModoOrdem, string> = { sugerido: "Sugeridos", grupo: "Por grupo", az: "A–Z" };
 
 /** Ordem dos grupos na lista: de cima pra baixo no corpo, opcionais junto da região. */
 export const ORDEM_GRUPOS: string[] = [
