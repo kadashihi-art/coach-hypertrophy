@@ -31,6 +31,7 @@ import { ehSeriePreparatoria } from "@/lib/domain/enums";
 import { podeDesfazerAoVivo } from "@/lib/treino/editar-durante-treino";
 import { calibrarSessao, e1rmReferencia, feedbackSerie, rirAlvoDoDia } from "@/lib/engine/proximidade-falha";
 import { useClientValue } from "@/lib/use-client-value";
+import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
 import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
 
@@ -164,12 +165,14 @@ export default function TreinoPage() {
   // RIR alvo do dia: padrão de movimento, fase do bloco, nível, deload e recuperação (determinístico).
   const hojeIso = useClientValue(() => new Date().toISOString().slice(0, 10), "");
   const ckHoje = hojeIso ? state.checkins.find((c) => c.data === hojeIso) ?? null : null;
+  // Semana real do bloco: aperta o RIR ao longo do meso e solta na semana de deload.
+  const mesoHoje = mesocicloEfetivo(state, hojeIso || null);
   const rirDia = rirAlvoDoDia({
     exercicio: exercise,
     experiencia: state.perfil?.experiencia,
-    foco: state.plano?.mesociclo.foco,
-    semana_atual: state.plano?.mesociclo.semana_atual,
-    total_semanas: state.plano?.mesociclo.total_semanas,
+    foco: focoDoDia(mesoHoje),
+    semana_atual: mesoHoje?.semana_atual,
+    total_semanas: mesoHoje?.total_semanas,
     checkin: ckHoje,
   });
   const alvoRir = rirDia.alvo;

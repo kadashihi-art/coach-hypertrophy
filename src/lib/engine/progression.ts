@@ -17,6 +17,7 @@ import { incrementoCargaKg, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
 import { roundToStep } from "./ancorar-carga";
 import { e1rmEpley, melhorE1rm } from "./e1rm";
 import { recordeDasSeries, RECORDE_VAZIO } from "./recordes";
+import { ehSemanaDeload } from "@/lib/plan/mesociclo";
 
 export type ProgressionInput = {
   exercicio_id: string;
@@ -27,7 +28,7 @@ export type ProgressionInput = {
   checkin?: Checkin | null;
   /** Volume efetivo do grupo nas últimas 2 semanas (mais recente primeiro). */
   volume_semanal_grupo?: VolumeSemanal[];
-  /** Semana atual e total do mesociclo (R6). */
+  /** Semana EFETIVA (mesocicloEfetivo) e total do mesociclo (R6). */
   mesociclo?: { semana_atual: number; total_semanas: number; foco: string };
   /** Técnica da prescrição (R8). */
   tecnica?: string;
@@ -300,19 +301,17 @@ export function decidirProgressao(
     );
   }
 
-  // —— R6 Deload programado ——
+  // —— R6 Deload programado (última semana do bloco) ——
+  // A carga do dia já vem −10% pelo ajuste do check-in; aqui a base do exercício fica
+  // guardada (não cai a cada treino da semana) para a volta depois do deload.
   const meso = input.mesociclo;
-  if (
-    meso &&
-    meso.semana_atual >= meso.total_semanas - 1 &&
-    (meso.foco === "acumulo" || meso.foco === "intensificacao")
-  ) {
+  if (ehSemanaDeload(meso)) {
     return base(
       input,
       "R6",
       "deload",
-      cargaDeloadKg(carga, inc),
-      `Semana ${meso.semana_atual} de ${meso.total_semanas} (foco ${meso.foco}). Deload: −10% carga, −2 séries.`,
+      estado.carga_atual_kg,
+      `Semana ${meso!.semana_atual} de ${meso!.total_semanas} (foco ${meso!.foco}): deload programado. Treino do dia −10% de carga; a base de ${estado.carga_atual_kg} kg fica guardada para a próxima semana.`,
       "contextual",
     );
   }

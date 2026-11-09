@@ -97,3 +97,10 @@ export const PADRAO_LABEL: Record<string, string> = {
 export function labelPadrao(p: string): string {
   return PADRAO_LABEL[p] ?? p.replace(/_/g, " ");
 }
+
+/** "Semana 3/6"; depois do fim do bloco, "Bloco de 6 semanas concluído". */
+export function rotuloSemanaBloco(m: { semana_atual: number; total_semanas: number }): string {
+  return m.semana_atual > m.total_semanas
+    ? `Bloco de ${m.total_semanas} semanas concluído`
+    : `Semana ${m.semana_atual}/${m.total_semanas}`;
+}

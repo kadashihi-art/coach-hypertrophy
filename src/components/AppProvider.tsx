@@ -73,6 +73,7 @@ import {
   type Rascunho,
 } from "@/lib/plan/editar-treino";
 import { avaliarCheckinDeload } from "@/lib/engine/checkin-deload";
+import { mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { incrementoCargaKg } from "@/lib/domain";
 
 type Ctx = {
@@ -517,7 +518,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const ckHoje = s.checkins.find((c) => c.data === hojeIso) ?? null;
       const deload = avaliarCheckinDeload({
         checkin: ckHoje,
-        mesociclo: s.plano?.mesociclo,
+        mesociclo: mesocicloEfetivo(s, hojeIso),
         estados: s.estados,
         prescricoes: basePresc,
         exercicios: s.exercicios,

@@ -75,7 +75,7 @@ const ex: Exercicio = { id: "supino", nome: "Supino", padrao: "empurrar_horizont
 const presc = { id: "p1", sessao_id: "s1", exercicio_id: "supino", padrao: "empurrar_horizontal", ordem: 1, series: 4, faixa_reps: [6, 10], rir_alvo: 2, descanso_seg: 120, cadencia: "2-0-1-0", tecnica: "padrao", carga: { trabalho_kg: 60, top_set_kg: null, origem: "historico" }, alternativa_equipamento_ocupado: "supino_halteres", guia_id: null, evidencia: "forte" } as Prescricao;
 const d = avaliarCheckinDeload({
   checkin: { id: "c", data: "2026-11-04", sono_h: 5.5, prontidao: 2, agua_ml: 1000, dor: [] } as never,
-  mesociclo: { semana_atual: 5, total_semanas: 6, foco: "acumulo" } as never,
+  mesociclo: { semana_atual: 6, total_semanas: 6, foco: "acumulo" } as never,
   estados: [{ exercicio_id: "supino", sessoes_sem_progresso: 4, ultimo_desempenho: { carga_kg: 60, reps_na_carga: [8, 8], e1rm_kg: 76 } } as never],
   prescricoes: [presc],
   exercicios: [ex],

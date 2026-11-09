@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
+import { ehSemanaDeload, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import {
   AlertaCard,
   Button,
@@ -116,6 +117,8 @@ export default function HojePage() {
     alertasVisiveis.find((a) => !a.resolvido) ??
     alertasVisiveis.find((a) => a.nivel !== "N0") ??
     alertasVisiveis[0];
+  // Semana real do bloco (a salva no plano fica em 1).
+  const meso = useMemo(() => mesocicloEfetivo(state, hojeIso), [state, hojeIso]);
   const ck = hojeIso
     ? state.checkins.find((c) => c.data === hojeIso)
     : undefined;
@@ -126,13 +129,13 @@ export default function HojePage() {
     // ainda assim mostramos resumo a partir do check-in/meso/estados.
     return avaliarCheckinDeload({
       checkin: ck ?? null,
-      mesociclo: state.plano?.mesociclo,
+      mesociclo: meso,
       estados: state.estados,
       prescricoes: sess.prescricoes,
       exercicios: state.exercicios,
       data: hojeIso,
     });
-  }, [sess, ck, state.plano?.mesociclo, state.estados, state.exercicios, hojeIso]);
+  }, [sess, ck, meso, state.estados, state.exercicios, hojeIso]);
 
   const deloadResumo = deloadPreview
     ? resumoAjusteDeload(deloadPreview)
@@ -239,19 +242,26 @@ export default function HojePage() {
             {hojeLabel || "Hoje"}
           </p>
           <h1 className="text-2xl font-bold">Bora treinar</h1>
-          {plano ? (
+          {plano && meso ? (
             <div className="mt-2 flex items-center gap-2">
               <span className="text-xs text-muted">
-                Meso · sem <span className="num text-go">{plano.mesociclo.semana_atual}</span>/{plano.mesociclo.total_semanas}
+                {meso.semana_atual > meso.total_semanas ? (
+                  "Bloco concluído"
+                ) : (
+                  <>
+                    Meso · sem <span className="num text-go">{meso.semana_atual}</span>/{meso.total_semanas}
+                    {ehSemanaDeload(meso) ? " · deload" : ""}
+                  </>
+                )}
               </span>
               <div className="w-20">
                 <VolumeBar
                   label="Mesociclo"
-                  valor={plano.mesociclo.semana_atual}
-                  max={plano.mesociclo.total_semanas}
+                  valor={Math.min(meso.semana_atual, meso.total_semanas)}
+                  max={meso.total_semanas}
                   faixa={null}
                   cabecalho={false}
-                  unidade={`de ${plano.mesociclo.total_semanas} semanas`}
+                  unidade={`de ${meso.total_semanas} semanas`}
                   fina
                 />
               </div>

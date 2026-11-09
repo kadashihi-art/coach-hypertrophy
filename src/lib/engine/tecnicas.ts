@@ -15,6 +15,8 @@
  * - Drop-set, rest-pause e myo-reps: a extensão soma +0,5 série direta no músculo principal
  *   (nada nos secundários). Parciais: +0. Bi-set: cada exercício conta as próprias séries.
  */
+import { ehSemanaDeload, mesocicloEfetivo } from "@/lib/plan/mesociclo";
+import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
 import type { AppState, Exercicio, Prescricao, RegistroSerie, Sessao, TecnicaFinal } from "@/lib/domain";
 import { ehSeriePreparatoria, incrementoCargaKg } from "@/lib/domain/enums";
 
@@ -112,8 +114,10 @@ export function prescricaoAceitaTecnica(p: Pick<Prescricao, "tecnica">, ex: Exer
   return p.tecnica !== "top_set_backoff" && exercicioAceitaTecnica(ex);
 }
 
-export function emDeload(state: Pick<AppState, "plano">): boolean {
-  return state.plano?.mesociclo.foco === "deload";
+/** Deload: foco do plano, ou a semana de deload programado do bloco (semana real, por data). */
+export function emDeload(state: Pick<AppState, "plano"> & Partial<Pick<AppState, "registros">>, hojeIso?: string | null): boolean {
+  if (state.plano?.mesociclo.foco === "deload") return true;
+  return ehSemanaDeload(mesocicloEfetivo(state, hojeIso ?? hojeIsoSaoPaulo()));
 }
 
 /** Drop: −20 a 25% no degrau do exercício (o mais perto de −22,5%), sempre abaixo da carga. */
@@ -212,7 +216,7 @@ export function contarTecnicas(ps: PrescLike[]): number {
  * Valida a lista ordenada (já na ordem final). null = ok.
  * Bi-set: o próximo exercício também precisa aceitar técnica e não ter outra.
  */
-export function validarTecnicasSessao(state: Pick<AppState, "exercicios" | "plano">, ps: PrescLike[]): string | null {
+export function validarTecnicasSessao(state: Pick<AppState, "exercicios" | "plano"> & Partial<Pick<AppState, "registros">>, ps: PrescLike[]): string | null {
   const com = ps.filter((p) => p.tecnica_final);
   if (com.length === 0) return null;
   if (emDeload(state)) return "Na semana de descanso ativo (deload) as técnicas avançadas ficam desligadas.";

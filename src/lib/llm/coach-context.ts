@@ -14,6 +14,7 @@ import type {
 } from "@/lib/domain";
 import { GrupoMuscularSchema } from "@/lib/domain";
 import { hojeIsoSaoPaulo as hojeIsoSP, proximaSessao } from "@/lib/plan/proxima-sessao";
+import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { racionalDoPlano } from "@/lib/plan/racional";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import type { PlanoRacional } from "@/lib/domain";
@@ -263,8 +264,9 @@ export function buildCoachContext(
         dias_por_semana: state.plano.dias_por_semana,
         mesociclo: {
           total_semanas: state.plano.mesociclo.total_semanas,
-          semana_atual: state.plano.mesociclo.semana_atual,
-          foco: state.plano.mesociclo.foco,
+          // Semana real do bloco (a salva fica em 1); "deload" na última semana.
+          semana_atual: mesocicloEfetivo(state, hoje)?.semana_atual ?? state.plano.mesociclo.semana_atual,
+          foco: focoDoDia(mesocicloEfetivo(state, hoje)) ?? state.plano.mesociclo.foco,
         },
       }
     : null;

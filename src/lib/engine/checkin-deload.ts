@@ -13,6 +13,7 @@ import type {
 import { incrementoCargaKg } from "@/lib/domain";
 import { roundToStep } from "@/lib/engine/ancorar-carga";
 import { emPlato } from "@/lib/engine/progression";
+import { ehSemanaDeload } from "@/lib/plan/mesociclo";
 
 export const AGUA_MIN_ML = 1500;
 
@@ -42,12 +43,9 @@ function isR9(ck: Checkin | null | undefined): boolean {
   return ck.prontidao <= 2 || ck.sono_h < 6;
 }
 
+/** Mesociclo com semana_atual já efetiva (mesocicloEfetivo): deload só na última semana. */
 function isR6(meso: Mesociclo | null | undefined): boolean {
-  if (!meso) return false;
-  return (
-    meso.semana_atual >= meso.total_semanas - 1 &&
-    (meso.foco === "acumulo" || meso.foco === "intensificacao")
-  );
+  return ehSemanaDeload(meso);
 }
 
 function idsPrincipais(
