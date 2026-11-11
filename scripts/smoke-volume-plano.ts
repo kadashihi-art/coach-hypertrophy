@@ -2,7 +2,7 @@
 import { gerarPlanoFromPerfil } from "../src/lib/plan/gerar-plano";
 import { CATALOG_EXERCICIOS } from "../src/lib/catalog/exercicios";
 import { alvoSemanalGrupo, GRUPOS_PRINCIPAIS, MAX_SERIES_SESSAO_GRUPO, volumeSemanalDasSessoes } from "../src/lib/plan/equilibrar-volume";
-import type { GrupoMuscular, Perfil } from "../src/lib/domain";
+import type { Perfil } from "../src/lib/domain";
 
 let fail = 0;
 const ok = (c: boolean, m: string) => { if (c) console.log("PASS", m); else { fail++; console.log("FAIL", m); } };
@@ -36,23 +36,29 @@ for (const experiencia of ["iniciante", "intermediario", "avancado"] as const)
       }
 ok(fail === 0, "tetos 20/semana e 10/sessão respeitados em todos os perfis");
 
-// 2) Com tempo (90 min, 4–6 dias), todo grupo principal chega no piso do nível.
+// 2) Com tempo (90 min, 4 e 6 dias), todo grupo principal chega no piso do nível.
 for (const experiencia of ["iniciante", "intermediario", "avancado"] as const)
-  for (const dias of [4, 5, 6]) {
+  for (const dias of [4, 6]) {
     const g = gerar({ experiencia, dias_por_semana: dias, minutos_por_sessao: 90 });
     const v = ef(g);
     const abaixo = GRUPOS_PRINCIPAIS.filter((gr) => (v.get(gr)?.efetivo ?? 0) < alvoSemanalGrupo(gr, { ...base, experiencia }).min - 1e-9);
     ok(abaixo.length === 0, `${experiencia} ${dias}d 90min: todos os grupos principais no piso (${abaixo.join(", ") || "ok"})`);
   }
 
-// 3) 5 dias no automático: pernas 2×/semana (antes PPL dava quadríceps ~7).
+// 3) 5 dias no automático: continua Push/Pull/Legs (calendário igual ao de antes).
 {
   const g = gerar({ dias_por_semana: 5 });
   const v = ef(g);
-  ok(g.plano.divisao === "upper_lower", `5 dias auto → ${g.plano.divisao}`);
-  ok(g.sessoes.filter((s) => /lower/i.test(s.id)).length === 2, "5 dias: 2 treinos de perna");
-  for (const gr of ["quadriceps", "isquiotibiais", "gluteos"] as GrupoMuscular[]) ok((v.get(gr)?.efetivo ?? 0) >= 10, `5 dias: ${gr} ≥ 10 (${v.get(gr)?.efetivo})`);
-  ok(/Upper\/Lower/.test(g.plano.justificativa.texto), "justificativa explica o split de 5 dias");
+  ok(g.plano.divisao === "ppl", `5 dias auto → ${g.plano.divisao}`);
+  ok(g.sessoes.map((s) => s.nome).join(",") === "Push A,Pull A,Legs A,Push B,Pull B", `5 dias: mesma sequência (${g.sessoes.map((s) => s.nome).join(", ")})`);
+  ok(/Push\/Pull\/Legs/.test(g.plano.justificativa.texto), "justificativa do split de 5 dias como antes");
+  // Pernas 1×/semana: o equilíbrio tira o que pode da sessão e explica a causa certa.
+  ok((v.get("quadriceps")?.efetivo ?? 0) >= 9, `5 dias: quadríceps subiu dentro do treino de pernas (${v.get("quadriceps")?.efetivo})`);
+  ok(/só 1×\/semana/.test(g.plano.justificativa.texto), "justificativa explica que pernas treinam 1×/semana");
+  const legs = g.sessoes.find((s) => /Legs/.test(s.nome))!;
+  const porG = new Map<string, number>();
+  for (const p of legs.prescricoes) { const gr = byId.get(p.exercicio_id)!.grupo_primario; porG.set(gr, (porG.get(gr) ?? 0) + p.series); }
+  ok(Math.max(...porG.values()) <= MAX_SERIES_SESSAO_GRUPO, "teto de 10 por músculo no treino de pernas");
 }
 
 // 4) Avançado ≠ intermediário (com tempo pra isso).

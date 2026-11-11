@@ -269,9 +269,19 @@ export function equilibrarVolume(sessoes: SessaoParaEquilibrar[], ctx: Equilibra
       break;
     }
   }
-  if (semTempo.length) {
+  // A causa certa: músculo que só aparece em 1 treino da semana esbarra no teto por sessão, não no tempo.
+  const lista = (gs: GrupoMuscular[]) => gs.map((g) => (GRUPO_LABEL[g] ?? g).toLowerCase()).join(", ");
+  const verbo = (gs: GrupoMuscular[]) => (gs.length > 1 ? "ficaram" : "ficou");
+  const umaVez = semTempo.filter((g) => sessoes.filter((s) => GRUPOS_DO_DIA[s.tipo]?.includes(g)).length <= 1);
+  const tempo = semTempo.filter((g) => !umaVez.includes(g));
+  if (umaVez.length) {
     notas.push(
-      `Com ${ctx.perfil.minutos_por_sessao} min por treino, ${semTempo.map((g) => (GRUPO_LABEL[g] ?? g).toLowerCase()).join(", ")} ${semTempo.length > 1 ? "ficaram" : "ficou"} abaixo do ideal da semana. Mais tempo por sessão ou mais um dia resolve.`,
+      `Nessa divisão, ${lista(umaVez)} ${umaVez.length > 1 ? "treinam" : "treina"} só 1×/semana e ${verbo(umaVez)} abaixo do ideal (no máximo ${MAX_SERIES_SESSAO_GRUPO} séries por treino rendem). Mais um dia de treino resolve.`,
+    );
+  }
+  if (tempo.length) {
+    notas.push(
+      `Com ${ctx.perfil.minutos_por_sessao} min por treino, ${lista(tempo)} ${verbo(tempo)} abaixo do ideal da semana. Mais tempo por sessão ou mais um dia resolve.`,
     );
   }
   return { notas, ajustes };

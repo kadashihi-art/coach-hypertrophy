@@ -48,11 +48,15 @@ O volume é contado por fase, e cada sessão vale 1× por semana. Séries efetiv
    Para chegar no piso, o equilíbrio sobe 1 série num exercício existente. Se não der, acrescenta um exercício de 2–3 séries num dia compatível.
    Só faz isso se a sessão continuar cabendo no tempo do perfil (+10%).
 4. **Prioritário sem tempo:** tira 1 série de um grupo não prioritário que continua no piso e tenta de novo. Se não couber, desfaz.
-5. Quando falta tempo, a justificativa avisa ("Com 45 min por treino, peito ficou abaixo do ideal…") em vez de inventar volume.
+5. Quando não dá pra chegar no piso, a justificativa avisa a causa em vez de inventar volume:
+   - falta de tempo: "Com 45 min por treino, peito ficou abaixo do ideal…";
+   - músculo que só treina 1×/semana na divisão: "…treina só 1×/semana…".
 
 Exercícios: 2 a 4 séries (até 5 no avançado). Os opcionais (abdômen, antebraço, abdutores, adutores) não contam no tempo do equilíbrio.
 
-**5 dias no automático:** passou de PPL (pernas 1×/semana, quadríceps ~7 séries) para Upper/Lower U/L/U/L/U. PPL continua disponível por escolha do usuário.
+**5 dias no automático:** continua Push/Pull/Legs (Push A, Pull A, Legs A, Push B, Pull B), com o mesmo calendário de antes.
+Como as pernas treinam 1×/semana nessa divisão, o equilíbrio sobe o que cabe no treino de pernas (quadríceps de ~7 para ~10, com o teto de 10 por treino). Com uma segunda opção de exercício (extensora → leg press/hack), a justificativa explica que o que falta vem da frequência, não do tempo.
+Upper/Lower em 5 dias ou PPL em 6 resolvem, por escolha do usuário.
 
 ## Prioridade muscular
 - `Perfil.prioridades_musculares` (até 3) e `prioridade_motivo`. Ausente = plano igual ao de antes.
