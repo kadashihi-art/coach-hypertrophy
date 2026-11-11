@@ -37,6 +37,8 @@ const PerfilPatchSchema = z.object({
   fase2_semanas: PerfilSchema.shape.fase2_semanas,
   dias_descanso_fixos: PerfilSchema.shape.dias_descanso_fixos,
   acordos_plano: PerfilSchema.shape.acordos_plano,
+  prioridades_musculares: PerfilSchema.shape.prioridades_musculares,
+  prioridade_motivo: PerfilSchema.shape.prioridade_motivo,
   sexo: PerfilSchema.shape.sexo,
   idade: PerfilSchema.shape.idade,
   onboarding_concluido: z.boolean().optional(),

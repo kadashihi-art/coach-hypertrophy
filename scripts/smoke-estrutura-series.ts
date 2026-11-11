@@ -1,6 +1,6 @@
 /** smoke:estrutura-series — 1º exercício com preparatórias; demais direto; volume igual; timer com fases certas. */
 import assert from "node:assert/strict";
-import { cargaAproximacao as ap, cargaPrimeiraTrabalho as pt, arredondarStep, cargasDaEstrutura, rotuloOrdemSeries, cargaAquecimento, estruturaSeries, fasesDeTrabalho, preparatoriasDaSessao, proximaFase, seriesTrabalhoFeitas, textoAquecimento } from "../src/lib/treino/estrutura-series";
+import { cargaAproximacao as ap, cargaPrimeiraTrabalho as pt, arredondarStep, cargaBackOff, cargasDaEstrutura, rotuloOrdemSeries, cargaAquecimento, estruturaSeries, fasesDeTrabalho, preparacaoDaSessao, preparatoriasDaSessao, proximaFase, repsSugeridasFase, seriesTrabalhoFeitas, textoAquecimento, textoPreparacao } from "../src/lib/treino/estrutura-series";
 import { descansoSugerido, rotuloFase } from "../src/lib/treino/rest-timer";
 import { volumeSessaoPorGrupo } from "../src/lib/engine/volume";
 import { decidirProgressao, pickTopSetAnchor } from "../src/lib/engine/progression";
@@ -12,12 +12,12 @@ const top = { series: 3, tecnica: "top_set_backoff" } as never;
 const norm = { series: 3, tecnica: "nenhuma" } as never;
 
 // 1) 1º exercício
-assert.deepEqual(estruturaSeries(top, 0), ["aquecimento", "feeder", "trabalho", "top_set", "back_off"]);
-assert.deepEqual(estruturaSeries(norm, 0), ["aquecimento", "feeder", "trabalho", "top_set", "back_off"]);
+assert.deepEqual(estruturaSeries(top, 0), ["aquecimento", "feeder", "top_set", "back_off", "back_off"]);
+assert.deepEqual(estruturaSeries(norm, 0), ["aquecimento", "feeder", "top_set", "back_off", "back_off"]);
 // 2) demais sem preparatórias
 for (const pos of [1, 2, 5]) {
-  assert.deepEqual(estruturaSeries(top, pos), ["trabalho", "top_set", "back_off"]);
-  assert.deepEqual(estruturaSeries(norm, pos), ["trabalho", "top_set", "back_off"]);
+  assert.deepEqual(estruturaSeries(top, pos), ["top_set", "back_off", "back_off"]);
+  assert.deepEqual(estruturaSeries(norm, pos), ["top_set", "back_off", "back_off"]);
   assert.ok(!estruturaSeries(top, pos).some(ehSeriePreparatoria));
 }
 // séries de trabalho = presc.series (preparatórias são extras)
@@ -50,27 +50,42 @@ assert.equal(descansoSugerido({ fase: "aquecimento", composto: true, prescritoSe
 assert.equal(descansoSugerido({ fase: "feeder", composto: true, prescritoSeg: 150 }), 90);
 assert.equal(descansoSugerido({ fase: "back_off", composto: true, prescritoSeg: 150 }), 150);
 
-// 5b) ordem N−2 trabalho → top → back-off (top_set_backoff)
+// 5b) ordem top → N−1 back-offs (nenhuma série "leve" de 80% contando volume)
 const tb = (series: number) => ({ series, tecnica: "top_set_backoff" }) as never;
 assert.deepEqual(fasesDeTrabalho(tb(2)), ["top_set", "back_off"]);
-assert.deepEqual(fasesDeTrabalho(tb(3)), ["trabalho", "top_set", "back_off"]);
-assert.deepEqual(fasesDeTrabalho(tb(4)), ["trabalho", "trabalho", "top_set", "back_off"]);
+assert.deepEqual(fasesDeTrabalho(tb(3)), ["top_set", "back_off", "back_off"]);
+assert.deepEqual(fasesDeTrabalho(tb(4)), ["top_set", "back_off", "back_off", "back_off"]);
 assert.deepEqual(fasesDeTrabalho(tb(1)), ["top_set"]);
 for (const n of [1, 2, 3, 4, 5]) assert.equal(fasesDeTrabalho(tb(n)).length, n); // volume = N
 // padrao também segue a ordem; N=1, drop_set e rest_pause ficam como estavam
-assert.deepEqual(fasesDeTrabalho({ series: 4, tecnica: "padrao" } as never), ["trabalho", "trabalho", "top_set", "back_off"]);
+assert.deepEqual(fasesDeTrabalho({ series: 4, tecnica: "padrao" } as never), ["top_set", "back_off", "back_off", "back_off"]);
 assert.deepEqual(fasesDeTrabalho({ series: 2, tecnica: "padrao" } as never), ["top_set", "back_off"]);
 assert.deepEqual(fasesDeTrabalho({ series: 1, tecnica: "padrao" } as never), ["trabalho"]);
 assert.deepEqual(fasesDeTrabalho({ series: 3, tecnica: "drop_set" } as never), ["trabalho", "trabalho", "trabalho"]);
 assert.deepEqual(fasesDeTrabalho({ series: 3, tecnica: "rest_pause" } as never), ["trabalho", "trabalho", "trabalho"]);
-assert.equal(rotuloOrdemSeries({ series: 3, tecnica: "padrao" } as never), "1× trabalho → top → back-off");
+assert.equal(rotuloOrdemSeries({ series: 3, tecnica: "padrao" } as never), "top → 2× back-off");
 assert.equal(rotuloOrdemSeries({ series: 2, tecnica: "padrao" } as never), "top → back-off");
 assert.equal(rotuloOrdemSeries({ series: 3, tecnica: "drop_set" } as never), "");
-// cargas: trabalho 80% / top = motor / back-off 90%, arredondado pra baixo no step (mín 1 step)
-assert.deepEqual(cargasDaEstrutura(100, 5), { trabalho: 80, top_set: 100, back_off: 90 });
-assert.deepEqual(cargasDaEstrutura(80, 5), { trabalho: 60, top_set: 80, back_off: 70 }); // 64→60, 72→70
-assert.deepEqual(cargasDaEstrutura(62.5, 2.5), { trabalho: 50, top_set: 62.5, back_off: 55 }); // 50, 56.25→55
+// cargas: top = motor / back-off ~90% pra baixo no step / trabalho = série reta na carga do motor
+assert.deepEqual(cargasDaEstrutura(100, 5), { trabalho: 100, top_set: 100, back_off: 90 });
+assert.deepEqual(cargasDaEstrutura(80, 5), { trabalho: 80, top_set: 80, back_off: 70 }); // 72→70
+assert.deepEqual(cargasDaEstrutura(62.5, 2.5), { trabalho: 62.5, top_set: 62.5, back_off: 55 }); // 56.25→55
 assert.deepEqual(cargasDaEstrutura(5, 5), { trabalho: 5, top_set: 5, back_off: 5 });
+// step grosso: 90% cairia abaixo de 80% → repete a carga do top (série reta, as reps caem sozinhas)
+assert.equal(cargaBackOff(10, 2.5), 10); // 9 → 7,5 (75%) → 10
+assert.equal(cargaBackOff(20, 5), 20); // 18 → 15 (75%) → 20
+assert.equal(cargaBackOff(40, 5), 35); // 36 → 35 (87,5%)
+for (const st of [1, 2.5, 5]) for (let t = st; t <= 200; t += st) {
+  const b = cargaBackOff(t, st); assert.ok(b <= t && b >= t * 0.8 - 1e-9, `back-off ${b} entre 80% e 100% do top ${t}`);
+}
+// reps por fase: aquecimento solto, aproximação curta, top = motor, back-off = top + 2 (na faixa)
+assert.equal(repsSugeridasFase("aquecimento", [8, 12], 8), 8);
+assert.equal(repsSugeridasFase("feeder", [8, 12], 8), 3);
+assert.equal(repsSugeridasFase("top_set", [8, 12], 9), 9);
+assert.equal(repsSugeridasFase("back_off", [8, 12], 8), 10);
+assert.equal(repsSugeridasFase("back_off", [8, 12], 8, 11), 12); // limitado ao topo da faixa
+assert.equal(repsSugeridasFase("back_off", [8, 12], 8, 5), 8); // nunca abaixo do piso
+assert.equal(repsSugeridasFase("trabalho", [10, 15], 10), 10);
 assert.equal(arredondarStep(0, 5), 0);
 // progressão: R1–R3 avaliam o top; e1RM vem do top
 {
@@ -94,10 +109,10 @@ assert.equal(arredondarStep(0, 5), 0);
   // EstadoExercicio: top e back-off vêm das séries certas
   assert.equal(pickTopSetAnchor([S("trabalho", 80, 8, 3), S("top_set", 100, 8, 2), S("back_off", 90, 8, 3)] as never)?.carga_kg, 100);
 }
-// adaptação ao vivo: falha no trabalho (80% do top) corta a partir do top, não da carga de 80%
+// adaptação ao vivo: falha no back-off corta a partir do top, não da carga do back-off
 {
   const pr = { id: "p", series: 3, tecnica: "padrao", faixa_reps: [6, 10], rir_alvo: 2, carga: { trabalho_kg: 100, top_set_kg: null, origem: "historico" }, alternativa_equipamento_ocupado: null } as never;
-  const r = { tipo_serie: "trabalho", carga_kg: 80, reps: 4, rir_percebido: 0, dor: false } as never;
+  const r = { tipo_serie: "back_off", carga_kg: 80, reps: 4, rir_percebido: 0, dor: false } as never;
   const a = adaptarAposSerie({ registro: r, seriesAnteriores: [], presc: pr, stepKg: 5 });
   assert.equal(a.aplicada, true); assert.equal(a.carga_sugerida_kg, 95); // 100×0,925 no step 5 (regra existente)
   const pu = { ...(pr as object), tecnica: "drop_set" } as never; // fora da ordem: comportamento antigo (base = carga da série)
@@ -161,10 +176,10 @@ assert.ok(!/[~]|recalc|âncora/.test(t));
     const prim = pt({ series: n, tecnica: "top_set_backoff" } as never, topKg, c.trabalho, st);
     return { aquec: aq, aprox: ap(prim, st, aq), trabalho: c.trabalho, top: topKg, back_off: c.back_off };
   };
-  // agachamento (step 5, top 90, 4 séries): antes aprox 80 > trabalho 70
-  assert.deepEqual(tabela(90, 5, 4), { aquec: 50, aprox: 55, trabalho: 70, top: 90, back_off: 80 });
-  // remada (step 2,5, top 70, 4 séries): antes aprox 60 > trabalho 55
-  assert.deepEqual(tabela(70, 2.5, 4), { aquec: 40, aprox: 45, trabalho: 55, top: 70, back_off: 62.5 });
+  // agachamento (step 5, top 90, 4 séries): aproximação 85% do top
+  assert.deepEqual(tabela(90, 5, 4), { aquec: 50, aprox: 75, trabalho: 90, top: 90, back_off: 80 });
+  // remada (step 2,5, top 70, 4 séries)
+  assert.deepEqual(tabela(70, 2.5, 4), { aquec: 40, aprox: 57.5, trabalho: 70, top: 70, back_off: 62.5 });
   // N=2 (top → back-off): 1ª efetiva é o próprio top
   assert.equal(pt({ series: 2, tecnica: "reta" } as never, 100, 80, 5), 100);
   // N=1 / drop_set / rest_pause: a própria série
@@ -191,5 +206,37 @@ assert.ok(!/[~]|recalc|âncora/.test(t));
     if (aq < prim) assert.ok(a >= aq, `aprox ${a} ≥ aquec ${aq} (top ${top}, step ${st})`);
     assert.ok(Math.abs(a / st - Math.round(a / st)) < 1e-9);
   }
+}
+// 9) aproximação extra: composto livre de padrão novo com o músculo já aquecido
+{
+  const E2 = (id: string, grupo_primario: string, grupos_secundarios: string[], composto: boolean, padrao: string, equipamento: string) =>
+    ({ id, grupo_primario, grupos_secundarios, composto, padrao, equipamento }) as never;
+  const cat2 = [
+    E2("agacha", "quadriceps", ["gluteos", "isquiotibiais"], true, "agachamento", "barra"),
+    E2("stiff", "isquiotibiais", ["gluteos"], true, "dobradica_quadril", "barra"),
+    E2("legpress", "quadriceps", ["gluteos"], true, "agachamento", "maquina"),
+    E2("hack", "quadriceps", ["gluteos"], true, "agachamento", "maquina"),
+    E2("flexora", "isquiotibiais", [], false, "flexao_joelho", "maquina"),
+    E2("supino", "peito", ["triceps", "ombros"], true, "empurrar_horizontal", "barra"),
+    E2("desenv", "ombros", ["triceps"], true, "empurrar_vertical", "halteres"),
+    E2("supino_inc", "peito", ["triceps", "ombros"], true, "empurrar_inclinado", "halteres"),
+  ];
+  // stiff depois do agachamento: posterior já aquecido, mas dobradiça é padrão novo → 1 aproximação
+  assert.deepEqual(preparacaoDaSessao(P("agacha", "stiff", "flexora"), cat2), ["completa", "aproximacao", "nenhuma"]);
+  // leg press (máquina) primeiro → completa; hack (máquina, mesmo padrão) direto
+  assert.deepEqual(preparacaoDaSessao(P("legpress", "hack", "flexora"), cat2), ["completa", "nenhuma", "completa"]);
+  // desenvolvimento livre depois do supino: ombro aquecido, padrão vertical novo → aproximação; supino inclinado é a mesma família → direto
+  assert.deepEqual(preparacaoDaSessao(P("supino", "desenv", "supino_inc"), cat2), ["completa", "aproximacao", "nenhuma"]);
+  // compatibilidade: o boolean continua = aquecimento completo
+  assert.deepEqual(preparatoriasDaSessao(P("agacha", "stiff", "flexora"), cat2), [true, false, false]);
+  // estrutura com só aproximação
+  assert.deepEqual(estruturaSeries(top, "aproximacao"), ["feeder", "top_set", "back_off", "back_off"]);
+  const seqAp: TipoSerie[] = []; const logAp: { tipo_serie: TipoSerie }[] = [];
+  for (let f = proximaFase(top, "aproximacao", logAp); f; f = proximaFase(top, "aproximacao", logAp)) { seqAp.push(f); logAp.push({ tipo_serie: f }); }
+  assert.deepEqual(seqAp, ["feeder", "top_set", "back_off", "back_off"]);
+  assert.equal(seriesTrabalhoFeitas(logAp), 3);
+  assert.equal(textoPreparacao("aproximacao"), "1 aproximação antes (movimento novo)");
+  assert.equal(textoPreparacao("nenhuma"), "");
+  assert.equal(textoPreparacao(true), "aquece + aproximação antes");
 }
 console.log("smoke:estrutura-series OK");

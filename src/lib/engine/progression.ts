@@ -549,7 +549,7 @@ function decidir(input: ProgressionInput, series: RegistroSerie[]): DecisaoProgr
 
   // R4 conta falhas em todas as séries que valem (limiar inalterado: ≥ 2).
   const abaixoPiso = series.filter((s) => s.reps < piso).length;
-  // Estrutura trabalho → top → back-off: R1–R3 avaliam o top (reps/RIR do top vs alvo).
+  // Estrutura top → back-offs: R1–R3 avaliam o top (reps/RIR do top vs alvo).
   const tops = series.filter((s) => s.tipo_serie === "top_set");
   // Sem top set, avalia as séries de trabalho (back-off é mais leve de propósito e não entra).
   const semBackOff = series.filter((s) => s.tipo_serie !== "back_off");

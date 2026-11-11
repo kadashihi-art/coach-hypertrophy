@@ -12,6 +12,7 @@ import {
 } from "react";
 import type {
   AppState,
+  FeedbackMusculo,
   Checkin,
   Perfil,
   RegistroSerie,
@@ -75,6 +76,8 @@ import {
 import { avaliarCheckinDeload } from "@/lib/engine/checkin-deload";
 import { mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { aplicarRampaVolume, marcarAjusteDoDia, voltarParaBase } from "@/lib/engine/rampa-volume";
+import { aplicarVolumeAutorregulado } from "@/lib/inteligencia/volume-autorregulado";
+import type { LeituraDoDia } from "@/lib/inteligencia/leitura-dia";
 import { incrementoCargaKg } from "@/lib/domain";
 
 type Ctx = {
@@ -85,6 +88,10 @@ type Ctx = {
   /** Merge perfil + gera plano determinístico e marca onboarding concluído */
   completeOnboarding: (partial: Partial<Perfil>) => void;
   saveCheckin: (ck: Omit<Checkin, "id">) => void;
+  /** Feedback por músculo (pós-treino ou recuperação antes do treino). Substitui o do mesmo grupo/momento/sessão-dia. */
+  registrarFeedbackMusculo: (fb: Omit<FeedbackMusculo, "id" | "registrado_em">) => void;
+  /** Leitura do dia: aplica (ou não) a proposta de séries pro resto do treino e guarda a resposta. */
+  responderLeituraDia: (sessaoId: string, leitura: LeituraDoDia, aplicar: boolean) => void;
   /** Cardio avulso: minutos contam contra o ideal semanal do perfil. */
   addCardio: (entrada: {
     minutos: number;
@@ -333,6 +340,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     completeOnboarding({});
   }, [completeOnboarding]);
 
+  const registrarFeedbackMusculo = useCallback((fb: Omit<FeedbackMusculo, "id" | "registrado_em">) => {
+    setState((s) => {
+      const lista = s.feedbacks_musculo ?? [];
+      const mesmo = (x: FeedbackMusculo) =>
+        x.grupo === fb.grupo && x.momento === fb.momento && (fb.momento === "pos" ? x.sessao_id === fb.sessao_id : x.data === fb.data);
+      const ant = lista.find(mesmo);
+      const novo: FeedbackMusculo = {
+        ...ant,
+        ...fb,
+        id: ant?.id ?? `fbm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        // Mantém a posição no tempo de quem já existia (o pareamento pós → recuperação usa isso).
+        registrado_em: ant?.registrado_em ?? new Date().toISOString(),
+      };
+      // Guarda só o necessário: ~6 meses de feedback.
+      const resto = lista.filter((x) => !mesmo(x)).slice(-400);
+      return { ...s, feedbacks_musculo: [...resto, novo] };
+    });
+  }, []);
+
+  const responderLeituraDia = useCallback((sessaoId: string, leitura: LeituraDoDia, aplicar: boolean) => {
+    setState((s) => ({
+      ...s,
+      sessoes: s.sessoes.map((x) => {
+        if (x.id !== sessaoId || x.leitura_dia) return x;
+        const mud = new Map(leitura.mudancas.map((m) => [m.prescricao_id, m.para]));
+        const prescricoes = aplicar
+          ? x.prescricoes.map((p) => {
+              const para = mud.get(p.id);
+              if (para == null || para === p.series) return p;
+              // O ajuste do dia acompanha a mudança (a base do plano não muda).
+              const ajuste = (p.ajuste_series_dia ?? 0) + (para - p.series);
+              const { ajuste_series_dia: _a, ...rest } = p;
+              void _a;
+              return ajuste ? { ...rest, series: para, ajuste_series_dia: ajuste } : { ...rest, series: para };
+            })
+          : x.prescricoes;
+        return {
+          ...x,
+          prescricoes,
+          leitura_dia: { tipo: leitura.tipo, razao: Math.round(leitura.razao * 1000) / 1000, resposta: aplicar ? ("aplicada" as const) : ("mantida" as const), em: new Date().toISOString() },
+        };
+      }),
+    }));
+  }, []);
+
   const saveCheckin = useCallback((ck: Omit<Checkin, "id">) => {
     setState((s) => {
       const id = `ck-${Date.now()}`;
@@ -540,11 +592,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         registros: s.registros,
         hojeIso,
       });
+      // Volume autorregulado: feedback por músculo (estímulo, articulação, recuperação) por cima da rampa.
+      const auto = aplicarVolumeAutorregulado({
+        prescricoes: rampa.prescricoes,
+        exercicios: s.exercicios,
+        feedbacks: s.feedbacks_musculo,
+        mesociclo: mesoHoje,
+        checkin: ckHoje,
+        sessoesDaSemana: sessoesDoPlano(s, hojeIsoSaoPaulo()),
+      });
       const deload = avaliarCheckinDeload({
         checkin: ckHoje,
         mesociclo: mesoHoje,
         estados: s.estados,
-        prescricoes: rampa.prescricoes,
+        prescricoes: auto.prescricoes,
         exercicios: s.exercicios,
         data: hojeIso,
       });
@@ -594,6 +655,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 data: hojeIso,
                 iniciada_em: new Date().toISOString(),
                 finalizada_em: undefined,
+                // A sessão se repete toda semana: a leitura do dia anterior não vale pra hoje.
+                leitura_dia: undefined,
                 volume_por_grupo: x.volume_por_grupo.map((v) => ({
                   ...v,
                   realizado: 0,
@@ -1089,6 +1152,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
       completeOnboarding,
       saveCheckin,
+      registrarFeedbackMusculo,
+      responderLeituraDia,
       addCardio,
       removeCardio,
       startSession,
@@ -1123,6 +1188,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
       completeOnboarding,
       saveCheckin,
+      registrarFeedbackMusculo,
+      responderLeituraDia,
       addCardio,
       removeCardio,
       startSession,

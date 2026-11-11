@@ -11,6 +11,7 @@ import { z } from "zod";
 import {
   AlertaSegurancaSchema,
   CardioSchema,
+  FeedbackMusculoSchema,
   CheckinSchema,
   DecisaoProgressaoSchema,
   EstadoExercicioSchema,
@@ -97,5 +98,7 @@ export const AppStateSchema = z.object({
   edicao_ao_vivo: EdicaoAoVivoSchema.nullable().optional(),
   /** Dias que o usuário limpou no calendário (YYYY-MM-DD): a agenda não põe treino neles. */
   dias_limpos: z.array(z.string()).optional(),
+  /** Feedback por músculo (estímulo, articulação, recuperação) que regula o volume do dia. */
+  feedbacks_musculo: z.array(FeedbackMusculoSchema).optional(),
 });
 export type AppState = z.infer<typeof AppStateSchema>;

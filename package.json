@@ -59,7 +59,11 @@
     "smoke:projecao": "npx --yes tsx scripts/smoke-projecao.ts",
     "smoke:registrar-passado": "npx --yes tsx scripts/smoke-registrar-passado.ts",
     "smoke:repetir-semana": "npx --yes tsx scripts/smoke-repetir-semana.ts",
-    "smoke:tipo-carga": "npx --yes tsx scripts/smoke-tipo-carga.ts"
+    "smoke:tipo-carga": "npx --yes tsx scripts/smoke-tipo-carga.ts",
+    "smoke:volume-plano": "npx --yes tsx scripts/smoke-volume-plano.ts",
+    "smoke:prioridades": "npx --yes tsx scripts/smoke-prioridades.ts",
+    "smoke:conceitos": "npx --yes tsx scripts/smoke-conceitos.ts",
+    "smoke:inteligencia": "npx --yes tsx scripts/smoke-inteligencia.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

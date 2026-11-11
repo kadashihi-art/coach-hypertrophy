@@ -12,7 +12,7 @@ import { Casca, EQUIP, Mini, Passo } from "@/components/EditarTreinoSheet";
 import { labelGrupo } from "@/lib/labels";
 import { incrementoCargaKg } from "@/lib/domain";
 import { LIMITES_EDICAO } from "@/lib/plan/editar-treino";
-import { preparatoriasDaSessao } from "@/lib/treino/estrutura-series";
+import { preparacaoDaSessao, textoPreparacao } from "@/lib/treino/estrutura-series";
 import {
   acaoRemover,
   adicionarAoVivo,
@@ -57,7 +57,7 @@ export function EditarDuranteTreinoSheet(props: {
   if (!r || !sessao || !previa) return null;
   const ex = (id: string) => state.exercicios.find((e) => e.id === id);
   const efetivos = r.itens.map((i) => ({ exercicio_id: i.trocar_para ?? i.exercicio_id }));
-  const preps = preparatoriasDaSessao(efetivos, state.exercicios);
+  const preps = preparacaoDaSessao(efetivos, state.exercicios);
   const invalido = validarAoVivo(state, r);
   const { onClose } = props;
 
@@ -194,7 +194,7 @@ export function EditarDuranteTreinoSheet(props: {
                       {atual ? <span className="text-accent">Agora · </span> : null}
                       {!it.prescricao_id ? <span className="text-accent">Novo · </span> : null}
                       {f.trabalho > 0 ? `${f.trabalho} de ${presc?.series ?? it.series} feitas` : f.iniciado ? "aquecimento feito" : "não começou"}
-                      {!f.iniciado && preps[i] && !it.encerrar ? <span className="text-accent"> · aquece + aproximação antes</span> : null}
+                      {!f.iniciado && textoPreparacao(preps[i]) && !it.encerrar ? <span className="text-accent"> · {textoPreparacao(preps[i])}</span> : null}
                       {it.encerrar ? " · encerrado aqui" : ""}
                     </p>
                   </div>

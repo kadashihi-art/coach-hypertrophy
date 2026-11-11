@@ -31,10 +31,14 @@ function alternativas(divisao: string, dias: number, minutos: number, exp?: stri
     dias >= 4 ? `com ${dias} dias, FB repetiria todos os grupos quase todo dia — pouca recuperação local e sessões longas para bater volume` : "—",
     "2–3 dias/semana, pouco tempo, iniciante, ou rotina imprevisível");
   add("upper_lower",
-    dias <= 3 ? `com ${dias} dias, UL deixa um lado (superior/inferior) só 1×/semana` : dias >= 5 ? `com ${dias} dias, UL duplicaria sessões e acumularia fadiga sem ganho de frequência` : "—",
-    "4 dias/semana: 2× frequência por grupo com sessões de ~60 min");
+    dias <= 3 ? `com ${dias} dias, UL deixa um lado (superior/inferior) só 1×/semana` : dias >= 6 ? `com ${dias} dias, UL repetiria cada sessão 3× e acumularia fadiga sem ganho real` : "—",
+    "4–5 dias/semana: 2× (ou 3×) por grupo com sessões de ~60 min");
   add("ppl",
-    dias < 5 ? `com ${dias} dias, PPL deixa grupos só 1×/semana (evidência favorece ≥2× para volume moderado/alto — Schoenfeld 2016/2019)` : "—",
+    dias < 5
+      ? `com ${dias} dias, PPL deixa grupos só 1×/semana (evidência favorece ≥2× para volume moderado/alto — Schoenfeld 2016/2019)`
+      : dias === 5
+        ? "com 5 dias, PPL repete push e pull e deixa pernas só 1×/semana: quadríceps, glúteo e posterior ficam abaixo de 10 séries"
+        : "—",
     `5–6 dias/semana e sessões ${minutos <= 50 ? "curtas" : "médias"}; PPL×2 com 6 dias = 2× por grupo`);
   add("ppl_upper_lower",
     dias < 5 ? `precisa de 5 treinos/semana; você tem ${dias}` : "opção equivalente; eu só uso híbrido quando você escolhe",

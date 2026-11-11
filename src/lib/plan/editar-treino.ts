@@ -2,7 +2,7 @@
  * Editar treino (por sessão). Lógica pura: nada aqui grava.
  * - O rascunho só guarda ESCOLHAS do usuário: quais exercícios, ordem, nº de séries, faixa de reps e dia.
  * - kg/RIR continuam vindo do EstadoExercicio (ou estimativa conservadora do gerador) — nunca do usuário.
- * - A estrutura de séries (aquecimento por grupo muscular, aproximação, trabalho → top → back-off)
+ * - A estrutura de séries (aquecimento por grupo muscular, aproximação, top → back-offs)
  *   é derivada da nova ordem por `estrutura-series`, sem estado extra.
  * - Histórico (registros) e EstadoExercicio nunca são apagados.
  */

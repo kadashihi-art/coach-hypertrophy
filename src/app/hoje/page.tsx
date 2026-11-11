@@ -13,6 +13,11 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import { ehSemanaDeload, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { aplicarRampaVolume, resumoRampa, voltarParaBase } from "@/lib/engine/rampa-volume";
+import { aplicarVolumeAutorregulado, gruposPrincipaisDoTreino, textosAutorregulado } from "@/lib/inteligencia/volume-autorregulado";
+import { montarBriefing } from "@/lib/inteligencia/briefing";
+import { BriefingTreino } from "@/components/BriefingTreino";
+import { RevisaoSemanalResumo } from "@/components/RevisaoSemanal";
+import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import {
   AlertaCard,
   Button,
@@ -140,6 +145,19 @@ export default function HojePage() {
     });
   }, [sess, hojeIso, state, meso, ck]);
 
+  // Prévia do volume autorregulado (feedback por músculo), por cima da rampa — mesmo cálculo do início do treino.
+  const autoPreview = useMemo(() => {
+    if (!sess || !hojeIso || sess.status === "em_andamento" || !rampaPreview) return null;
+    return aplicarVolumeAutorregulado({
+      prescricoes: rampaPreview.prescricoes,
+      exercicios: state.exercicios,
+      feedbacks: state.feedbacks_musculo,
+      mesociclo: meso,
+      checkin: ck ?? null,
+      sessoesDaSemana: sessoesDoPlano(state, hojeIso),
+    });
+  }, [sess, hojeIso, state, meso, ck, rampaPreview]);
+
   const deloadPreview = useMemo(() => {
     if (!sess || !hojeIso) return null;
     // Sessão já em andamento: prescricoes já podem estar ajustadas —
@@ -148,11 +166,31 @@ export default function HojePage() {
       checkin: ck ?? null,
       mesociclo: meso,
       estados: state.estados,
-      prescricoes: rampaPreview?.prescricoes ?? sess.prescricoes,
+      prescricoes: autoPreview?.prescricoes ?? rampaPreview?.prescricoes ?? sess.prescricoes,
       exercicios: state.exercicios,
       data: hojeIso,
     });
-  }, [sess, ck, meso, state.estados, state.exercicios, hojeIso, rampaPreview]);
+  }, [sess, ck, meso, state.estados, state.exercicios, hojeIso, rampaPreview, autoPreview]);
+
+  const revisao = useMemo(() => {
+    if (!hojeIso) return null;
+    const dow = new Date(hojeIso + "T12:00:00Z").getUTCDay();
+    return dow === 0 || dow === 1 ? revisarSemana(state, hojeIso) : null;
+  }, [state, hojeIso]);
+
+  // Briefing: meta de cada exercício com as séries do dia já ajustadas.
+  const briefing = useMemo(() => {
+    if (!sess || !hojeIso || sess.status === "em_andamento") return null;
+    const base = new Map(voltarParaBase(sess.prescricoes).map((p) => [p.id, p.series]));
+    return montarBriefing({
+      state,
+      prescricoes: deloadPreview?.prescricoes ?? sess.prescricoes,
+      mesociclo: meso,
+      checkin: ck ?? null,
+      hojeIso,
+      baseSeries: base,
+    });
+  }, [sess, hojeIso, state, meso, ck, deloadPreview]);
 
   const deloadResumo =
     [rampaPreview ? resumoRampa(rampaPreview, state.exercicios) : null, deloadPreview ? resumoAjusteDeload(deloadPreview) : null]
@@ -339,6 +377,9 @@ export default function HojePage() {
 
       <ReavaliacaoNivelCard />
 
+      {/* Revisão da semana: domingo (semana fechando) e segunda (semana que passou). */}
+      {revisao ? <RevisaoSemanalResumo r={revisao} /> : null}
+
       {aviso && sess?.id === agenda.pendentes[0]?.sessao_id ? (
         <Card className="mb-4 border border-warn/40 bg-[rgba(255,184,60,.08)]" data-testid="aviso-pendente">
           <p className="text-sm font-semibold text-warn">{aviso.titulo}</p>
@@ -391,7 +432,7 @@ export default function HojePage() {
               {ultimaDecisao.motivo.length > 120 ? "…" : ""}
             </p>
           )}
-          {estadoHero === "novo" || estadoHero === "andamento" ? (
+          {(estadoHero === "novo" && !(briefing && !parqBloqueado)) || estadoHero === "andamento" ? (
             <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
               {sess.prescricoes.slice(0, 5).map((p) => {
                 const ex = state.exercicios.find((e) => e.id === p.exercicio_id);
@@ -434,6 +475,16 @@ export default function HojePage() {
           </div>
         </Card>
       )}
+
+      {/* Briefing: recuperação, ajustes do dia e meta de cada exercício (só antes de começar). */}
+      {sess && briefing && estadoHero === "novo" && !parqBloqueado ? (
+        <BriefingTreino
+          briefing={briefing}
+          grupos={gruposPrincipaisDoTreino(sess.prescricoes, state.exercicios)}
+          ajustes={autoPreview ? textosAutorregulado(autoPreview, state.exercicios) : []}
+          trocar={(autoPreview?.trocar ?? []).map((t) => state.exercicios.find((e) => e.id === t.exercicio_id)?.nome ?? t.exercicio_id)}
+        />
+      ) : null}
 
       {/* Faixa de dias: mesma agenda do calendário (datas reais). Tocar abre as ações do dia aqui. */}
       {faixa.length ? (

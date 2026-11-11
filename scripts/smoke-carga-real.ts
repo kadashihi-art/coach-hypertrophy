@@ -42,11 +42,12 @@ for (const c of casos) {
   const presc = aplicarEstadoNaPrescricao({ id: "p1", exercicio_id: c.id, series: 3, tecnica: "nenhuma", faixa_reps: c.faixa, rir_alvo: 2, carga: { trabalho_kg: c.atual, top_set_kg: null, origem: "estimativa_conservadora" } } as never, novo);
   const fases = cargasDaEstrutura(presc.carga.trabalho_kg, step);
   const aq = cargaAquecimento(fases.top_set, step);
-  const ap = cargaAproximacao(fases.trabalho, step, aq);
-  assert.ok(aq <= ap && ap < fases.trabalho && fases.trabalho < fases.top_set && fases.back_off < fases.top_set, `${c.id}: fases fora de ordem ${JSON.stringify({ top, aq, ap, fases })}`);
+  // Ordem nova: aproximação → top → back-offs (a 1ª série que vale é o top).
+  const ap = cargaAproximacao(fases.top_set, step, aq);
+  assert.ok(aq <= ap && ap < fases.top_set && fases.back_off <= fases.top_set && fases.back_off >= fases.top_set * 0.8, `${c.id}: fases fora de ordem ${JSON.stringify({ top, aq, ap, fases })}`);
   const sug = cargaSugeridaParaExercicio({ estados: [novo], registros: series, exercicios: [{ id: c.id, grupo_primario: c.grupo } as never] }, c.id, c.atual);
   assert.equal(sug.carga_kg, top, `${c.id}: memória de carga diverge do estado`);
-  console.log(`PASS ${c.id}: antes ${c.atual} → top ${top} (real ${real}) | aquec ${aq} · aprox ${ap} · trab ${fases.trabalho} · back-off ${fases.back_off} [${d.regra}]`);
+  console.log(`PASS ${c.id}: antes ${c.atual} → top ${top} (real ${real}) | aquec ${aq} · aprox ${ap} · top ${fases.top_set} · back-off ${fases.back_off} [${d.regra}]`);
 }
 
 // Limite de segurança: RIR 0 nunca sobe acima do que foi levantado; subida por sessão ≤ 2 degraus.

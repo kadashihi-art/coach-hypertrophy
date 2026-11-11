@@ -1,6 +1,13 @@
 "use client";
 
 import { VolumeBar } from "@/components/VolumeBar";
+import { ExplicaConceito } from "@/components/Conceito";
+import { DiagnosticoExercicio } from "@/components/DiagnosticoExercicio";
+import { RevisaoSemanalCard } from "@/components/RevisaoSemanal";
+import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
+import { diagnosticarEstagnacao, preverForca } from "@/lib/inteligencia/diagnostico";
+import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
+import { contextoPessoal } from "@/lib/conceitos";
 import { labelAcao, labelGrupo } from "@/lib/labels";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { apresentarAlerta } from "@/lib/alertas/apresentar";
@@ -45,6 +52,8 @@ export default function ProgressoPage() {
 
   // Semana ISO (seg–dom) no fuso de São Paulo (no servidor usa um valor fixo até hidratar).
   const semanaAtual = useClientValue(currentIsoWeek, "2026-W44");
+  // Data de hoje só no cliente (evita divergência de hidratação no diagnóstico/previsão).
+  const hojeDiag = useClientValue(() => hojeIsoSaoPaulo(), "");
   const [barsOn, setBarsOn] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);
   useEffect(() => {
@@ -114,7 +123,12 @@ export default function ProgressoPage() {
         </Card>
       ) : null}
 
-      <SectionTitle title="Volume semanal efetivo" />
+      {(() => {
+        const rev = hojeDiag ? revisarSemana(state, hojeDiag) : null;
+        return rev ? <RevisaoSemanalCard r={rev} /> : null;
+      })()}
+
+      <SectionTitle title="Volume semanal efetivo" action={<ExplicaConceito id="volume" />} />
       <p className="mb-3 text-xs text-muted">
         Meta: {VOLUME_MIN} a {VOLUME_MAX} séries por semana em cada músculo (abdômen e antebraço: até 12).
         Série direta conta 1; quando o músculo só ajuda, conta meia.
@@ -197,7 +211,7 @@ export default function ProgressoPage() {
         </>
       )}
 
-      <SectionTitle title="Séries perto da falha" />
+      <SectionTitle title="Séries perto da falha" action={<ExplicaConceito id="serie_valida" ctx={contextoPessoal(state)} />} />
       <p className="mb-3 text-xs text-muted">
         Conta como efetiva a série que terminou com até 3 reps sobrando. Quando o que você fez mostra outra coisa, eu ajusto o RIR marcado.
       </p>
@@ -236,7 +250,7 @@ export default function ProgressoPage() {
 
       <CardioSection />
 
-      <SectionTitle title="Força estimada (e1RM) e recordes" />
+      <SectionTitle title="Força estimada (e1RM) e recordes" action={<ExplicaConceito id="rm" ctx={contextoPessoal(state)} />} />
       <div className="mb-6 space-y-3 motion-stagger">
         {estadosReais.length === 0 && (
           <Card>
@@ -250,9 +264,9 @@ export default function ProgressoPage() {
           return (
             <Card
               key={e.exercicio_id}
-              className={`flex items-center justify-between gap-3 ${i === 0 ? "pr-pop" : ""}`}
+              className={`flex items-start justify-between gap-3 ${i === 0 ? "pr-pop" : ""}`}
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold">{ex?.nome ?? "Exercício"}</p>
                 <p className="text-xs text-muted">
                   {e.pr_reps > 0
@@ -260,6 +274,12 @@ export default function ProgressoPage() {
                     : "Recorde: sem dados ainda"}{" "}
                   · carga atual {textoCarga(e.carga_atual_kg, ex, alternado(ex?.id))}
                 </p>
+                {hojeDiag ? (
+                  <DiagnosticoExercicio
+                    diag={diagnosticarEstagnacao(state, e.exercicio_id, hojeDiag)}
+                    prev={preverForca(state.registros, e.exercicio_id, hojeDiag)}
+                  />
+                ) : null}
               </div>
               <Stat label="e1RM" value={e.pr_reps > 0 && e.e1rm_estimado_kg > 0 ? `${e.e1rm_estimado_kg}` : "—"} mono />
             </Card>

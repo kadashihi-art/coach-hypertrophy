@@ -8,6 +8,7 @@ import { labelGrupo } from "@/lib/labels";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
+import { FeedbackPosTreino } from "@/components/FeedbackMusculos";
 import {
   Badge,
   Button,
@@ -178,6 +179,8 @@ export default function FeedbackPage() {
           </Card>
         );
       })()}
+
+      {lastSess ? <FeedbackPosTreino sessao={lastSess} /> : null}
 
       <SectionTitle title="Volume vs planejado" />
       <Card className="card-motion mb-4 space-y-3">

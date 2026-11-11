@@ -17,6 +17,9 @@ import { hojeIsoSaoPaulo as hojeIsoSP, proximaSessao } from "@/lib/plan/proxima-
 import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { racionalDoPlano } from "@/lib/plan/racional";
 import { faseAtiva } from "@/lib/plan/estrutura";
+import { ajusteDoMusculo } from "@/lib/inteligencia/volume-autorregulado";
+import { diagnosticarEstagnacao } from "@/lib/inteligencia/diagnostico";
+import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import type { PlanoRacional } from "@/lib/domain";
 
 export type CoachContextOpts = {
@@ -70,6 +73,8 @@ export type CoachContext = {
     objetivo?: string;
     divisao?: string;
     dias_por_semana?: number;
+    /** Músculos que o usuário escolheu priorizar (mais séries, compostos primeiro). */
+    prioridades_musculares?: string[];
     mesociclo?: {
       total_semanas: number;
       semana_atual: number;
@@ -78,6 +83,12 @@ export type CoachContext = {
   } | null;
   estados: CoachContextEstado[];
   volumes_semanais: VolumeSemanal[];
+  /** Ajuste de séries por músculo vindo do feedback (estímulo/articulação/recuperação). Só os ≠ 0. */
+  feedback_musculos?: Array<{ grupo: string; ajuste_series: number; motivo: string | null }>;
+  /** Revisão da última semana (domingo: a que está fechando). */
+  revisao_semana?: { semana: string; resumo: string; destaques: string[]; atencao: string[]; proxima: string[] };
+  /** Exercícios parados (2+ sessões) com as causas prováveis que os dados mostram. */
+  estagnacoes?: Array<{ exercicio: string; sessoes_sem_progresso: number; causas: Array<{ titulo: string; evidencia: string; acao: string }> }>;
   decisoes_progressao: Array<{
     data: string;
     exercicio_id: string;
@@ -262,6 +273,7 @@ export function buildCoachContext(
         objetivo: state.plano.objetivo,
         divisao: state.plano.divisao,
         dias_por_semana: state.plano.dias_por_semana,
+        ...(state.perfil?.prioridades_musculares?.length ? { prioridades_musculares: state.perfil.prioridades_musculares } : {}),
         mesociclo: {
           total_semanas: state.plano.mesociclo.total_semanas,
           // Semana real do bloco (a salva fica em 1); "deload" na última semana.
@@ -334,6 +346,32 @@ export function buildCoachContext(
     plano,
     estados,
     volumes_semanais,
+    ...(() => {
+      const desde = state.plano?.mesociclo?.data_inicio ?? null;
+      const grupos = [...new Set((state.feedbacks_musculo ?? []).map((f) => f.grupo))];
+      const fm = grupos
+        .map((g) => ajusteDoMusculo(state.feedbacks_musculo ?? [], g, desde))
+        .filter((a) => a.ajuste !== 0)
+        .map((a) => ({ grupo: a.grupo, ajuste_series: a.ajuste, motivo: a.motivo }));
+      return fm.length ? { feedback_musculos: fm } : {};
+    })(),
+    ...(() => {
+      const r = revisarSemana(state, hojeIsoSP());
+      return r ? { revisao_semana: { semana: r.rotulo, resumo: r.resumo, destaques: r.destaques, atencao: r.atencao, proxima: r.proxima } } : {};
+    })(),
+    ...(() => {
+      const hoje = hojeIsoSP();
+      const est = state.estados
+        .map((e) => diagnosticarEstagnacao(state, e.exercicio_id, hoje))
+        .filter((d): d is NonNullable<typeof d> => !!d)
+        .slice(0, 5)
+        .map((d) => ({
+          exercicio: nomeExercicio(state, d.exercicio_id) ?? d.exercicio_id,
+          sessoes_sem_progresso: d.sessoes_sem_progresso,
+          causas: d.causas.map(({ titulo, evidencia, acao }) => ({ titulo, evidencia, acao })),
+        }));
+      return est.length ? { estagnacoes: est } : {};
+    })(),
     decisoes_progressao,
     proxima_sessao,
     racional,

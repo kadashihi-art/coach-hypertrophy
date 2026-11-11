@@ -48,6 +48,14 @@ export const PerfilSchema = z.object({
    */
   grupos_opcionais: z.array(GruposOpcionaisSchema).max(4).optional(),
   /**
+   * Músculos prioritários (até 3): o gerador dá +4 séries semanais (até 20), põe o composto deles
+   * primeiro no treino e, sem tempo sobrando, tira de um grupo não prioritário que segue acima do piso.
+   * Ausente/vazio = plano igual ao de antes.
+   */
+  prioridades_musculares: z.array(GrupoMuscularSchema).max(3).optional(),
+  /** Por que priorizar (só pra explicar; não muda a conta). */
+  prioridade_motivo: z.enum(["dificil_desenvolver", "estetica", "esporte", "assimetria", "outro"]).optional(),
+  /**
    * Opcionais: só afinam a estimativa inicial de carga.
    * Não bloqueiam onboarding; ausência mantém o cálculo anterior.
    */
@@ -371,6 +379,25 @@ export type TipoCardio = z.infer<typeof TipoCardioSchema>;
 export const IntensidadeCardioSchema = z.enum(["leve", "moderada", "forte"]);
 export type IntensidadeCardio = z.infer<typeof IntensidadeCardioSchema>;
 
+/**
+ * Feedback por músculo (volume autorregulado, src/lib/inteligencia/volume-autorregulado.ts).
+ * - "pos": logo depois do treino — estímulo sentido (0 fraco, 1 bom, 2 muito forte) e se incomodou articulação.
+ * - "pre": antes do treino seguinte daquele músculo — dor muscular (0 recuperado, 1 um pouco, 2 bem dolorido).
+ */
+export const FeedbackMusculoSchema = z.object({
+  id: z.string(),
+  grupo: GrupoMuscularSchema,
+  /** YYYY-MM-DD (fuso de São Paulo). */
+  data: z.string(),
+  momento: z.enum(["pos", "pre"]),
+  sessao_id: z.string().nullable().default(null),
+  estimulo: z.number().int().min(0).max(2).optional(),
+  articulacao: z.boolean().optional(),
+  dor_muscular: z.number().int().min(0).max(2).optional(),
+  registrado_em: z.string(),
+});
+export type FeedbackMusculo = z.infer<typeof FeedbackMusculoSchema>;
+
 export const CardioSchema = z.object({
   id: z.string(),
   /** Dia do cardio (YYYY-MM-DD, fuso de São Paulo). */
@@ -446,8 +473,19 @@ export type SnapshotConclusao = z.infer<typeof SnapshotConclusaoSchema>;
 /** Âncora de aquecimento registrada no dia (carga que virou trabalho/top). */
 export const AncoraSessaoSchema = z.object({ exercicio_id: z.string(), trabalho_kg: z.number().nonnegative() });
 
+/** Leitura do dia (src/lib/inteligencia/leitura-dia.ts): o que o usuário respondeu à proposta durante o treino. */
+export const LeituraDiaSchema = z.object({
+  tipo: z.enum(["ruim", "bom"]),
+  /** e1RM de hoje ÷ o normal recente (ex.: 0,9 = 10% abaixo). */
+  razao: z.number().positive(),
+  resposta: z.enum(["aplicada", "mantida"]),
+  em: z.string(),
+});
+export type LeituraDia = z.infer<typeof LeituraDiaSchema>;
+
 export const SessaoSchema = SessaoBaseSchema.extend({
   ancoras_sessao: z.array(AncoraSessaoSchema).optional(),
+  leitura_dia: LeituraDiaSchema.optional(),
   snapshot_conclusao: SnapshotConclusaoSchema.optional(),
 });
 export type Sessao = z.infer<typeof SessaoSchema>;

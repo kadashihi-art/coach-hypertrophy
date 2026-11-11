@@ -24,7 +24,7 @@ import { TrocarExercicioSheet } from "@/components/TrocarExercicioSheet";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
 import { edicaoDa, podeDesfazer, podeVoltarAoCoach, sessaoEditavel } from "@/lib/plan/editar-treino";
 import { podeDesfazerCorrecao, sessaoCorrigivel } from "@/lib/plan/corrigir-concluida";
-import { preparatoriasDaSessao, rotuloOrdemSeries } from "@/lib/treino/estrutura-series";
+import { preparacaoDaSessao, rotuloOrdemSeries, textoPreparacao } from "@/lib/treino/estrutura-series";
 import { textoCarga } from "@/lib/catalog/tipo-carga";
 import { useModoCarga } from "@/lib/use-modo-carga";
 
@@ -273,8 +273,8 @@ export default function PlanoPage() {
                         {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
                         {textoCarga(carga, ex, alternado(ex?.id))}
                         {rotuloOrdemSeries(p) ? ` · ${rotuloOrdemSeries(p)}` : ""}
-                        {preparatoriasDaSessao(s!.prescricoes, state.exercicios)[i] ? (
-                          <span className="text-accent"> · aquece + aproximação antes</span>
+                        {textoPreparacao(preparacaoDaSessao(s!.prescricoes, state.exercicios)[i]) ? (
+                          <span className="text-accent"> · {textoPreparacao(preparacaoDaSessao(s!.prescricoes, state.exercicios)[i])}</span>
                         ) : null}
                       </span>
                       {s!.status !== "em_andamento" ? (
