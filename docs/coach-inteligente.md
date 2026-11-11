@@ -41,3 +41,31 @@ Aparece no `/hoje` antes de começar e mostra:
    - **preparação:** aquece + aproximação, ou só aproximação.
 
 A meta usa a carga que o motor já decidiu (`estados.alvo_proxima_sessao`) e o RIR do dia (`rirAlvoDoDia`). Não cria número novo.
+
+## Diagnóstico de estagnação (`diagnostico.ts`)
+Quando um exercício fica 2+ sessões sem progresso, o app não diz só "travou". Ele olha os dados e aponta até 3 causas prováveis, cada uma com evidência e ação:
+
+| Causa | Sinal nos dados |
+|---|---|
+| Longe da falha | RIR médio das 3 últimas sessões ≥ alvo + 1,5 |
+| Falha demais (composto) | RIR médio ≤ 0,3 |
+| Sono curto | metade ou mais das noites < 6h30 nos últimos 14 dias (4+ check-ins) |
+| Proteína baixa | média < mínimo da meta (3+ registros) |
+| Volume baixo / alto | média < 8 ou > 20 séries efetivas nas 2 últimas semanas fechadas |
+| Intervalo longo | > 9 dias entre as sessões do exercício |
+| Dor | dor marcada no exercício nos últimos 21 dias |
+| Chega dolorido | 2+ vezes "bem dolorido" no músculo em 21 dias |
+| Adaptação | nenhum dos sinais acima: hora de variar o exercício ou a faixa de reps |
+
+Onde aparece:
+- **Progresso:** "Parado há N treinos. Por quê?", expansível;
+- **briefing do /hoje:** só a causa principal e a ação;
+- **contexto do coach:** `estagnacoes`.
+
+## Previsão de força
+Regressão linear do e1RM nas últimas até 8 sessões (90 dias). Mostra "No ritmo atual (+1 kg/semana no 1RM estimado), você passa de 115 kg em ~5 semanas" só quando:
+- há 4+ sessões cobrindo 14+ dias;
+- o ritmo é > 0,2 kg/semana;
+- o marco (próximo múltiplo de 5 kg) chega em até 16 semanas.
+
+Fora disso não mostra nada. Não promete o que os dados não sustentam.

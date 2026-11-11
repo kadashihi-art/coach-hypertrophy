@@ -70,6 +70,11 @@ export function BriefingTreino({
               {it.ultima ? <p className="text-xs text-muted">{it.ultima}</p> : null}
               {it.porque ? <p className="mt-0.5 text-xs text-muted">Por quê: {it.porque}</p> : null}
               {it.prep ? <p className="mt-0.5 text-[11px] text-accent">{it.prep}</p> : null}
+              {it.travado ? (
+                <p className="mt-1 rounded-lg bg-[rgba(255,184,60,.08)] px-2 py-1 text-xs text-warn">
+                  Parado há {it.travado.sessoes} treinos. Causa provável: {it.travado.titulo.toLowerCase()}. {it.travado.acao}
+                </p>
+              ) : null}
             </li>
           ))}
         </ol>

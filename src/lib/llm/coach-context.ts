@@ -18,6 +18,7 @@ import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { racionalDoPlano } from "@/lib/plan/racional";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { ajusteDoMusculo } from "@/lib/inteligencia/volume-autorregulado";
+import { diagnosticarEstagnacao } from "@/lib/inteligencia/diagnostico";
 import type { PlanoRacional } from "@/lib/domain";
 
 export type CoachContextOpts = {
@@ -83,6 +84,8 @@ export type CoachContext = {
   volumes_semanais: VolumeSemanal[];
   /** Ajuste de séries por músculo vindo do feedback (estímulo/articulação/recuperação). Só os ≠ 0. */
   feedback_musculos?: Array<{ grupo: string; ajuste_series: number; motivo: string | null }>;
+  /** Exercícios parados (2+ sessões) com as causas prováveis que os dados mostram. */
+  estagnacoes?: Array<{ exercicio: string; sessoes_sem_progresso: number; causas: Array<{ titulo: string; evidencia: string; acao: string }> }>;
   decisoes_progressao: Array<{
     data: string;
     exercicio_id: string;
@@ -348,6 +351,19 @@ export function buildCoachContext(
         .filter((a) => a.ajuste !== 0)
         .map((a) => ({ grupo: a.grupo, ajuste_series: a.ajuste, motivo: a.motivo }));
       return fm.length ? { feedback_musculos: fm } : {};
+    })(),
+    ...(() => {
+      const hoje = hojeIsoSP();
+      const est = state.estados
+        .map((e) => diagnosticarEstagnacao(state, e.exercicio_id, hoje))
+        .filter((d): d is NonNullable<typeof d> => !!d)
+        .slice(0, 5)
+        .map((d) => ({
+          exercicio: nomeExercicio(state, d.exercicio_id) ?? d.exercicio_id,
+          sessoes_sem_progresso: d.sessoes_sem_progresso,
+          causas: d.causas.map(({ titulo, evidencia, acao }) => ({ titulo, evidencia, acao })),
+        }));
+      return est.length ? { estagnacoes: est } : {};
     })(),
     decisoes_progressao,
     proxima_sessao,

@@ -12,6 +12,7 @@ import { seriesBase } from "@/lib/engine/rampa-volume";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { focoDoDia } from "@/lib/plan/mesociclo";
 import { preparacaoDaSessao, textoPreparacao } from "@/lib/treino/estrutura-series";
+import { diagnosticarEstagnacao } from "./diagnostico";
 
 export type ItemBriefing = {
   prescricao_id: string;
@@ -29,6 +30,8 @@ export type ItemBriefing = {
   /** Por que a meta é essa (decisão da última sessão), quando existe. */
   porque: string | null;
   prep: string;
+  /** Exercício travado: causa mais provável e o que fazer hoje. */
+  travado: { sessoes: number; titulo: string; acao: string } | null;
 };
 
 export type Briefing = {
@@ -80,7 +83,7 @@ export function metaDoExercicio(args: {
 }
 
 export function montarBriefing(args: {
-  state: Pick<AppState, "estados" | "registros" | "decisoes" | "exercicios" | "perfil">;
+  state: Pick<AppState, "estados" | "registros" | "decisoes" | "exercicios" | "perfil" | "checkins" | "volumes_semanais" | "feedbacks_musculo">;
   /** Prescrições do dia já com os ajustes (rampa, feedback, check-in). */
   prescricoes: Prescricao[];
   mesociclo: Mesociclo | null;
@@ -125,6 +128,11 @@ export function montarBriefing(args: {
       meta: metaDoExercicio({ ex, cargaHoje, faixa, rir, ultimaCarga: mem?.ultima_carga_kg ?? null, ultimasReps: mem?.ultimas_reps ?? null }),
       porque,
       prep: textoPreparacao(preps[i]),
+      travado: (() => {
+        const d = diagnosticarEstagnacao(state, p.exercicio_id, hojeIso);
+        const c = d?.causas[0];
+        return d && c ? { sessoes: d.sessoes_sem_progresso, titulo: c.titulo, acao: c.acao } : null;
+      })(),
     };
   });
   const cab = mesociclo

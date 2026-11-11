@@ -3,6 +3,7 @@ import { gerarPlanoFromPerfil } from "../src/lib/plan/gerar-plano";
 import { CATALOG_EXERCICIOS } from "../src/lib/catalog/exercicios";
 import { ajusteDoMusculo, aplicarVolumeAutorregulado, ocorrenciasDoMusculo, textosAutorregulado } from "../src/lib/inteligencia/volume-autorregulado";
 import { metaDoExercicio, montarBriefing } from "../src/lib/inteligencia/briefing";
+import { diagnosticarEstagnacao, preverForca } from "../src/lib/inteligencia/diagnostico";
 import { AppStateSchema, type FeedbackMusculo, type Perfil } from "../src/lib/domain";
 
 let fail = 0;
@@ -85,7 +86,35 @@ const meso = { ...g.plano.mesociclo, semana_atual: 2, data_inicio: null };
   ok(b.itens.every((i) => !/\bmotor\b|R\d{1,2}\b/.test([i.meta, i.porque ?? ""].join(" "))), "sem 'motor' nem código de regra");
 }
 
-// 4) Estado antigo sem o campo continua válido
+// 4) Diagnóstico de estagnação e previsão
+{
+  const reg = (sessao_id: string, dia: string, carga_kg: number, reps: number, rir: number, extra: Record<string, unknown> = {}) =>
+    ({ id: `${sessao_id}-${reps}-${carga_kg}-${Math.random()}`, sessao_id, prescricao_id: "p", exercicio_id: "supino_reto_convencional", numero: 1, tipo_serie: "top_set", carga_kg, reps, rir_percebido: rir, dor: false, executado_em: `${dia}T12:00:00Z`, ...extra }) as never;
+  const estado = (sessoes_sem_progresso: number) => ({ exercicio_id: "supino_reto_convencional", carga_atual_kg: 80, faixa_reps: [8, 12], rir_alvo: 2, alvo_proxima_sessao: { carga_kg: 80, faixa_reps: [8, 12], rir_alvo: 2 }, sessoes_sem_progresso, primeira_sessao: false }) as never;
+  const st = (over: Record<string, unknown>) => ({ estados: [estado(3)], registros: [], exercicios: CATALOG_EXERCICIOS, checkins: [], volumes_semanais: [], perfil: base, feedbacks_musculo: [], ...over }) as never;
+  ok(diagnosticarEstagnacao(st({ estados: [estado(1)] }), "supino_reto_convencional", "2026-11-11") === null, "sem estagnação → sem diagnóstico");
+  const longe = diagnosticarEstagnacao(st({ registros: ["2026-11-01", "2026-11-04", "2026-11-08"].map((d, i) => reg(`s${i}`, d, 80, 9, 4)) }), "supino_reto_convencional", "2026-11-11")!;
+  ok(longe.causas[0]!.id === "longe_falha" && /RIR médio de 4/.test(longe.causas[0]!.evidencia), `RIR alto → longe da falha (${longe.causas[0]!.evidencia})`);
+  const sono = diagnosticarEstagnacao(st({ checkins: ["2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09"].map((data) => ({ id: data, data, sono_h: 5.5, prontidao: 3, dor: [] })) }), "supino_reto_convencional", "2026-11-11")!;
+  ok(sono.causas.some((c) => c.id === "sono"), "sono curto aparece como causa");
+  const prot = diagnosticarEstagnacao(st({ checkins: ["2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08"].map((data) => ({ id: data, data, sono_h: 8, prontidao: 4, dor: [], proteina_g: 90 })) }), "supino_reto_convencional", "2026-11-11")!;
+  ok(prot.causas.some((c) => c.id === "proteina" && /90 g/.test(c.evidencia)), "proteína abaixo da meta (80 kg → mín 130 g)");
+  const dor = diagnosticarEstagnacao(st({ registros: [reg("s1", "2026-11-05", 80, 9, 2, { dor: true })] }), "supino_reto_convencional", "2026-11-11")!;
+  ok(dor.causas[0]!.id === "dor", "dor no exercício vem primeiro");
+  const nada = diagnosticarEstagnacao(st({}), "supino_reto_convencional", "2026-11-11")!;
+  ok(nada.causas.length === 1 && nada.causas[0]!.id === "adaptacao", "sem sinal nos dados → adaptação (variar)");
+  ok([longe, sono, prot, dor, nada].every((d) => d.causas.every((c) => !/\bmotor\b|R\d{1,2}\b/.test(c.acao + c.evidencia))), "textos sem 'motor' nem código de regra");
+
+  // Previsão: ~+1 kg/semana no e1RM
+  const prog = [0, 7, 14, 21, 28].map((d, i) => reg(`p${i}`, new Date(Date.UTC(2026, 9, 14 + d)).toISOString().slice(0, 10), 80 + i * 0.75, 10, 2));
+  const pv = preverForca(prog, "supino_reto_convencional", "2026-11-11");
+  ok(!!pv && pv.kg_por_semana > 0.5 && pv.kg_por_semana < 1.5 && pv.marco_kg % 5 === 0 && pv.semanas >= 1, `previsão: ${pv?.texto}`);
+  ok(preverForca(prog.slice(0, 3), "supino_reto_convencional", "2026-11-11") === null, "menos de 4 sessões → sem previsão");
+  const parado = [0, 7, 14, 21].map((d, i) => reg(`q${i}`, new Date(Date.UTC(2026, 9, 14 + d)).toISOString().slice(0, 10), 80, 10, 2));
+  ok(preverForca(parado, "supino_reto_convencional", "2026-11-11") === null, "sem ritmo → sem previsão (não promete)");
+}
+
+// 5) Estado antigo sem o campo continua válido
 ok(AppStateSchema.safeParse({ perfil: null, plano: null }).success, "estado sem feedbacks_musculo continua válido");
 
 console.log(fail ? `FAIL ${fail}` : "ALL PASS");

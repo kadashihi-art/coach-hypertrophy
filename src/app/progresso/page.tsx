@@ -2,6 +2,9 @@
 
 import { VolumeBar } from "@/components/VolumeBar";
 import { ExplicaConceito } from "@/components/Conceito";
+import { DiagnosticoExercicio } from "@/components/DiagnosticoExercicio";
+import { diagnosticarEstagnacao, preverForca } from "@/lib/inteligencia/diagnostico";
+import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
 import { contextoPessoal } from "@/lib/conceitos";
 import { labelAcao, labelGrupo } from "@/lib/labels";
 import { semCodigoRegra } from "@/lib/llm/tom";
@@ -47,6 +50,8 @@ export default function ProgressoPage() {
 
   // Semana ISO (seg–dom) no fuso de São Paulo (no servidor usa um valor fixo até hidratar).
   const semanaAtual = useClientValue(currentIsoWeek, "2026-W44");
+  // Data de hoje só no cliente (evita divergência de hidratação no diagnóstico/previsão).
+  const hojeDiag = useClientValue(() => hojeIsoSaoPaulo(), "");
   const [barsOn, setBarsOn] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);
   useEffect(() => {
@@ -252,9 +257,9 @@ export default function ProgressoPage() {
           return (
             <Card
               key={e.exercicio_id}
-              className={`flex items-center justify-between gap-3 ${i === 0 ? "pr-pop" : ""}`}
+              className={`flex items-start justify-between gap-3 ${i === 0 ? "pr-pop" : ""}`}
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold">{ex?.nome ?? "Exercício"}</p>
                 <p className="text-xs text-muted">
                   {e.pr_reps > 0
@@ -262,6 +267,12 @@ export default function ProgressoPage() {
                     : "Recorde: sem dados ainda"}{" "}
                   · carga atual {textoCarga(e.carga_atual_kg, ex, alternado(ex?.id))}
                 </p>
+                {hojeDiag ? (
+                  <DiagnosticoExercicio
+                    diag={diagnosticarEstagnacao(state, e.exercicio_id, hojeDiag)}
+                    prev={preverForca(state.registros, e.exercicio_id, hojeDiag)}
+                  />
+                ) : null}
               </div>
               <Stat label="e1RM" value={e.pr_reps > 0 && e.e1rm_estimado_kg > 0 ? `${e.e1rm_estimado_kg}` : "—"} mono />
             </Card>
