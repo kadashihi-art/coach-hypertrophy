@@ -152,12 +152,16 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
     };
   }
   if (dias === 5) {
-    // PPL em 5 dias deixava pernas 1×/semana (quadríceps ~7 séries). Upper/Lower U/L/U/L/U
-    // treina tudo 2–3×/semana e o equilíbrio de volume mantém cada grupo em 10–20.
     return {
-      divisao: "upper_lower",
-      why: "5 dias → Upper/Lower (Upper/Lower/Upper/Lower/Upper): superiores 3× e inferiores 2× por semana, cada grupo entre 10 e 20 séries",
-      templates: seq(["upper", "lower", "upper", "lower", "upper"]),
+      divisao: "ppl",
+      why: "5 dias → Push/Pull/Legs (Push/Pull/Legs/Push/Pull) para volume semanal na faixa sem sessões longas",
+      templates: [
+        { id: "sess-push-a", nome: "Push A", slots: pushSlots("a") },
+        { id: "sess-pull-a", nome: "Pull A", slots: pullSlots("a") },
+        { id: "sess-legs-a", nome: "Legs A", slots: legsSlots("a") },
+        { id: "sess-push-b", nome: "Push B", slots: pushSlots("b") },
+        { id: "sess-pull-b", nome: "Pull B", slots: pullSlots("b") },
+      ],
     };
   }
   return {
@@ -406,6 +410,14 @@ const SLOT_REFORCO: Partial<Record<GrupoMuscular, Slot>> = {
   isquiotibiais: { padrao: "flexao_joelho", prefer: ["mesa_flexora", "cadeira_flexora_sentada"] },
   gluteos: { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "ponte_gluteo"] },
   panturrilhas: { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado", "panturrilha_leg_press"] },
+};
+
+/** Reserva quando o exercício do slot principal já está no treino (ex.: extensora já usada → leg press). */
+const SLOT_REFORCO_2: Partial<Record<GrupoMuscular, Slot>> = {
+  quadriceps: { padrao: "agachamento", prefer: ["leg_press", "hack_squat", "agachamento_goblet"] },
+  peito: { padrao: "empurrar_horizontal", composto: true, prefer: ["supino_maquina", "supino_halteres"] },
+  isquiotibiais: { padrao: "dobradica_quadril", prefer: ["rdl_halteres", "stiff_rdl"] },
+  panturrilhas: { padrao: "flexao_plantar", prefer: ["panturrilha_sentado", "panturrilha_leg_press"] },
 };
 
 /** Slots dos grupos opcionais (abdômen, antebraço, abdutores e adutores). */
@@ -979,12 +991,14 @@ export function gerarPlanoFromPerfil(
       // Opcionais (abdômen, antebraço…) são extras leves: não roubam tempo do equilíbrio dos principais.
       duracao: (ps) => estimateDurationMin(ps.filter((x) => !ehOpcional(x.exercicio_id)), catalog),
       criarPrescricao: (grupo, sess, series) => {
-        const slot = SLOT_REFORCO[grupo];
-        if (!slot) return null;
         const used = new Set(sess.prescricoes.map((x) => x.exercicio_id));
-        const ex = pickForSlot(slot, catalog, equips, restr, used, opts.historico);
-        if (!ex || ex.grupo_primario !== grupo) return null;
-        return novaPrescricao(ex, sess.id, series, sess.prescricoes.length + 1, used);
+        // Tenta o slot principal do grupo e, se o exercício dele já está no treino, o reserva.
+        for (const slot of [SLOT_REFORCO[grupo], SLOT_REFORCO_2[grupo]]) {
+          if (!slot) continue;
+          const ex = pickForSlot(slot, catalog, equips, restr, used, opts.historico);
+          if (ex && ex.grupo_primario === grupo) return novaPrescricao(ex, sess.id, series, sess.prescricoes.length + 1, used);
+        }
+        return null;
       },
     });
     notasVolume.push(...r.notas.map((n) => (faseDefs.length > 1 ? `${f.prefix ? "Fase 2" : "Fase 1"}: ${n}` : n)));
