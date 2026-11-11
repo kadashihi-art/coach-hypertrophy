@@ -3,6 +3,8 @@
 import { VolumeBar } from "@/components/VolumeBar";
 import { ExplicaConceito } from "@/components/Conceito";
 import { DiagnosticoExercicio } from "@/components/DiagnosticoExercicio";
+import { RevisaoSemanalCard } from "@/components/RevisaoSemanal";
+import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import { diagnosticarEstagnacao, preverForca } from "@/lib/inteligencia/diagnostico";
 import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
 import { contextoPessoal } from "@/lib/conceitos";
@@ -120,6 +122,11 @@ export default function ProgressoPage() {
           </Link>
         </Card>
       ) : null}
+
+      {(() => {
+        const rev = hojeDiag ? revisarSemana(state, hojeDiag) : null;
+        return rev ? <RevisaoSemanalCard r={rev} /> : null;
+      })()}
 
       <SectionTitle title="Volume semanal efetivo" action={<ExplicaConceito id="volume" />} />
       <p className="mb-3 text-xs text-muted">

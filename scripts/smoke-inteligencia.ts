@@ -4,6 +4,9 @@ import { CATALOG_EXERCICIOS } from "../src/lib/catalog/exercicios";
 import { ajusteDoMusculo, aplicarVolumeAutorregulado, ocorrenciasDoMusculo, textosAutorregulado } from "../src/lib/inteligencia/volume-autorregulado";
 import { metaDoExercicio, montarBriefing } from "../src/lib/inteligencia/briefing";
 import { diagnosticarEstagnacao, preverForca } from "../src/lib/inteligencia/diagnostico";
+import { e1rmNormal, lerDia } from "../src/lib/inteligencia/leitura-dia";
+import { revisarSemana, segundaDaRevisao } from "../src/lib/inteligencia/revisao-semanal";
+import { e1rmEpley } from "../src/lib/engine/e1rm";
 import { AppStateSchema, type FeedbackMusculo, type Perfil } from "../src/lib/domain";
 
 let fail = 0;
@@ -114,7 +117,63 @@ const meso = { ...g.plano.mesociclo, semana_atual: 2, data_inicio: null };
   ok(preverForca(parado, "supino_reto_convencional", "2026-11-11") === null, "sem ritmo → sem previsão (não promete)");
 }
 
-// 5) Estado antigo sem o campo continua válido
+// 5) Leitura do dia (durante o treino)
+{
+  const R = (sessao_id: string, dia: string, exercicio_id: string, carga_kg: number, reps: number, rir: number, tipo_serie = "top_set", prescricao_id = "x") =>
+    ({ id: `${sessao_id}-${exercicio_id}-${Math.random()}`, sessao_id, prescricao_id, exercicio_id, numero: 1, tipo_serie, carga_kg, reps, rir_percebido: rir, dor: false, executado_em: `${dia}T12:00:00Z` }) as never;
+  const sup = upper.prescricoes[0]!;
+  const hist = ["2026-10-20", "2026-10-27", "2026-11-03"].map((d, i) => R(`h${i}`, d, sup.exercicio_id, 80, 8, 2));
+  ok(Math.abs(e1rmNormal(hist, sup.exercicio_id, "hoje")! - e1rmEpley(80, 10)) < 0.01, "normal = mediana das últimas sessões (não o recorde)");
+  ok(e1rmNormal(hist.slice(0, 1), sup.exercicio_id, "hoje") === null, "1 sessão só → sem normal");
+  const sessao = { id: "hoje", prescricoes: upper.prescricoes } as never;
+  // dia ruim: 72 × 8 RIR 2 (~10% abaixo)
+  const ruim = lerDia({ sessao, registros: [...hist, R("hoje", "2026-11-10", sup.exercicio_id, 72, 8, 2, "top_set", sup.id)], exercicios: CATALOG_EXERCICIOS })!;
+  ok(ruim?.tipo === "ruim" && /~10% abaixo/.test(ruim.texto), `dia ruim detectado: ${ruim?.texto.slice(0, 60)}`);
+  ok(ruim.mudancas.every((m) => m.para === m.de - 1 && m.para >= 2), "ruim: −1 série em cada exercício (mín. 2)");
+  ok(ruim.mudancas.find((m) => m.prescricao_id === sup.id)!.para >= 2, "exercício atual mantém pelo menos a série feita + 1");
+  ok(!/\bmotor\b|R\d{1,2}\b/.test(ruim.texto), "texto sem 'motor' nem código");
+  // dia forte
+  const bom = lerDia({ sessao, registros: [...hist, R("hoje", "2026-11-10", sup.exercicio_id, 85, 8, 2, "top_set", sup.id)], exercicios: CATALOG_EXERCICIOS })!;
+  ok(bom?.tipo === "bom" && bom.mudancas.length === 1 && bom.mudancas[0]!.para === bom.mudancas[0]!.de + 1, "dia forte: +1 série no exercício atual");
+  // normal: nada
+  ok(lerDia({ sessao, registros: [...hist, R("hoje", "2026-11-10", sup.exercicio_id, 80, 8, 2, "top_set", sup.id)], exercicios: CATALOG_EXERCICIOS }) === null, "dentro do normal: não propõe nada");
+  // já respondeu: não pergunta de novo
+  ok(lerDia({ sessao: { ...(sessao as object), leitura_dia: { tipo: "ruim", razao: 0.9, resposta: "mantida", em: "x" } } as never, registros: [...hist, R("hoje", "2026-11-10", sup.exercicio_id, 72, 8, 2, "top_set", sup.id)], exercicios: CATALOG_EXERCICIOS }) === null, "resposta guardada: não repete");
+  // aquecimento não conta
+  ok(lerDia({ sessao, registros: [...hist, R("hoje", "2026-11-10", sup.exercicio_id, 40, 8, 5, "aquecimento", sup.id)], exercicios: CATALOG_EXERCICIOS }) === null, "aquecimento não dispara leitura");
+}
+
+// 6) Revisão semanal
+{
+  ok(segundaDaRevisao("2026-11-15") === "2026-11-09", "domingo → revisa a semana que está fechando");
+  ok(segundaDaRevisao("2026-11-11") === "2026-11-02", "quarta → revisa a semana anterior");
+  ok(segundaDaRevisao("2026-11-09") === "2026-11-02", "segunda → revisa a semana anterior");
+  const R = (sessao_id: string, dia: string, exercicio_id: string, carga_kg: number, reps: number, rir: number) =>
+    ({ id: `${sessao_id}-${exercicio_id}-${Math.random()}`, sessao_id, prescricao_id: `${sessao_id}-${exercicio_id}`, exercicio_id, numero: 1, tipo_serie: "top_set", carga_kg, reps, rir_percebido: rir, dor: false, executado_em: `${dia}T15:00:00Z` }) as never;
+  const registros = [
+    R("a0", "2026-10-28", "supino_reto_convencional", 80, 8, 2),
+    R("a1", "2026-11-03", "supino_reto_convencional", 82.5, 8, 2),
+    R("a1", "2026-11-03", "agachamento_barra", 100, 8, 2),
+    R("a2", "2026-11-05", "remada_curvada", 70, 10, 5),
+  ];
+  const st = AppStateSchema.parse({
+    perfil: base, exercicios: CATALOG_EXERCICIOS, plano: g.plano, sessoes: g.sessoes, estados: g.estados, registros,
+    checkins: ["2026-11-03", "2026-11-04", "2026-11-05"].map((data) => ({ id: data, data, sono_h: 6, prontidao: 3, dor: [], proteina_g: 100 })),
+    volumes_semanais: [{ semana_iso: "2026-W45", grupo: "peito", series_diretas: 4, series_indiretas: 0, series_efetivas: 4 }],
+  });
+  const r = revisarSemana(st, "2026-11-11")!;
+  ok(!!r && r.semana_iso === "2026-W45" && r.rotulo === "2 a 8 de nov", `semana revisada: ${r?.rotulo}`);
+  ok(r.treinos.feitos === 2 && r.treinos.planejados === 4, "2 de 4 treinos");
+  ok(r.destaques.some((d) => /Supino.*novo melhor/.test(d)), "recorde do supino aparece nos destaques");
+  ok(r.atencao.some((d) => /2 de 4 treinos/.test(d)) && r.atencao.some((d) => /Sono médio de 6 h/.test(d)) && r.atencao.some((d) => /Proteína média de 100 g/.test(d)), "atenção: treinos, sono e proteína");
+  ok(r.atencao.some((d) => /Abaixo de 10 séries: peito \(4\)/.test(d)), "músculo abaixo da faixa");
+  ok(r.proxima.length >= 1 && r.proxima.some((d) => /Semana \d de 6/.test(d)), `próxima semana: ${r.proxima[0]}`);
+  ok(/^2\/4 treinos/.test(r.resumo), `resumo: ${r.resumo}`);
+  ok(revisarSemana(AppStateSchema.parse({ perfil: base, plano: g.plano }), "2026-11-11") === null, "semana sem treino → sem revisão");
+  ok([...r.destaques, ...r.atencao, ...r.proxima].every((t) => !/\bmotor\b|R\d{1,2}\b/.test(t)), "sem 'motor' nem código");
+}
+
+// 7) Estado antigo sem o campo continua válido
 ok(AppStateSchema.safeParse({ perfil: null, plano: null }).success, "estado sem feedbacks_musculo continua válido");
 
 console.log(fail ? `FAIL ${fail}` : "ALL PASS");

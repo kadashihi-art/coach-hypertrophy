@@ -34,6 +34,7 @@ import { useClientValue } from "@/lib/use-client-value";
 import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
 import { ExplicaConceito } from "@/components/Conceito";
+import { lerDia } from "@/lib/inteligencia/leitura-dia";
 import type { ConceitoId } from "@/lib/conceitos";
 import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparacaoDaSessao, proximaFase, repsSugeridasFase, textoAquecimento, type PrepNivel } from "@/lib/treino/estrutura-series";
 
@@ -97,6 +98,7 @@ export default function TreinoPage() {
     logSerie,
     finishSession,
     desfazerAoVivo,
+    responderLeituraDia,
   } = useApp();
   const router = useRouter();
   const { alternado, alternar } = useModoCarga();
@@ -189,6 +191,8 @@ export default function TreinoPage() {
   });
   const alvoRir = rirDia.alvo;
   const e1rmRef = exercise ? e1rmReferencia(state.registros, sess?.id)[exercise.id] ?? null : null;
+  // Leitura do dia: compara a 1ª série pesada com o normal recente e propõe ajustar o resto (só com confirmação).
+  const leituraDia = sess && sess.status === "em_andamento" ? lerDia({ sessao: sess, registros: state.registros, exercicios: state.exercicios }) : null;
 
   const [carga, setCarga] = useState(prefillCarga);
   /** Salto de carga > +40%: valor já confirmado pelo usuário nesta série (null = nenhum). */
@@ -753,6 +757,28 @@ export default function TreinoPage() {
             >
               <p className="font-semibold">{fbSerie.texto}</p>
               {fbSerie.calibracao ? <p className="mt-1 text-bone-50/80">{fbSerie.calibracao}</p> : null}
+            </div>
+          ) : null}
+
+          {leituraDia && sess ? (
+            <div data-testid="leitura-dia" className={`motion-swap rounded-xl border p-3 text-sm ${leituraDia.tipo === "ruim" ? "border-warn/40 bg-warn/10" : "border-go/40 bg-go/10"}`}>
+              <p className={`font-semibold ${leituraDia.tipo === "ruim" ? "text-warn" : "text-go"}`}>{leituraDia.titulo}</p>
+              <p className="mt-1 text-bone-50/90">{leituraDia.texto}</p>
+              <ul className="mt-2 space-y-0.5 text-xs text-muted">
+                {leituraDia.mudancas.map((m) => (
+                  <li key={m.prescricao_id}>
+                    {exPorId(m.exercicio_id)?.nome ?? m.exercicio_id}: {m.de} → {m.para} séries
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex gap-2">
+                <button type="button" className="motion-press min-h-10 flex-1 rounded-[12px] bg-accent text-sm font-semibold text-ink-950" onClick={() => responderLeituraDia(sess.id, leituraDia, true)}>
+                  {leituraDia.tipo === "ruim" ? "Ajustar o resto" : "Fazer +1 série"}
+                </button>
+                <button type="button" className="motion-press min-h-10 flex-1 rounded-[12px] bg-white/5 text-sm font-semibold" onClick={() => responderLeituraDia(sess.id, leituraDia, false)}>
+                  Manter como está
+                </button>
+              </div>
             </div>
           ) : null}
 

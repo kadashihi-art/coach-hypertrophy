@@ -69,3 +69,27 @@ Regressão linear do e1RM nas últimas até 8 sessões (90 dias). Mostra "No rit
 - o marco (próximo múltiplo de 5 kg) chega em até 16 semanas.
 
 Fora disso não mostra nada. Não promete o que os dados não sustentam.
+
+## Leitura do dia (`leitura-dia.ts`, durante o treino)
+Depois da primeira série pesada (top ou trabalho) de um exercício com histórico, o app compara o 1RM estimado de hoje (carga × reps + RIR) com o **normal recente**: a mediana das 3 últimas sessões, não o recorde.
+- **≥ 8% abaixo (dia ruim):** propõe manter as cargas e tirar 1 série de cada exercício que falta, sem descer de 2 séries nem abaixo do que já foi feito. Em dia ruim, cortar volume preserva a qualidade.
+- **≥ 4% acima (dia forte):** propõe +1 série no exercício atual (até 5).
+- **Dentro do normal:** não aparece nada.
+
+Só muda com "Ajustar o resto" ou "Fazer +1 série". A resposta fica em `sessao.leitura_dia`, o app não pergunta de novo no mesmo treino e a resposta é limpa no próximo início. O ajuste acompanha `ajuste_series_dia`, e a base do plano não muda.
+
+A falha no top continua com a adaptação ao vivo que já existia (`adaptacao-ao-vivo.ts`, RIR 0 e reps abaixo do piso).
+
+## Revisão semanal (`revisao-semanal.ts`)
+No domingo revisa a semana que está fechando. Nos outros dias, a anterior. Mostra:
+- **treinos e séries:** feitos × planejados, e séries que valeram (RIR ≤ 3, calibrado);
+- **o que foi bem:** novos melhores 1RM estimados, 80%+ das séries perto da falha, todos os treinos feitos;
+- **pede atenção:** treinos faltando, menos de 60% das séries valendo, músculo fora de 10–20, exercício parado (com a causa), sono médio < 7 h, proteína abaixo da meta;
+- **semana que vem:** fase do bloco (deload, fim do bloco), ajustes por músculo que vêm do feedback e o foco principal.
+
+Onde aparece:
+- Progresso, completa (`#revisao`);
+- `/hoje`, em uma linha, no domingo e na segunda;
+- contexto do coach (`revisao_semana`).
+
+É só leitura: ajustes do dia já entram sozinhos, e mudança de plano continua em Plano → Ajustar.

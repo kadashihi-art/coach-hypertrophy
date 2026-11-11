@@ -16,6 +16,8 @@ import { aplicarRampaVolume, resumoRampa, voltarParaBase } from "@/lib/engine/ra
 import { aplicarVolumeAutorregulado, gruposPrincipaisDoTreino, textosAutorregulado } from "@/lib/inteligencia/volume-autorregulado";
 import { montarBriefing } from "@/lib/inteligencia/briefing";
 import { BriefingTreino } from "@/components/BriefingTreino";
+import { RevisaoSemanalResumo } from "@/components/RevisaoSemanal";
+import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import {
   AlertaCard,
   Button,
@@ -169,6 +171,12 @@ export default function HojePage() {
       data: hojeIso,
     });
   }, [sess, ck, meso, state.estados, state.exercicios, hojeIso, rampaPreview, autoPreview]);
+
+  const revisao = useMemo(() => {
+    if (!hojeIso) return null;
+    const dow = new Date(hojeIso + "T12:00:00Z").getUTCDay();
+    return dow === 0 || dow === 1 ? revisarSemana(state, hojeIso) : null;
+  }, [state, hojeIso]);
 
   // Briefing: meta de cada exercício com as séries do dia já ajustadas.
   const briefing = useMemo(() => {
@@ -368,6 +376,9 @@ export default function HojePage() {
       ) : null}
 
       <ReavaliacaoNivelCard />
+
+      {/* Revisão da semana: domingo (semana fechando) e segunda (semana que passou). */}
+      {revisao ? <RevisaoSemanalResumo r={revisao} /> : null}
 
       {aviso && sess?.id === agenda.pendentes[0]?.sessao_id ? (
         <Card className="mb-4 border border-warn/40 bg-[rgba(255,184,60,.08)]" data-testid="aviso-pendente">

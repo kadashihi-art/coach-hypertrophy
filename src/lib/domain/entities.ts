@@ -473,8 +473,19 @@ export type SnapshotConclusao = z.infer<typeof SnapshotConclusaoSchema>;
 /** Âncora de aquecimento registrada no dia (carga que virou trabalho/top). */
 export const AncoraSessaoSchema = z.object({ exercicio_id: z.string(), trabalho_kg: z.number().nonnegative() });
 
+/** Leitura do dia (src/lib/inteligencia/leitura-dia.ts): o que o usuário respondeu à proposta durante o treino. */
+export const LeituraDiaSchema = z.object({
+  tipo: z.enum(["ruim", "bom"]),
+  /** e1RM de hoje ÷ o normal recente (ex.: 0,9 = 10% abaixo). */
+  razao: z.number().positive(),
+  resposta: z.enum(["aplicada", "mantida"]),
+  em: z.string(),
+});
+export type LeituraDia = z.infer<typeof LeituraDiaSchema>;
+
 export const SessaoSchema = SessaoBaseSchema.extend({
   ancoras_sessao: z.array(AncoraSessaoSchema).optional(),
+  leitura_dia: LeituraDiaSchema.optional(),
   snapshot_conclusao: SnapshotConclusaoSchema.optional(),
 });
 export type Sessao = z.infer<typeof SessaoSchema>;

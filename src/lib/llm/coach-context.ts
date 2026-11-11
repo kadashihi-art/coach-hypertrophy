@@ -19,6 +19,7 @@ import { racionalDoPlano } from "@/lib/plan/racional";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { ajusteDoMusculo } from "@/lib/inteligencia/volume-autorregulado";
 import { diagnosticarEstagnacao } from "@/lib/inteligencia/diagnostico";
+import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import type { PlanoRacional } from "@/lib/domain";
 
 export type CoachContextOpts = {
@@ -84,6 +85,8 @@ export type CoachContext = {
   volumes_semanais: VolumeSemanal[];
   /** Ajuste de séries por músculo vindo do feedback (estímulo/articulação/recuperação). Só os ≠ 0. */
   feedback_musculos?: Array<{ grupo: string; ajuste_series: number; motivo: string | null }>;
+  /** Revisão da última semana (domingo: a que está fechando). */
+  revisao_semana?: { semana: string; resumo: string; destaques: string[]; atencao: string[]; proxima: string[] };
   /** Exercícios parados (2+ sessões) com as causas prováveis que os dados mostram. */
   estagnacoes?: Array<{ exercicio: string; sessoes_sem_progresso: number; causas: Array<{ titulo: string; evidencia: string; acao: string }> }>;
   decisoes_progressao: Array<{
@@ -351,6 +354,10 @@ export function buildCoachContext(
         .filter((a) => a.ajuste !== 0)
         .map((a) => ({ grupo: a.grupo, ajuste_series: a.ajuste, motivo: a.motivo }));
       return fm.length ? { feedback_musculos: fm } : {};
+    })(),
+    ...(() => {
+      const r = revisarSemana(state, hojeIsoSP());
+      return r ? { revisao_semana: { semana: r.rotulo, resumo: r.resumo, destaques: r.destaques, atencao: r.atencao, proxima: r.proxima } } : {};
     })(),
     ...(() => {
       const hoje = hojeIsoSP();

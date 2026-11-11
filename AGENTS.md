@@ -20,7 +20,7 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
   - `prioridades.ts`: prioridade muscular (sugestão pelo histórico + prévia sem gravar). Card em /plano/ajustar; muda o plano só com "Confirmar e remontar".
 - `src/lib/treino/estrutura-series.ts`: ordem das séries (aproximação → top → back-offs no mesmo RIR) e preparação por músculo/padrão.
 - `src/lib/conceitos.ts`: RM, RIR, série válida etc. explicados na prática (página `/conceitos` e botões "?" via `src/components/Conceito.tsx`).
-- `src/lib/inteligencia/`: coach que guia (determinístico). `volume-autorregulado.ts` faz o feedback por músculo (estímulo, articulação, recuperação) virar ±séries do dia por cima da rampa. `briefing.ts` mostra a meta de cada exercício no /hoje. `diagnostico.ts` explica por que um exercício travou e prevê a força pelo ritmo. Ver `docs/coach-inteligente.md`.
+- `src/lib/inteligencia/`: coach que guia (determinístico). `volume-autorregulado.ts` faz o feedback por músculo (estímulo, articulação, recuperação) virar ±séries do dia por cima da rampa. `briefing.ts` mostra a meta de cada exercício no /hoje. `diagnostico.ts` explica por que um exercício travou e prevê a força pelo ritmo. `leitura-dia.ts` propõe ajustar o resto do treino em dia ruim ou forte (só com confirmação). `revisao-semanal.ts` resume a semana e o que vem. Ver `docs/coach-inteligente.md`.
 - `src/lib/nivel/reavaliacao.ts`: reavaliação de nível (determinística, só leitura). Cartão em `/hoje` (`ReavaliacaoNivelCard`); muda o plano só com "Confirmar e remontar". Ver `docs/reavaliacao-nivel.md`.
 - `src/lib/llm/`: coach (LLM).
   - `coach.ts` tem os prompts e o provider HTTP.
