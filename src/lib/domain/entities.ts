@@ -379,6 +379,25 @@ export type TipoCardio = z.infer<typeof TipoCardioSchema>;
 export const IntensidadeCardioSchema = z.enum(["leve", "moderada", "forte"]);
 export type IntensidadeCardio = z.infer<typeof IntensidadeCardioSchema>;
 
+/**
+ * Feedback por músculo (volume autorregulado, src/lib/inteligencia/volume-autorregulado.ts).
+ * - "pos": logo depois do treino — estímulo sentido (0 fraco, 1 bom, 2 muito forte) e se incomodou articulação.
+ * - "pre": antes do treino seguinte daquele músculo — dor muscular (0 recuperado, 1 um pouco, 2 bem dolorido).
+ */
+export const FeedbackMusculoSchema = z.object({
+  id: z.string(),
+  grupo: GrupoMuscularSchema,
+  /** YYYY-MM-DD (fuso de São Paulo). */
+  data: z.string(),
+  momento: z.enum(["pos", "pre"]),
+  sessao_id: z.string().nullable().default(null),
+  estimulo: z.number().int().min(0).max(2).optional(),
+  articulacao: z.boolean().optional(),
+  dor_muscular: z.number().int().min(0).max(2).optional(),
+  registrado_em: z.string(),
+});
+export type FeedbackMusculo = z.infer<typeof FeedbackMusculoSchema>;
+
 export const CardioSchema = z.object({
   id: z.string(),
   /** Dia do cardio (YYYY-MM-DD, fuso de São Paulo). */

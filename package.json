@@ -62,7 +62,8 @@
     "smoke:tipo-carga": "npx --yes tsx scripts/smoke-tipo-carga.ts",
     "smoke:volume-plano": "npx --yes tsx scripts/smoke-volume-plano.ts",
     "smoke:prioridades": "npx --yes tsx scripts/smoke-prioridades.ts",
-    "smoke:conceitos": "npx --yes tsx scripts/smoke-conceitos.ts"
+    "smoke:conceitos": "npx --yes tsx scripts/smoke-conceitos.ts",
+    "smoke:inteligencia": "npx --yes tsx scripts/smoke-inteligencia.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

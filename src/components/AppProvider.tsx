@@ -12,6 +12,7 @@ import {
 } from "react";
 import type {
   AppState,
+  FeedbackMusculo,
   Checkin,
   Perfil,
   RegistroSerie,
@@ -75,6 +76,7 @@ import {
 import { avaliarCheckinDeload } from "@/lib/engine/checkin-deload";
 import { mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { aplicarRampaVolume, marcarAjusteDoDia, voltarParaBase } from "@/lib/engine/rampa-volume";
+import { aplicarVolumeAutorregulado } from "@/lib/inteligencia/volume-autorregulado";
 import { incrementoCargaKg } from "@/lib/domain";
 
 type Ctx = {
@@ -85,6 +87,8 @@ type Ctx = {
   /** Merge perfil + gera plano determinístico e marca onboarding concluído */
   completeOnboarding: (partial: Partial<Perfil>) => void;
   saveCheckin: (ck: Omit<Checkin, "id">) => void;
+  /** Feedback por músculo (pós-treino ou recuperação antes do treino). Substitui o do mesmo grupo/momento/sessão-dia. */
+  registrarFeedbackMusculo: (fb: Omit<FeedbackMusculo, "id" | "registrado_em">) => void;
   /** Cardio avulso: minutos contam contra o ideal semanal do perfil. */
   addCardio: (entrada: {
     minutos: number;
@@ -333,6 +337,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     completeOnboarding({});
   }, [completeOnboarding]);
 
+  const registrarFeedbackMusculo = useCallback((fb: Omit<FeedbackMusculo, "id" | "registrado_em">) => {
+    setState((s) => {
+      const lista = s.feedbacks_musculo ?? [];
+      const mesmo = (x: FeedbackMusculo) =>
+        x.grupo === fb.grupo && x.momento === fb.momento && (fb.momento === "pos" ? x.sessao_id === fb.sessao_id : x.data === fb.data);
+      const ant = lista.find(mesmo);
+      const novo: FeedbackMusculo = {
+        ...ant,
+        ...fb,
+        id: ant?.id ?? `fbm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        // Mantém a posição no tempo de quem já existia (o pareamento pós → recuperação usa isso).
+        registrado_em: ant?.registrado_em ?? new Date().toISOString(),
+      };
+      // Guarda só o necessário: ~6 meses de feedback.
+      const resto = lista.filter((x) => !mesmo(x)).slice(-400);
+      return { ...s, feedbacks_musculo: [...resto, novo] };
+    });
+  }, []);
+
   const saveCheckin = useCallback((ck: Omit<Checkin, "id">) => {
     setState((s) => {
       const id = `ck-${Date.now()}`;
@@ -540,11 +563,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         registros: s.registros,
         hojeIso,
       });
+      // Volume autorregulado: feedback por músculo (estímulo, articulação, recuperação) por cima da rampa.
+      const auto = aplicarVolumeAutorregulado({
+        prescricoes: rampa.prescricoes,
+        exercicios: s.exercicios,
+        feedbacks: s.feedbacks_musculo,
+        mesociclo: mesoHoje,
+        checkin: ckHoje,
+        sessoesDaSemana: sessoesDoPlano(s, hojeIsoSaoPaulo()),
+      });
       const deload = avaliarCheckinDeload({
         checkin: ckHoje,
         mesociclo: mesoHoje,
         estados: s.estados,
-        prescricoes: rampa.prescricoes,
+        prescricoes: auto.prescricoes,
         exercicios: s.exercicios,
         data: hojeIso,
       });
@@ -1089,6 +1121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
       completeOnboarding,
       saveCheckin,
+      registrarFeedbackMusculo,
       addCardio,
       removeCardio,
       startSession,
@@ -1123,6 +1156,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       finishOnboarding,
       completeOnboarding,
       saveCheckin,
+      registrarFeedbackMusculo,
       addCardio,
       removeCardio,
       startSession,

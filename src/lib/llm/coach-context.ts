@@ -17,6 +17,7 @@ import { hojeIsoSaoPaulo as hojeIsoSP, proximaSessao } from "@/lib/plan/proxima-
 import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { racionalDoPlano } from "@/lib/plan/racional";
 import { faseAtiva } from "@/lib/plan/estrutura";
+import { ajusteDoMusculo } from "@/lib/inteligencia/volume-autorregulado";
 import type { PlanoRacional } from "@/lib/domain";
 
 export type CoachContextOpts = {
@@ -80,6 +81,8 @@ export type CoachContext = {
   } | null;
   estados: CoachContextEstado[];
   volumes_semanais: VolumeSemanal[];
+  /** Ajuste de séries por músculo vindo do feedback (estímulo/articulação/recuperação). Só os ≠ 0. */
+  feedback_musculos?: Array<{ grupo: string; ajuste_series: number; motivo: string | null }>;
   decisoes_progressao: Array<{
     data: string;
     exercicio_id: string;
@@ -337,6 +340,15 @@ export function buildCoachContext(
     plano,
     estados,
     volumes_semanais,
+    ...(() => {
+      const desde = state.plano?.mesociclo?.data_inicio ?? null;
+      const grupos = [...new Set((state.feedbacks_musculo ?? []).map((f) => f.grupo))];
+      const fm = grupos
+        .map((g) => ajusteDoMusculo(state.feedbacks_musculo ?? [], g, desde))
+        .filter((a) => a.ajuste !== 0)
+        .map((a) => ({ grupo: a.grupo, ajuste_series: a.ajuste, motivo: a.motivo }));
+      return fm.length ? { feedback_musculos: fm } : {};
+    })(),
     decisoes_progressao,
     proxima_sessao,
     racional,
