@@ -36,7 +36,7 @@ import { seedState } from "@/lib/seed";
 import { useSession } from "next-auth/react";
 import { aplicarEstadoNaPrescricao } from "@/lib/engine/progression";
 import { hojeIsoSaoPaulo, proximaSessao, sessoesDoPlano } from "@/lib/plan/proxima-sessao";
-import { gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
+import { estimateDurationMin, gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import {
   agendarSessoes,
   desfazerLimpeza,
@@ -78,6 +78,7 @@ import { mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { aplicarRampaVolume, marcarAjusteDoDia, voltarParaBase } from "@/lib/engine/rampa-volume";
 import { aplicarVolumeAutorregulado } from "@/lib/inteligencia/volume-autorregulado";
 import type { LeituraDoDia } from "@/lib/inteligencia/leitura-dia";
+import { ativos, encurtarTreino, limparPulos } from "@/lib/inteligencia/tempo-curto";
 import { incrementoCargaKg } from "@/lib/domain";
 
 type Ctx = {
@@ -102,7 +103,8 @@ type Ctx = {
     intensidade?: IntensidadeCardio | null;
   }) => void;
   removeCardio: (id: string) => void;
-  startSession: (sessaoId?: string) => void;
+  /** `minutos`: modo de tempo curto, encurta só o treino de hoje pra caber. */
+  startSession: (sessaoId?: string, opts?: { minutos?: number }) => void;
   setLoggerPrescricao: (prescricaoId: string) => void;
   logSerie: (
     serie: Omit<RegistroSerie, "id" | "executado_em">,
@@ -524,7 +526,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => removerCardioDoEstado(s, id));
   }, []);
 
-  const startSession = useCallback((sessaoId?: string) => {
+  const startSession = useCallback((sessaoId?: string, opts?: { minutos?: number }) => {
     setState((s) => {
       if (parqBloqueiaPrescricao(s.perfil)) {
         const agora = new Date().toISOString().slice(0, 10);
@@ -557,6 +559,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let sess = s.sessoes.find((x) => x.id === sid);
       if (!sess) return s;
 
+      // Continuar o treino de hoje: mantém o que já foi decidido no dia (tempo curto, leitura do dia,
+      // ajustes ao vivo). Recalcular aqui desfaria essas escolhas no meio do treino.
+      if (sess.status === "em_andamento" && sess.data === new Date().toISOString().slice(0, 10)) {
+        return {
+          ...s,
+          active_sessao_id: sid,
+          logger_prescricao_id: s.active_sessao_id === sid && s.logger_prescricao_id ? s.logger_prescricao_id : (ativos(sess.prescricoes)[0]?.id ?? null),
+        };
+      }
+
       // Repetir na semana: treino feito em outro dia guarda a execução anterior (com as séries)
       // como registro avulso daquele dia, em vez de apagar. As cargas vêm da memória (estados).
       if ((sess.status === "concluida" || sess.status === "parcial") && sess.data && sess.data !== hojeIsoSaoPaulo()) {
@@ -573,7 +585,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const hojeIso = new Date().toISOString().slice(0, 10);
       // Séries partem sempre da base do plano: o ajuste do treino anterior não acumula.
-      const basePresc = voltarParaBase(sess.prescricoes).map((p) => {
+      const basePresc = limparPulos(voltarParaBase(sess.prescricoes)).map((p) => {
         const est = s.estados.find((e) => e.exercicio_id === p.exercicio_id);
         if (!est) return p;
         return aplicarEstadoNaPrescricao(p, est);
@@ -609,7 +621,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         exercicios: s.exercicios,
         data: hojeIso,
       });
-      const prescricoes = marcarAjusteDoDia(basePresc, deload.prescricoes);
+      // Tempo curto: corta o que menos rende até caber (só hoje; a base do plano não muda).
+      const doDia = opts?.minutos
+        ? encurtarTreino({
+            prescricoes: deload.prescricoes,
+            exercicios: s.exercicios,
+            minutos: opts.minutos,
+            prioridades: s.perfil?.prioridades_musculares,
+            duracao: (ps) => estimateDurationMin(ps, s.exercicios),
+          }).prescricoes
+        : deload.prescricoes;
+      const prescricoes = marcarAjusteDoDia(basePresc, doDia);
 
       // Alertas de R5/R6/AGUA do dia (R9 já pode ter vindo do check-in)
       const alertas = [...s.alertas];
@@ -639,7 +661,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
 
-      const firstPresc = prescricoes[0]?.id ?? null;
+      const firstPresc = ativos(prescricoes)[0]?.id ?? null;
       return {
         ...s,
         registros,

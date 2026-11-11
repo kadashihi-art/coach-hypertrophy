@@ -53,6 +53,12 @@ export const PerfilSchema = z.object({
    * Ausente/vazio = plano igual ao de antes.
    */
   prioridades_musculares: z.array(GrupoMuscularSchema).max(3).optional(),
+  /**
+   * Ajuste pessoal de volume por músculo (séries efetivas/semana, −4…+4), aprendido no fechamento de
+   * cada bloco (src/lib/inteligencia/fechamento-bloco.ts). O gerador soma ao volume que o plano daria,
+   * sem passar de 20 nem descer de 10. Ausente = plano igual ao de antes.
+   */
+  ajuste_volume_musculo: z.partialRecord(GrupoMuscularSchema, z.number().int().min(-4).max(4)).optional(),
   /** Por que priorizar (só pra explicar; não muda a conta). */
   prioridade_motivo: z.enum(["dificil_desenvolver", "estetica", "esporte", "assimetria", "outro"]).optional(),
   /**
@@ -137,6 +143,8 @@ export const PrescricaoSchema = z.object({
    * ajuste do dia nunca vira base: cada início de treino recalcula a partir da base.
    */
   ajuste_series_dia: z.number().int().optional(),
+  /** Pulado só hoje pelo modo de tempo curto (src/lib/inteligencia/tempo-curto.ts). Some no próximo início do treino. */
+  pulado_hoje: z.boolean().optional(),
 });
 export type Prescricao = z.infer<typeof PrescricaoSchema>;
 

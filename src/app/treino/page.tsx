@@ -35,6 +35,7 @@ import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
 import { ExplicaConceito } from "@/components/Conceito";
 import { lerDia } from "@/lib/inteligencia/leitura-dia";
+import { ativos } from "@/lib/inteligencia/tempo-curto";
 import type { ConceitoId } from "@/lib/conceitos";
 import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparacaoDaSessao, proximaFase, repsSugeridasFase, textoAquecimento, type PrepNivel } from "@/lib/treino/estrutura-series";
 
@@ -109,7 +110,8 @@ export default function TreinoPage() {
     state.sessoes.find((s) => s.status === "em_andamento") ??
     proximaSessao(state);
 
-  const prescricoes = sess?.prescricoes ?? [];
+  // Tempo curto: exercícios pulados hoje ficam fora do treino (voltam na semana seguinte).
+  const prescricoes = ativos(sess?.prescricoes ?? []);
   const prescId = state.logger_prescricao_id ?? prescricoes[0]?.id ?? null;
   const prescIdx = Math.max(
     0,
@@ -296,7 +298,7 @@ export default function TreinoPage() {
         </p>
         <h1 className="mb-2 text-2xl font-bold">{sess.nome}</h1>
         <p className="mb-2 text-sm text-muted">
-          {sess.prescricoes.length} exercícios · ~{sess.duracao_estimada_min}{" "}
+          {prescricoes.length} exercícios · ~{sess.duracao_estimada_min}{" "}
           min
         </p>
         {sess.status === "concluida" && (

@@ -63,7 +63,9 @@
     "smoke:volume-plano": "npx --yes tsx scripts/smoke-volume-plano.ts",
     "smoke:prioridades": "npx --yes tsx scripts/smoke-prioridades.ts",
     "smoke:conceitos": "npx --yes tsx scripts/smoke-conceitos.ts",
-    "smoke:inteligencia": "npx --yes tsx scripts/smoke-inteligencia.ts"
+    "smoke:inteligencia": "npx --yes tsx scripts/smoke-inteligencia.ts",
+    "smoke:fechamento-bloco": "npx --yes tsx scripts/smoke-fechamento-bloco.ts",
+    "smoke:tempo-curto": "npx --yes tsx scripts/smoke-tempo-curto.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

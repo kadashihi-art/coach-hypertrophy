@@ -105,6 +105,8 @@ export type EquilibrarCtx = {
   perfil: Pick<Perfil, "experiencia" | "objetivo" | "minutos_por_sessao"> & { prioridades_musculares?: GrupoMuscular[] };
   /** Minutos estimados da sessão (mesma conta do gerador). */
   duracao: (prescricoes: Prescricao[]) => number;
+  /** Faixa semanal fixada por grupo (ajuste pessoal de volume). Sobrepõe a faixa padrão do grupo. */
+  alvos?: Map<GrupoMuscular, { min: number; max: number }>;
   /** Cria uma prescrição nova para o grupo na sessão (null se não houver exercício compatível). */
   criarPrescricao?: (grupo: GrupoMuscular, sessao: SessaoParaEquilibrar, series: number) => Prescricao | null;
 };
@@ -128,7 +130,7 @@ export function equilibrarVolume(sessoes: SessaoParaEquilibrar[], ctx: Equilibra
   const maxEx = maxSeriesExercicio(ctx.perfil.experiencia);
   const limiteMin = Math.round(ctx.perfil.minutos_por_sessao * 1.1);
   const prioridades = ctx.perfil.prioridades_musculares ?? [];
-  const alvo = (g: GrupoMuscular) => alvoSemanalGrupo(g, ctx.perfil);
+  const alvo = (g: GrupoMuscular) => ctx.alvos?.get(g) ?? alvoSemanalGrupo(g, ctx.perfil);
   const vol = () => volumeSemanalDasSessoes(sessoes, ctx.catalog);
   const diretasNaSessao = (s: SessaoParaEquilibrar, g: GrupoMuscular) =>
     s.prescricoes.filter((p) => prim(p) === g).reduce((a, p) => a + p.series, 0);
@@ -308,4 +310,31 @@ export function ordenarPorPrioridade(
     .map((p, i) => ({ p, i, k: chave(p) }))
     .sort((a, b) => a.k - b.k || a.i - b.i)
     .map(({ p }, i) => ({ ...p, ordem: i + 1 }));
+}
+
+/**
+ * Ajuste pessoal de volume: a partir do volume que o plano já tem (`atual`), a faixa fixada de cada
+ * músculo com ajuste ≠ 0. Sobe: piso = atual + ajuste (teto do grupo). Desce: teto = atual + ajuste,
+ * nunca abaixo de 10 (ou do que já estava, se menor).
+ */
+export function alvosComAjustePessoal(
+  atual: Map<GrupoMuscular, VolumeGrupo>,
+  ajustes: Partial<Record<GrupoMuscular, number>> | undefined,
+  perfil: Parameters<typeof alvoSemanalGrupo>[1],
+): Map<GrupoMuscular, { min: number; max: number }> {
+  const out = new Map<GrupoMuscular, { min: number; max: number }>();
+  for (const [g, d] of Object.entries(ajustes ?? {}) as [GrupoMuscular, number][]) {
+    if (!d || !GRUPOS_PRINCIPAIS.includes(g)) continue;
+    const v = atual.get(g)?.efetivo ?? 0;
+    if (v <= 0) continue;
+    const normal = alvoSemanalGrupo(g, perfil);
+    if (d > 0) {
+      const alvo = Math.min(normal.max, v + d);
+      out.set(g, { min: Math.max(normal.min, alvo - 0.5), max: normal.max });
+    } else {
+      const alvo = Math.max(Math.min(v, VOLUME_MIN), v + d);
+      out.set(g, { min: Math.min(normal.min, alvo - 0.5), max: alvo });
+    }
+  }
+  return out;
 }
