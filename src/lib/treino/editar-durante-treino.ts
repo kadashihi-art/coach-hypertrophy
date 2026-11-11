@@ -12,7 +12,7 @@ import { ehSeriePreparatoria, type TecnicaFinal } from "@/lib/domain/enums";
 import { exercicioAceitaTecnica, linhaTecnica, validarTecnicasSessao } from "@/lib/engine/tecnicas";
 import { LIMITES_EDICAO, novaPrescricao, padraoParaNovo } from "@/lib/plan/editar-treino";
 import { listarAlternativasTroca, permitido } from "@/lib/plan/trocar-exercicio";
-import { preparatoriasDaSessao } from "@/lib/treino/estrutura-series";
+import { preparacaoDaSessao } from "@/lib/treino/estrutura-series";
 
 export const CARGA_MAX_AJUSTE = 1000;
 
@@ -330,14 +330,16 @@ export function montarAoVivo(state: AppState, r: RascunhoAoVivo, sufixo = Date.n
   const ordemD = prescricoes.map((p) => p.id).filter((id) => antes.some((x) => x.id === id));
   if (ordemA.join("|") !== ordemD.join("|")) linhas.push(`Nova ordem: ${prescricoes.map((p) => nome(p.exercicio_id)).join(" → ")}`);
   // aquecimento dos que entraram agora (mesma regra por grupo muscular)
-  const preps = preparatoriasDaSessao(prescricoes, state.exercicios);
+  const preps = preparacaoDaSessao(prescricoes, state.exercicios);
   prescricoes.forEach((p, i) => {
     const entrou = !antes.some((a) => a.id === p.id && a.exercicio_id === p.exercicio_id);
     if (!entrou) return;
     linhas.push(
-      preps[i]
+      preps[i] === "completa"
         ? `${nome(p.exercicio_id)} começa com aquecimento + aproximação (músculo ainda não aquecido hoje)`
-        : `${nome(p.exercicio_id)} vai direto pras séries de trabalho (músculo já aquecido)`,
+        : preps[i] === "aproximacao"
+          ? `${nome(p.exercicio_id)} começa com 1 aproximação (músculo já aquecido, movimento novo)`
+          : `${nome(p.exercicio_id)} vai direto pras séries de trabalho (músculo já aquecido)`,
     );
   });
   {

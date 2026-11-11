@@ -1,6 +1,8 @@
 "use client";
 
 import { VolumeBar } from "@/components/VolumeBar";
+import { ExplicaConceito } from "@/components/Conceito";
+import { contextoPessoal } from "@/lib/conceitos";
 import { labelAcao, labelGrupo } from "@/lib/labels";
 import { semCodigoRegra } from "@/lib/llm/tom";
 import { apresentarAlerta } from "@/lib/alertas/apresentar";
@@ -114,7 +116,7 @@ export default function ProgressoPage() {
         </Card>
       ) : null}
 
-      <SectionTitle title="Volume semanal efetivo" />
+      <SectionTitle title="Volume semanal efetivo" action={<ExplicaConceito id="volume" />} />
       <p className="mb-3 text-xs text-muted">
         Meta: {VOLUME_MIN} a {VOLUME_MAX} séries por semana em cada músculo (abdômen e antebraço: até 12).
         Série direta conta 1; quando o músculo só ajuda, conta meia.
@@ -197,7 +199,7 @@ export default function ProgressoPage() {
         </>
       )}
 
-      <SectionTitle title="Séries perto da falha" />
+      <SectionTitle title="Séries perto da falha" action={<ExplicaConceito id="serie_valida" ctx={contextoPessoal(state)} />} />
       <p className="mb-3 text-xs text-muted">
         Conta como efetiva a série que terminou com até 3 reps sobrando. Quando o que você fez mostra outra coisa, eu ajusto o RIR marcado.
       </p>
@@ -236,7 +238,7 @@ export default function ProgressoPage() {
 
       <CardioSection />
 
-      <SectionTitle title="Força estimada (e1RM) e recordes" />
+      <SectionTitle title="Força estimada (e1RM) e recordes" action={<ExplicaConceito id="rm" ctx={contextoPessoal(state)} />} />
       <div className="mb-6 space-y-3 motion-stagger">
         {estadosReais.length === 0 && (
           <Card>

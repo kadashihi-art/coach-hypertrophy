@@ -9,6 +9,7 @@ const PROTECTED = [
   "/checkin",
   "/onboarding",
   "/perfil",
+  "/conceitos",
 ];
 
 export const proxy = auth((req) => {
@@ -32,5 +33,6 @@ export const config = {
     "/checkin/:path*",
     "/onboarding/:path*",
     "/perfil/:path*",
+    "/conceitos/:path*",
   ],
 };

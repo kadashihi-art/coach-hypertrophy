@@ -11,7 +11,7 @@ import { prescricaoAceitaTecnica } from "@/lib/engine/tecnicas";
 import { Button } from "@/components/ui";
 import { labelGrupo } from "@/lib/labels";
 import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
-import { preparatoriasDaSessao, rotuloOrdemSeries } from "@/lib/treino/estrutura-series";
+import { preparacaoDaSessao, rotuloOrdemSeries, textoPreparacao } from "@/lib/treino/estrutura-series";
 import {
   LIMITES_EDICAO,
   adicionarItem,
@@ -273,7 +273,7 @@ function EditarPlanejado({ sessaoId, onClose, onSalvo }: { sessaoId: string; onC
 
   if (!sessao || !r || !previa) return null;
   const nome = (id: string) => state.exercicios.find((e) => e.id === id);
-  const preps = preparatoriasDaSessao(r.itens, state.exercicios);
+  const preps = preparacaoDaSessao(r.itens, state.exercicios);
 
   function confirmar() {
     if (!r) return;
@@ -387,7 +387,7 @@ function EditarPlanejado({ sessaoId, onClose, onSalvo }: { sessaoId: string; onC
                     <p className="text-[11px] text-muted">
                       {ex ? labelGrupo(ex.grupo_primario) : ""}
                       {ordem ? ` · ${ordem}` : ""}
-                      {preps[i] ? <span className="text-accent"> · aquece + aproximação antes</span> : null}
+                      {textoPreparacao(preps[i]) ? <span className="text-accent"> · {textoPreparacao(preps[i])}</span> : null}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">

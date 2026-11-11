@@ -16,6 +16,10 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
 - `src/lib/plan/`: geração do plano. `gerar-plano.ts` e `estrutura.ts` montam o split e o volume. `parq.ts` é o gate do PAR-Q+. `coleta.ts` faz o onboarding conversacional (schema, mais `validarEstrategia`). `negociacao.ts` traz os ajustes propostos pelo coach. Também ficam aqui `remount-plano.ts`, `racional.ts` e `calendario.ts`.
   - `sugestao-exercicio.ts`: sinais do histórico (já fez, tendência, travado, dor recente) para ranquear a troca e desempatar o gerador ao refazer o plano.
   - `mesociclo.ts`: semana real do bloco pela data (`mesocicloEfetivo`). O `semana_atual` salvo fica em 1; use sempre o efetivo. Deload programado (R6) só na última semana.
+  - `equilibrar-volume.ts`: volume do plano gerado (teto 20/semana e 10/sessão por músculo, piso por nível, +4 nos prioritários, dentro do tempo). Ver `docs/series-validas.md`.
+  - `prioridades.ts`: prioridade muscular (sugestão pelo histórico + prévia sem gravar). Card em /plano/ajustar; muda o plano só com "Confirmar e remontar".
+- `src/lib/treino/estrutura-series.ts`: ordem das séries (aproximação → top → back-offs no mesmo RIR) e preparação por músculo/padrão.
+- `src/lib/conceitos.ts`: RM, RIR, série válida etc. explicados na prática (página `/conceitos` e botões "?" via `src/components/Conceito.tsx`).
 - `src/lib/nivel/reavaliacao.ts`: reavaliação de nível (determinística, só leitura). Cartão em `/hoje` (`ReavaliacaoNivelCard`); muda o plano só com "Confirmar e remontar". Ver `docs/reavaliacao-nivel.md`.
 - `src/lib/llm/`: coach (LLM).
   - `coach.ts` tem os prompts e o provider HTTP.
@@ -31,7 +35,7 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
   - `/api/plan/negociar` e `/api/plan/remount`
   - `/api/state`
   - `/api/auth/*`
-- Páginas: `/onboarding`, `/hoje`, `/treino`, `/meu-treino`, `/coach`, `/checkin`, `/progresso`, `/calendario`, `/plano`.
+- Páginas: `/onboarding`, `/hoje`, `/treino`, `/meu-treino`, `/coach`, `/checkin`, `/progresso`, `/calendario`, `/plano`, `/conceitos`.
 
 ## Regras críticas (não quebrar)
 1. Só o motor determinístico define kg, reps, RIR e séries. A LLM nunca gera esses números.
@@ -61,6 +65,7 @@ npm run build
 npm run smoke:engine && npm run smoke:plano && npm run smoke:coach && npm run smoke:coach-chat
 npm run smoke:t5-arsenal && npm run smoke:perfil-calendario && npm run smoke:racional-hibrido
 npm run smoke:negociacao && npm run smoke:coleta && npm run smoke:tom
+npm run smoke:estrutura-series && npm run smoke:volume-plano && npm run smoke:prioridades && npm run smoke:conceitos
 ```
 
 ## Fluxo

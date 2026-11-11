@@ -183,6 +183,9 @@ export function paraPerfil(base: Perfil, c: PerfilColeta, e: Estrategia, correco
     ...(e.fase2_semanas ? { fase2_semanas: e.fase2_semanas } : {}),
     ...(e.dias_descanso_fixos?.length ? { dias_descanso_fixos: e.dias_descanso_fixos } : {}),
     acordos_plano: acordos,
+    ...(e.prioridades_musculares?.length
+      ? { prioridades_musculares: [...new Set(e.prioridades_musculares)].slice(0, 3) }
+      : {}),
     ...(() => {
       const opc = (c.pontos_fracos ?? []).filter(ehGrupoOpcional);
       return opc.length ? { grupos_opcionais: [...new Set(opc)] } : {};

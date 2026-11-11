@@ -24,8 +24,10 @@ import { posicionarDescanso, microcicloTexto } from "./estrutura";
 import { dividirSemanasDoPlano, SEMANAS_MESOCICLO } from "./semanas";
 import { derivarRacional } from "./racional";
 import { findAlt } from "./alternativa";
-import { incrementoCargaKg, type GrupoOpcional } from "@/lib/domain";
+import { GRUPOS_OPCIONAIS, incrementoCargaKg, type GrupoOpcional } from "@/lib/domain";
+import { GRUPO_LABEL } from "@/lib/labels";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao } from "./parq";
+import { alvoSemanalGrupo, equilibrarVolume, ordenarPorPrioridade, type SessaoParaEquilibrar } from "./equilibrar-volume";
 import {
   exerciseAllowed,
   parseRestricoes,
@@ -150,16 +152,12 @@ function escolherDivisao(dias: number): { divisao: Divisao; templates: SessaoTem
     };
   }
   if (dias === 5) {
+    // PPL em 5 dias deixava pernas 1×/semana (quadríceps ~7 séries). Upper/Lower U/L/U/L/U
+    // treina tudo 2–3×/semana e o equilíbrio de volume mantém cada grupo em 10–20.
     return {
-      divisao: "ppl",
-      why: "5 dias → Push/Pull/Legs (Push/Pull/Legs/Push/Pull) para volume semanal na faixa sem sessões longas",
-      templates: [
-        { id: "sess-push-a", nome: "Push A", slots: pushSlots("a") },
-        { id: "sess-pull-a", nome: "Pull A", slots: pullSlots("a") },
-        { id: "sess-legs-a", nome: "Legs A", slots: legsSlots("a") },
-        { id: "sess-push-b", nome: "Push B", slots: pushSlots("b") },
-        { id: "sess-pull-b", nome: "Pull B", slots: pullSlots("b") },
-      ],
+      divisao: "upper_lower",
+      why: "5 dias → Upper/Lower (Upper/Lower/Upper/Lower/Upper): superiores 3× e inferiores 2× por semana, cada grupo entre 10 e 20 séries",
+      templates: seq(["upper", "lower", "upper", "lower", "upper"]),
     };
   }
   return {
@@ -397,6 +395,19 @@ function legsSlots(variant: "a" | "b"): Slot[] {
   ];
 }
 
+/** Slot pra reforçar um grupo abaixo do piso semanal (isolador primeiro: pouca fadiga extra). */
+const SLOT_REFORCO: Partial<Record<GrupoMuscular, Slot>> = {
+  peito: { padrao: "empurrar_horizontal", composto: false, prefer: ["crucifixo_cabo", "pec_deck", "crucifixo_halteres", "supino_maquina"] },
+  costas: { padrao: "puxar_horizontal", composto: true, prefer: ["remada_cabo", "remada_maquina", "remada_apoiada_peito", "remada_unilateral_cabo", "remada_halteres"] },
+  ombros: { padrao: "abducao_ombro", prefer: ["elevacao_lateral", "elevacao_lateral_cabo", "elevacao_lateral_maquina", "crucifixo_inverso", "face_pull"] },
+  biceps: { padrao: "flexao_cotovelo", prefer: ["rosca_cabo", "rosca_martelo", "rosca_direta", "rosca_inclinada", "rosca_scott"] },
+  triceps: { padrao: "extensao_cotovelo", prefer: ["triceps_corda", "triceps_maquina", "triceps_pulley", "triceps_overhead_cabo", "triceps_halteres"] },
+  quadriceps: { padrao: "extensao_joelho", prefer: ["cadeira_extensora"] },
+  isquiotibiais: { padrao: "flexao_joelho", prefer: ["mesa_flexora", "cadeira_flexora_sentada"] },
+  gluteos: { padrao: "dobradica_quadril", composto: true, prefer: ["hip_thrust", "hip_thrust_maquina", "ponte_gluteo"] },
+  panturrilhas: { padrao: "flexao_plantar", prefer: ["panturrilha_pe", "panturrilha_sentado", "panturrilha_leg_press"] },
+};
+
 /** Slots dos grupos opcionais (abdômen, antebraço, abdutores e adutores). */
 const SLOT_OPCIONAL: Record<GrupoOpcional, Slot> = {
   abdomen: { padrao: "core_antiextensao", prefer: ["abdominal_cabo", "crunch_maquina", "elevacao_pernas", "prancha"] },
@@ -631,13 +642,16 @@ function buildJustificativa(args: {
   omitted: string[];
   cardio: number;
   experiencia: string;
+  notasVolume?: string[];
+  prioridades?: string[];
+  pisoSemanal?: number;
 }): string {
   const parts: string[] = [];
   parts.push(
     `${args.divisao.replace(/_/g, " ")} em ${args.dias} dias: ${args.whyDiv}.`,
   );
   parts.push(
-    `Objetivo ${args.objetivo}: alvo ~${args.params.setsMajor} séries/semana nos grupos principais (faixa 10–20), reps ${args.params.faixaComp[0]}–${args.params.faixaComp[1]} (compostos) / ${args.params.faixaIso[0]}–${args.params.faixaIso[1]} (isolamentos), RIR ${args.params.rir}.`,
+    `Objetivo ${args.objetivo}: pelo menos ${args.pisoSemanal ?? args.params.setsMajor} séries que valem por semana em cada grupo principal (teto 20; no máximo 10 do mesmo músculo por treino), reps ${args.params.faixaComp[0]}–${args.params.faixaComp[1]} (compostos) / ${args.params.faixaIso[0]}–${args.params.faixaIso[1]} (isolamentos), RIR ${args.params.rir}.`,
   );
   parts.push(
     `Equipamentos filtrados: ${args.equips.length ? args.equips.join(", ") : "nenhum marcado"} — só exercícios compatíveis.`,
@@ -660,6 +674,12 @@ function buildJustificativa(args: {
   parts.push(
     `Experiência ${args.experiencia}: cargas iniciais conservadoras (estimativa), e a primeira sessão serve para calibrar.`,
   );
+  if (args.prioridades?.length) {
+    parts.push(
+      `Prioridade (${args.prioridades.map((g) => (GRUPO_LABEL[g] ?? g).toLowerCase()).join(", ")}): até +4 séries que valem por semana (teto 20), e o composto delas vem primeiro no treino.`,
+    );
+  }
+  for (const n of args.notasVolume ?? []) parts.push(n);
   return parts.join(" ");
 }
 
@@ -727,6 +747,54 @@ export function gerarPlanoFromPerfil(
   const estadosMap = new Map<string, EstadoExercicio>();
   const weeklyDirect = new Map<GrupoMuscular, number>();
   const weeklyIndirect = new Map<GrupoMuscular, number>();
+
+  /** Prescrição + estado inicial pra um exercício que o equilíbrio de volume acrescenta. */
+  const novaPrescricao = (ex: Exercicio, sessaoId: string, series: number, ordem: number, used: Set<string>): Prescricao => {
+    const faixa = ex.composto ? params.faixaComp : params.faixaIso;
+    const carga = estimarCargaKg(perfil.peso_kg, perfil.experiencia, ex.padrao, ex.composto, ex.equipamento, {
+      sexo: perfil.sexo,
+      idade: perfil.idade,
+      grupo: ex.grupo_primario,
+    });
+    if (!estadosMap.has(ex.id)) {
+      estadosMap.set(ex.id, {
+        exercicio_id: ex.id,
+        carga_atual_kg: carga,
+        faixa_reps: faixa,
+        rir_alvo: rir,
+        alvo_proxima_sessao: { carga_kg: carga, faixa_reps: faixa, rir_alvo: rir },
+        sessoes_sem_progresso: 0,
+        ultima_progressao_em: null,
+        e1rm_estimado_kg: 0,
+        pr_carga_kg: 0,
+        pr_reps: 0,
+        origem_carga: "estimativa_conservadora",
+        primeira_sessao: true,
+        ultimo_top_kg: null,
+        ultimo_back_off_kg: null,
+        ultimo_rir: null,
+        ultima_sessao_em: null,
+        atualizado_em: agora,
+      });
+    }
+    return {
+      id: `presc-${sessaoId}-${ex.id}`,
+      sessao_id: sessaoId,
+      exercicio_id: ex.id,
+      padrao: ex.padrao,
+      ordem,
+      series,
+      faixa_reps: faixa,
+      rir_alvo: rir,
+      descanso_seg: ex.composto ? params.descansoComp : params.descansoIso,
+      cadencia: "2-0-1-0",
+      tecnica: ex.composto && perfil.objetivo === "forca" ? "top_set_backoff" : "padrao",
+      carga: { trabalho_kg: carga, top_set_kg: null, origem: "estimativa_conservadora" },
+      alternativa_equipamento_ocupado: findAlt(catalog, ex.padrao, equips, ex.id, { restr, excludeIds: used, grupo: ex.grupo_primario }),
+      guia_id: ex.guia_id ?? null,
+      evidencia: ex.composto ? "forte" : "moderado",
+    };
+  };
 
   const opcionaisFeitos = new Set<string>();
   templates.forEach((tpl, idx) => {
@@ -881,14 +949,6 @@ export function gerarPlanoFromPerfil(
       }
     }
 
-    const volMap = new Map<GrupoMuscular, number>();
-    for (const p of prescricoes) {
-      const ex = catalog.find((e) => e.id === p.exercicio_id);
-      if (!ex) continue;
-      volMap.set(ex.grupo_primario, (volMap.get(ex.grupo_primario) ?? 0) + p.series);
-    }
-
-    const grupos = [...volMap.keys()];
     sessoes.push({
       id: tpl.id,
       plano_id: planoId,
@@ -896,17 +956,51 @@ export function gerarPlanoFromPerfil(
       ordem: idx + 1,
       data: null,
       status: "planejada",
-      grupos,
+      grupos: [],
       prescricoes,
-      volume_por_grupo: [...volMap.entries()].map(([grupo, planejado]) => ({
-        grupo,
-        planejado,
-        realizado: 0,
-      })),
-      duracao_estimada_min: estimateDurationMin(prescricoes, catalog),
+      volume_por_grupo: [],
+      duracao_estimada_min: 0,
       duracao_real_min: null,
     });
   });
+
+  // Equilíbrio de volume por fase (cada sessão = 1×/semana): teto 20/semana e 10/sessão por músculo,
+  // piso por nível (e +4 nos prioritários), dentro do tempo do perfil. Ver docs/series-validas.md.
+  const prioridades = perfil.prioridades_musculares ?? [];
+  const notasVolume: string[] = [];
+  const grupoDoEx = new Map(catalog.map((e) => [e.id, e.grupo_primario]));
+  const ehOpcional = (id: string) => (GRUPOS_OPCIONAIS as string[]).includes(grupoDoEx.get(id) ?? "");
+  for (const f of faseDefs) {
+    const daFase = sessoes.filter((x) => faseDoTemplate(x.id) === (f.prefix ? "f2" : "f1"));
+    const paraEquilibrar: SessaoParaEquilibrar[] = daFase.map((x) => ({ id: x.id, tipo: tipoDoTemplate(x.id), prescricoes: x.prescricoes }));
+    const r = equilibrarVolume(paraEquilibrar, {
+      catalog,
+      perfil: { ...perfil, prioridades_musculares: prioridades },
+      // Opcionais (abdômen, antebraço…) são extras leves: não roubam tempo do equilíbrio dos principais.
+      duracao: (ps) => estimateDurationMin(ps.filter((x) => !ehOpcional(x.exercicio_id)), catalog),
+      criarPrescricao: (grupo, sess, series) => {
+        const slot = SLOT_REFORCO[grupo];
+        if (!slot) return null;
+        const used = new Set(sess.prescricoes.map((x) => x.exercicio_id));
+        const ex = pickForSlot(slot, catalog, equips, restr, used, opts.historico);
+        if (!ex || ex.grupo_primario !== grupo) return null;
+        return novaPrescricao(ex, sess.id, series, sess.prescricoes.length + 1, used);
+      },
+    });
+    notasVolume.push(...r.notas.map((n) => (faseDefs.length > 1 ? `${f.prefix ? "Fase 2" : "Fase 1"}: ${n}` : n)));
+  }
+  for (const sess of sessoes) {
+    sess.prescricoes = ordenarPorPrioridade(sess.prescricoes, catalog, prioridades).map((p, i) => ({ ...p, ordem: i + 1 }));
+    const volMap = new Map<GrupoMuscular, number>();
+    for (const p of sess.prescricoes) {
+      const ex = catalog.find((e) => e.id === p.exercicio_id);
+      if (!ex) continue;
+      volMap.set(ex.grupo_primario, (volMap.get(ex.grupo_primario) ?? 0) + p.series);
+    }
+    sess.grupos = [...volMap.keys()];
+    sess.volume_por_grupo = [...volMap.entries()].map(([grupo, planejado]) => ({ grupo, planejado, realizado: 0 }));
+    sess.duracao_estimada_min = estimateDurationMin(sess.prescricoes, catalog);
+  }
 
   const uniqueOmitted = [...new Set(omittedNotes)];
   const justificativaTexto = buildJustificativa({
@@ -920,6 +1014,9 @@ export function gerarPlanoFromPerfil(
     omitted: uniqueOmitted,
     cardio: perfil.cardio_min_semana ?? 0,
     experiencia: perfil.experiencia,
+    notasVolume,
+    prioridades,
+    pisoSemanal: alvoSemanalGrupo("peito", { ...perfil, prioridades_musculares: [] }).min,
   });
 
   const plano: Plano = {

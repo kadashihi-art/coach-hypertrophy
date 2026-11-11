@@ -70,6 +70,8 @@ export type CoachContext = {
     objetivo?: string;
     divisao?: string;
     dias_por_semana?: number;
+    /** Músculos que o usuário escolheu priorizar (mais séries, compostos primeiro). */
+    prioridades_musculares?: string[];
     mesociclo?: {
       total_semanas: number;
       semana_atual: number;
@@ -262,6 +264,7 @@ export function buildCoachContext(
         objetivo: state.plano.objetivo,
         divisao: state.plano.divisao,
         dias_por_semana: state.plano.dias_por_semana,
+        ...(state.perfil?.prioridades_musculares?.length ? { prioridades_musculares: state.perfil.prioridades_musculares } : {}),
         mesociclo: {
           total_semanas: state.plano.mesociclo.total_semanas,
           // Semana real do bloco (a salva fica em 1); "deload" na última semana.

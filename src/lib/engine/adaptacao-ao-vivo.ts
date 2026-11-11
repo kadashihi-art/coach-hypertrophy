@@ -90,7 +90,7 @@ export function adaptarAposSerie(args: {
   const abaixoPiso = trabalho.filter((s) => s.reps < piso);
   const comDor = todas.filter((s) => s.dor === true);
   const loggedCount = todas.filter((s) => s.tipo_serie !== "aquecimento" && s.tipo_serie !== "feeder").length;
-  // Estrutura trabalho → top → back-off: trabalho/back-off são % do top, então o corte sai do top (carga do motor).
+  // Estrutura top → back-offs: back-off é % do top, então o corte sai do top (carga do motor).
   const naOrdem = fasesDeTrabalho(presc).includes("back_off") && registro.tipo_serie !== "top_set";
   const cargaBase = naOrdem
     ? (presc.carga.top_set_kg ?? presc.carga.trabalho_kg ?? registro.carga_kg)

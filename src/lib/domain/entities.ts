@@ -48,6 +48,14 @@ export const PerfilSchema = z.object({
    */
   grupos_opcionais: z.array(GruposOpcionaisSchema).max(4).optional(),
   /**
+   * Músculos prioritários (até 3): o gerador dá +4 séries semanais (até 20), põe o composto deles
+   * primeiro no treino e, sem tempo sobrando, tira de um grupo não prioritário que segue acima do piso.
+   * Ausente/vazio = plano igual ao de antes.
+   */
+  prioridades_musculares: z.array(GrupoMuscularSchema).max(3).optional(),
+  /** Por que priorizar (só pra explicar; não muda a conta). */
+  prioridade_motivo: z.enum(["dificil_desenvolver", "estetica", "esporte", "assimetria", "outro"]).optional(),
+  /**
    * Opcionais: só afinam a estimativa inicial de carga.
    * Não bloqueiam onboarding; ausência mantém o cálculo anterior.
    */

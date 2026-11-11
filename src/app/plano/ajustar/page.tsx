@@ -12,6 +12,7 @@ import { Badge, Button, Card, NumStepper, SectionTitle } from "@/components/ui";
 import type { Equipamento, Experiencia, Objetivo, Perfil } from "@/lib/domain";
 import { racionalDoPlano } from "@/lib/plan/racional";
 import { PorQueEssePlano } from "@/components/PorQueEssePlano";
+import { PrioridadeMuscularCard } from "@/components/PrioridadeMuscularCard";
 import { NegociacaoPlano } from "@/components/NegociacaoPlano";
 import { CATALOG_EXERCICIOS } from "@/lib/catalog/exercicios";
 import { NOME_ESTILO, type EstiloSplit } from "@/lib/plan/gerar-plano";
@@ -166,6 +167,22 @@ export default function MeuTreinoPage() {
     }
   }
 
+  /** Prioridade muscular: o card já mostrou a prévia; o botão é o "Confirmar e remontar". */
+  async function remountPrioridades(patch: Pick<Perfil, "prioridades_musculares" | "prioridade_motivo">) {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await updatePerfilAndRemount(patch);
+      if (!res.ok) {
+        setMsg(res.error ?? "Não foi possível remontar.");
+        return;
+      }
+      router.push("/plano");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   useEffect(() => {
     const aberto = !!(negociando || confirmOpen);
     document.body.classList.toggle("sheet-open", aberto);
@@ -283,6 +300,19 @@ export default function MeuTreinoPage() {
           <NumStepper value={cardio} step={10} onChange={(n) => setCardio(Math.min(400, Math.max(0, n)))} />
         </div>
       </Card>
+
+      {p ? (
+        <>
+          <SectionTitle title="Músculos prioritários" />
+          <PrioridadeMuscularCard
+            state={state}
+            perfil={p}
+            busy={busy}
+            bloqueado={parqBloqueado}
+            onConfirmar={(patch) => void remountPrioridades(patch)}
+          />
+        </>
+      ) : null}
 
       {racional ? (
         <>

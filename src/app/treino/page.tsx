@@ -33,7 +33,9 @@ import { calibrarSessao, e1rmReferencia, feedbackSerie, rirAlvoDoDia } from "@/l
 import { useClientValue } from "@/lib/use-client-value";
 import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
-import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparatoriasDaSessao, proximaFase, textoAquecimento } from "@/lib/treino/estrutura-series";
+import { ExplicaConceito } from "@/components/Conceito";
+import type { ConceitoId } from "@/lib/conceitos";
+import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparacaoDaSessao, proximaFase, repsSugeridasFase, textoAquecimento, type PrepNivel } from "@/lib/treino/estrutura-series";
 
 const FASE_META: Record<
   TipoSerie,
@@ -49,20 +51,29 @@ const FASE_META: Record<
   },
   top_set: {
     label: "Top",
-    hint: "Série mais pesada do dia",
+    hint: "Série mais pesada do dia, no RIR alvo",
   },
   back_off: {
     label: "Back",
-    hint: "Um pouco mais leve depois do top",
+    hint: "~10% mais leve, mesmo RIR: sai com mais reps",
   },
   trabalho: {
     label: "Trabalho",
-    hint: "Volume",
+    hint: "Série que vale, no RIR alvo",
   },
   drop: {
     label: "Drop",
     hint: "Mesma série, carga reduzida",
   },
+};
+
+/** Conceito que explica cada fase (botão "?" ao lado da dica). */
+const CONCEITO_DA_FASE: Partial<Record<TipoSerie, ConceitoId>> = {
+  aquecimento: "aquecimento",
+  feeder: "aproximacao",
+  top_set: "top_backoff",
+  back_off: "top_backoff",
+  trabalho: "serie_valida",
 };
 
 const FASE_ORDEM: TipoSerie[] = [
@@ -144,8 +155,9 @@ export default function TreinoPage() {
   const linhaTendencia = textoTendencia(memoriaExercicio);
 
   // Aquecimento por grupo muscular (primeiro exercício de cada músculo ainda não aquecido).
-  const prepFlags = preparatoriasDaSessao(prescricoes, state.exercicios);
-  const prep = prepFlags[prescIdx] ?? prescIdx === 0;
+  // Composto livre de padrão novo com o músculo já aquecido: só 1 aproximação.
+  const prepFlags = preparacaoDaSessao(prescricoes, state.exercicios);
+  const prep: PrepNivel = prepFlags[prescIdx] ?? (prescIdx === 0 ? "completa" : "nenhuma");
   const cargaTop = presc?.carga.top_set_kg ?? prefillCarga;
   /** kg pré-preenchido por fase (motor/âncora define top/trabalho; aquecimento = 60% arredondado ao step). */
   const usaOrdem = presc ? estruturaSeries(presc, false).includes("back_off") : false;
@@ -210,17 +222,23 @@ export default function TreinoPage() {
 
   const faseInicial = presc ? proximaFase(presc, prep, seriesDone) : null;
   const cargaInicial = cargaDaFase(faseInicial);
+  /** Reps do top já feito neste exercício (base da sugestão do back-off). */
+  const repsTopFeitas = seriesDone.filter((r) => r.tipo_serie === "top_set").at(-1)?.reps ?? null;
+  const faixaPresc: [number, number] = presc ? [presc.faixa_reps[0], presc.faixa_reps[1]] : [prefillReps, prefillReps];
+  const repsDaFase = (f: TipoSerie | null, repsTop: number | null = repsTopFeitas) =>
+    repsSugeridasFase(f, faixaPresc, prefillReps, repsTop);
+  const repsInicial = repsDaFase(faseInicial);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reinicia os campos do logger quando muda o exercício/fase; reescrever exigiria remontar o componente
     setCarga(cargaInicial);
-    setReps(prefillReps);
+    setReps(repsInicial);
     setRir(alvoRir);
     setTipoManual(null);
     setDor(false);
     setOcupado(false);
     setAnchorPulse(false);
     setHitFlash(false);
-  }, [presc?.id, cargaInicial, prefillReps, alvoRir, presc?.tecnica]);
+  }, [presc?.id, cargaInicial, repsInicial, alvoRir, presc?.tecnica]);
 
   useEffect(() => {
     return () => {
@@ -252,7 +270,7 @@ export default function TreinoPage() {
   }, []);
 
   const alvoLabel = presc
-    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${alvoRir}${prep ? " · antes: aquecimento + aproximação" : ""}${presc.tecnica_final ? ` · última série: ${nomeTecnica(presc.tecnica_final)}` : ""}`
+    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${alvoRir}${prep === "completa" ? " · antes: aquecimento + aproximação" : prep === "aproximacao" ? " · antes: 1 aproximação (movimento novo)" : ""}${presc.tecnica_final ? ` · última série: ${nomeTecnica(presc.tecnica_final)}` : ""}`
     : "";
 
   if (!sess) {
@@ -433,7 +451,8 @@ export default function TreinoPage() {
     // Avanço automático: próxima fase já com o kg sugerido (back-off sai do top que você fez).
     setTipo(null);
     setCarga(cargaDaFase(proxima, tipo === "top_set" && carga > 0 ? carga : cargaTop));
-    setReps(prefillReps);
+    // Back-off: mesmo RIR com ~10% menos carga → mais reps (base: o que você fez no top).
+    setReps(repsDaFase(proxima, tipo === "top_set" ? reps : repsTopFeitas));
 
     // Adaptação ao vivo: toast + prefill carga (presc.series já atualizado no state)
     const adapt = result.adaptacao;
@@ -738,7 +757,7 @@ export default function TreinoPage() {
           ) : null}
 
           {/* Preview aquecimento — pulsa quando âncora muda; % math fica pro motor */}
-          {exercicioPendente && prep && tipo !== "aquecimento" && !seriesDone.some((r) => r.tipo_serie === "aquecimento") && (
+          {exercicioPendente && prep === "completa" && tipo !== "aquecimento" && !seriesDone.some((r) => r.tipo_serie === "aquecimento") && (
             <div
               className={`set-card flex items-center justify-between px-3 py-2 text-sm opacity-70 ${
                 anchorPulse ? "set-anchor-pulse" : ""
@@ -775,6 +794,16 @@ export default function TreinoPage() {
                 </span>
                 {" · "}
                 {FASE_META[tipo].hint}
+                {CONCEITO_DA_FASE[tipo] ? (
+                  <>
+                    {" "}
+                    <ExplicaConceito
+                      id={CONCEITO_DA_FASE[tipo]!}
+                      ctx={{ exercicio: exercicioAtivo?.nome, carga_kg: cargaTop, reps: prefillReps, rir_alvo: alvoRir, e1rm_kg: e1rmRef }}
+                      className="align-middle"
+                    />
+                  </>
+                ) : null}
               </p>
 
               <div
@@ -835,7 +864,7 @@ export default function TreinoPage() {
                 validar={(n) => validarReps(n)}
                 label="Reps"
                 flash="num"
-                hint={`Sugestão de reps: ${prefillReps}`}
+                hint={`Sugestão de reps: ${repsDaFase(tipo)}`}
               />
 
               <div className="mb-2 mt-4 flex items-baseline justify-center gap-2">
@@ -845,6 +874,11 @@ export default function TreinoPage() {
                 <p className="text-[11px] text-muted">
                   reps em reserva (quantas ainda conseguiria)
                 </p>
+                <ExplicaConceito
+                  id="rir"
+                  ctx={{ exercicio: exercicioAtivo?.nome, carga_kg: carga, reps, rir_alvo: alvoRir, e1rm_kg: e1rmRef }}
+                  className="self-center"
+                />
               </div>
               <div className="flex justify-center gap-2">
                 {[0, 1, 2, 3, 4].map((n) => (
