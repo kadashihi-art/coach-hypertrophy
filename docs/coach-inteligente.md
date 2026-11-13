@@ -127,7 +127,8 @@ Vale só no dia: séries via `ajuste_series_dia` e exercícios via `pulado_hoje`
 Junto veio um ajuste: "Continuar" um treino em andamento hoje não recalcula mais as prescrições do dia (isso desfaria tempo curto, leitura do dia e ajustes ao vivo no meio do treino).
 
 ## Trocar o treino de hoje
-No card do Hoje, "Trocar o treino de hoje" (ou "Treinar hoje mesmo assim" em dia de descanso) lista os treinos do plano.
+No card do Hoje, "Trocar o treino de hoje" (ou "Treinar hoje mesmo assim" em dia de descanso) abre a lista dos treinos do plano.
+Você marca um, vê a prévia ("Hoje passa a ser Lower B. Upper B volta pra fila…") e só muda em "Confirmar mudança".
 - O escolhido fica fixo hoje no calendário (`marcarDia` com "trocar"), e o treino que estava hoje volta pra fila.
 - `proximaSessao` passa a sugerir o treino que você fixou hoje antes da fila.
 - Um treino já feito na semana vira "repetir": a execução anterior fica guardada no dia dela.
