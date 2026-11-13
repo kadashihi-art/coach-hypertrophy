@@ -133,6 +133,8 @@ type Ctx = {
   /** Set mesociclo.data_inicio and schedule session dates */
   setDataInicio: (isoDate: string) => void;
   /** Mark session pulada / restore planejada / sync feito */
+  /** Último erro ao salvar no servidor (null = salvo). As mudanças continuam neste aparelho. */
+  syncErro: string | null;
   /** Trocar o treino de hoje (só após "Confirmar mudança"). Fecha treino aberto sem série. */
   trocarTreinoDeHoje: (paraId: string) => { ok: boolean; motivo?: "com_series" | "invalido"; saiu?: string | null };
   markCalendario: (
@@ -167,6 +169,7 @@ const AppCtx = createContext<Ctx | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(seedState);
   const [ready, setReady] = useState(false);
+  const [syncErro, setSyncErro] = useState<string | null>(null);
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
   const authenticated = status === "authenticated" && Boolean(userId);
@@ -278,13 +281,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(state),
       })
         .then(async (r) => {
-          if (!r.ok) return;
+          if (!r.ok) {
+            // Mostra o motivo (antes era engolido e a mudança "voltava" ao reabrir o app).
+            let det = "";
+            try {
+              const j = (await r.json()) as { error?: string; details?: unknown };
+              det = [j.error, typeof j.details === "string" ? j.details : j.details ? JSON.stringify(j.details).slice(0, 160) : ""].filter(Boolean).join(": ");
+            } catch { /* sem corpo */ }
+            setSyncErro(`${r.status}${det ? ` · ${det}` : ""}`);
+            return;
+          }
           const body = (await r.json()) as { updated_at: string };
           saveSyncedAt(body.updated_at);
           limparPendente(enviadoEm);
+          setSyncErro(null);
         })
         .catch(() => {
-          /* offline — local cache keeps working */
+          /* offline — local cache keeps working; tenta de novo na próxima mudança */
         });
     }, 500);
     return () => window.clearTimeout(t);
@@ -1214,6 +1227,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDataInicio,
       markCalendario,
       trocarTreinoDeHoje,
+      syncErro,
       limparDiaCalendario,
       desfazerLimpezaDia,
       registrarFeitoDia,
@@ -1251,6 +1265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setDataInicio,
       markCalendario,
       trocarTreinoDeHoje,
+      syncErro,
       limparDiaCalendario,
       desfazerLimpezaDia,
       registrarFeitoDia,

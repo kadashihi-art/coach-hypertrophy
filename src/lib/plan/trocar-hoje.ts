@@ -22,15 +22,15 @@ export function trocarTreinoHoje(state: AppState, paraId: string, hoje: string):
   const abertos = state.sessoes.filter((s) => s.status === "em_andamento");
   const comSeries = abertos.find((s) => (state.registros ?? []).some((r) => r.sessao_id === s.id));
   if (comSeries) return { ok: false, motivo: "com_series" };
-  let s: AppState = state;
+  // Depois da troca nenhum treino fica aberto: o "treino ativo" sempre é limpo
+  // (um ativo antigo apontando pra outro treino também segurava o Hoje).
+  let s: AppState = { ...state, active_sessao_id: null, logger_prescricao_id: null };
   let saiu: string | null = null;
   if (abertos.length) {
     const ids = new Set(abertos.map((x) => x.id));
     saiu = abertos.find((x) => x.data === hoje)?.id ?? abertos[0]!.id;
     s = {
       ...s,
-      active_sessao_id: s.active_sessao_id && ids.has(s.active_sessao_id) ? null : s.active_sessao_id,
-      logger_prescricao_id: s.active_sessao_id && ids.has(s.active_sessao_id) ? null : s.logger_prescricao_id,
       sessoes: s.sessoes.map((x) =>
         ids.has(x.id)
           ? { ...x, status: "planejada" as const, data: null, data_manual: undefined, iniciada_em: undefined, finalizada_em: undefined }
@@ -39,9 +39,12 @@ export function trocarTreinoHoje(state: AppState, paraId: string, hoje: string):
     };
   }
 
-  if (!s.plano?.mesociclo?.data_inicio) return { ok: true, state: s, saiu };
+  // Com ou sem data de início do plano: o escolhido fica fixo hoje (e o Hoje mostra ele).
   const agenda = agendaEfetiva(s, hoje).sessoes;
   const doDia = agenda.find((x) => x.data === hoje && x.status !== "pulada" && !x.id.includes("#") && x.id !== paraId);
   const r = marcarDia(s, agenda, hoje, doDia?.id ?? null, "trocar", paraId);
+  // Confere: o escolhido tem que estar hoje, planejado. Senão não finge que trocou.
+  const escolhido = r.sessoes.find((x) => x.id === paraId);
+  if (!escolhido || escolhido.data !== hoje || escolhido.status !== "planejada") return { ok: false, motivo: "invalido" };
   return { ok: true, state: r, saiu: saiu ?? doDia?.id ?? null };
 }
