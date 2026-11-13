@@ -54,15 +54,16 @@ export function proximaSessao(
     s.status !== "abandonada" &&
     s.prescricoes.length > 0;
 
+  // Treino que você escolheu pra hoje (trocar o treino do dia) vem antes da fila, com ou sem agenda.
+  const hojeEscolha = hojeIso ?? (typeof window !== "undefined" ? hojeIsoSaoPaulo() : null);
+  const escolhidoHoje = hojeEscolha
+    ? ordered.find((s) => elegivel(s) && s.status === "planejada" && s.data_manual && s.data === hojeEscolha)
+    : undefined;
+  if (escolhidoHoje) return escolhidoHoje;
+
   // Com agenda: a ordem é por treino, não por data. Treino planejado que passou sem ser feito
   // continua sendo o próximo (não é pulado); só "pulada" explícita sai da fila.
   if (state.plano?.mesociclo?.data_inicio) {
-    // Treino que você escolheu pra hoje (trocar o treino do dia) vem antes da fila.
-    const hojeEscolha = hojeIso ?? (typeof window !== "undefined" ? hojeIsoSaoPaulo() : null);
-    const escolhidoHoje = hojeEscolha
-      ? ordered.find((s) => elegivel(s) && s.status === "planejada" && s.data_manual && s.data === hojeEscolha)
-      : undefined;
-    if (escolhidoHoje) return escolhidoHoje;
     const planejada = ordered.find(
       (s) => elegivel(s) && s.status === "planejada",
     );

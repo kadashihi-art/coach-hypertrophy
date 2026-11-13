@@ -123,6 +123,17 @@ ok(!treinoAbertoAntigo({ status: "concluida", data: "2026-11-12", iniciada_em: "
   }
   const comSerie = trocarTreinoHoje({ ...st, registros: [reg(a, "2026-11-13T20:35:00Z", 1)] }, b2, "2026-11-13");
   ok(!comSerie.ok && comSerie.motivo === "com_series", "aberto com série: não troca (as séries ficariam sem treino)");
+
+  // Sem data de início do plano: a troca também fica gravada e aparece no Hoje.
+  const semData: AppState = { ...st, plano: st.plano ? { ...st.plano, mesociclo: { ...st.plano.mesociclo, data_inicio: null } } : st.plano };
+  const r2 = trocarTreinoHoje(semData, b2, "2026-11-13");
+  ok(r2.ok && r2.state.sessoes.find((s) => s.id === b2)!.data === "2026-11-13", "sem data de início: o escolhido fica hoje");
+  ok(r2.ok && proximaSessao(r2.state, "2026-11-13")?.id === b2, "sem data de início: o escolhido aparece no Hoje");
+
+  // Treino ativo antigo apontando pra outro treino (já fechado): a troca limpa e o Hoje mostra o escolhido.
+  const ativoVelho: AppState = { ...st, sessoes: st.sessoes.map((s) => (s.id === a ? { ...s, status: "planejada" as const, data: "2026-11-13" } : s)), active_sessao_id: a };
+  const r3 = trocarTreinoHoje(ativoVelho, b2, "2026-11-13");
+  ok(r3.ok && r3.state.active_sessao_id === null && proximaSessao(r3.state, "2026-11-13")?.id === b2, "ativo antigo: limpo, e o escolhido aparece no Hoje");
 }
 
 if (fail) { console.error(`\n${fail} falha(s)`); process.exit(1); }

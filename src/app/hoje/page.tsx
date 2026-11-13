@@ -38,7 +38,6 @@ import { agendaEfetiva, avisoPendente } from "@/lib/plan/pendente";
 import { projetarOcorrencias } from "@/lib/plan/projecao";
 import { faixaDeDias, TEXTO_STATUS, type StatusFaixa } from "@/lib/plan/faixa";
 import { DiaAcoes } from "@/components/DiaAcoes";
-import { treinosParaRegistrar } from "@/lib/plan/calendario";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { alvoEditarHoje } from "@/lib/plan/hoje-editar";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
@@ -71,7 +70,7 @@ const COR_STATUS: Record<StatusFaixa, string> = {
 };
 
 export default function HojePage() {
-  const { state, ready, startSession, trocarTreinoDeHoje } = useApp();
+  const { state, ready, startSession, trocarTreinoDeHoje, syncErro } = useApp();
   // Trocar o treino de hoje (ex.: o calendário diz Upper, mas hoje você vai fazer Lower).
   const [trocarAberto, setTrocarAberto] = useState(false);
   // Treino marcado na lista; só muda depois de "Confirmar mudança".
@@ -303,25 +302,31 @@ export default function HojePage() {
     !!sess && !parqBloqueado && !plano?.bloqueado &&
     (estadoHero === "novo" || estadoHero === "descanso" || (estadoHero === "andamento" && feitas === 0));
   const opcoesHoje = podeTrocarHoje
-    ? treinosParaRegistrar(state).filter((o) => o.status !== "em_andamento" && (estadoHero === "descanso" || o.id !== sess?.id))
+    ? // Só treinos da fase atual do plano: são os que o Hoje e o calendário mostram.
+      ciclo.filter((o) => !o.id.includes("#") && o.status !== "em_andamento" && (estadoHero === "descanso" || o.id !== sess?.id))
     : [];
   const ddmmHoje = (iso: string | null | undefined) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
   function trocarHojePara(id: string) {
     const nome = state.sessoes.find((x) => x.id === id)?.nome ?? "Treino";
-    const r = trocarTreinoDeHoje(id);
+    let r: ReturnType<typeof trocarTreinoDeHoje>;
+    try {
+      r = trocarTreinoDeHoje(id);
+    } catch (e) {
+      setAvisoEdicao(`Não consegui trocar o treino (${e instanceof Error ? e.message : "erro"}). Me manda um print disso.`);
+      return;
+    }
     setTrocarAberto(false);
     setEscolhaHoje(null);
     if (!r.ok) {
       setAvisoEdicao(
         r.motivo === "com_series"
           ? "Esse treino já tem série registrada hoje. Finalize ele antes de trocar."
-          : "Não deu pra trocar esse treino agora.",
+          : "Não consegui colocar esse treino hoje. Me manda um print disso.",
       );
       return;
     }
     // Fixa o escolhido hoje (no calendário, quando o plano tem data de início); o que saiu volta pra fila.
     setPicked(null);
-    if (!state.plano?.mesociclo?.data_inicio) setPickedId(id);
     const saiu = r.saiu ? state.sessoes.find((x) => x.id === r.saiu)?.nome : null;
     setAvisoEdicao(`Pronto, hoje é ${nome} (no Hoje e no calendário).${saiu ? ` ${saiu} voltou pra fila e entra no próximo dia de treino.` : ""}`);
   }
@@ -388,6 +393,12 @@ export default function HojePage() {
         </div>
         <span className="pill-offline">Offline</span>
       </div>
+
+      {syncErro ? (
+        <p role="status" data-testid="sync-erro" className="mb-4 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
+          Não consegui salvar no servidor ({syncErro}). Suas mudanças estão guardadas neste aparelho. Se isso continuar, me manda um print.
+        </p>
+      ) : null}
 
       {alertaUnico && !alertaFechado ? (
         <div className="motion-swap relative mb-4">
