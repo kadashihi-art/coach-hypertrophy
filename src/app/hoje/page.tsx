@@ -74,6 +74,8 @@ export default function HojePage() {
   const { state, ready, startSession, markCalendario } = useApp();
   // Trocar o treino de hoje (ex.: o calendário diz Upper, mas hoje você vai fazer Lower).
   const [trocarAberto, setTrocarAberto] = useState(false);
+  // Treino marcado na lista; só muda depois de "Confirmar mudança".
+  const [escolhaHoje, setEscolhaHoje] = useState<string | null>(null);
   const { alternado } = useModoCarga();
   const router = useRouter();
   // escolha manual vale só enquanto a sugerida não muda (ex.: acabou de concluir)
@@ -312,7 +314,8 @@ export default function HojePage() {
       setPickedId(id);
     }
     setTrocarAberto(false);
-    setAvisoEdicao(`Hoje: ${nome}.${doDia ? ` ${doDia.nome} voltou pra fila e entra no próximo dia de treino.` : ""}`);
+    setEscolhaHoje(null);
+    setAvisoEdicao(`Pronto, hoje é ${nome} (no Hoje e no calendário).${doDia ? ` ${doDia.nome} voltou pra fila e entra no próximo dia de treino.` : ""}`);
   }
 
   const alvoEdicao = alvoEditarHoje(state, sess?.id);
@@ -553,33 +556,77 @@ export default function HojePage() {
             {opcoesHoje.length > 0 ? (
               trocarAberto ? (
                 <div className="mt-2 rounded-2xl border border-border p-3" data-testid="trocar-treino-hoje">
-                  <p className="mb-2 text-xs text-muted">
-                    {estadoHero === "descanso" ? "Qual treino você vai fazer hoje?" : `Hoje no lugar de ${sess?.nome}:`}
+                  <p className="mb-2 text-sm font-semibold">
+                    {estadoHero === "descanso" ? "Qual treino você vai fazer hoje?" : `Trocar ${sess?.nome} por:`}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {opcoesHoje.map((o) => (
-                      <button
-                        key={o.id}
-                        type="button"
-                        data-testid="opcao-treino-hoje"
-                        className="chip-motion text-xs"
-                        onClick={() => trocarHojePara(o.id)}
-                      >
-                        {o.nome}
-                        {o.status === "concluida" || o.status === "parcial" ? ` · feito ${ddmmHoje(o.data)}, repetir` : ""}
-                      </button>
-                    ))}
+                  <div className="flex flex-col gap-2" role="radiogroup" aria-label="Treino de hoje">
+                    {opcoesHoje.map((o) => {
+                      const marcado = escolhaHoje === o.id;
+                      const feito = o.status === "concluida" || o.status === "parcial";
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={marcado}
+                          data-testid="opcao-treino-hoje"
+                          onClick={() => setEscolhaHoje(o.id)}
+                          className={`motion-press flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left ${
+                            marcado ? "border-accent bg-accent/10" : "border-border"
+                          }`}
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-bone-50">{o.nome}</span>
+                            <span className="block truncate text-xs text-muted">
+                              {o.grupos.slice(0, 4).map((g) => labelGrupo(g).toLowerCase()).join(" · ")}
+                            </span>
+                            {feito ? (
+                              <span className="block text-xs text-accent">Já feito em {ddmmHoje(o.data)}: fazer de novo hoje</span>
+                            ) : null}
+                          </span>
+                          <span
+                            aria-hidden
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] ${
+                              marcado ? "border-accent bg-accent text-ink-950" : "border-border"
+                            }`}
+                          >
+                            {marcado ? "✓" : ""}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className="mt-2 text-[11px] text-faint">O treino que estava hoje volta pra fila. Nenhuma série é apagada.</p>
-                  <button type="button" className="mt-1 min-h-11 w-full text-xs text-muted" onClick={() => setTrocarAberto(false)}>
-                    Cancelar
-                  </button>
+                  {escolhaHoje ? (
+                    <p className="mt-3 text-xs text-muted" data-testid="previa-troca-hoje">
+                      Hoje passa a ser <span className="font-semibold text-bone-50">{opcoesHoje.find((o) => o.id === escolhaHoje)?.nome}</span>
+                      {estadoHero !== "descanso" && sess ? `. ${sess.nome} volta pra fila e entra no próximo dia de treino` : ""}. Nenhuma série é apagada.
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-xs text-faint">Escolha um treino e confirme.</p>
+                  )}
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      className="min-h-11 flex-1 text-sm"
+                      data-testid="confirmar-troca-hoje"
+                      disabled={!escolhaHoje}
+                      onClick={() => escolhaHoje && trocarHojePara(escolhaHoje)}
+                    >
+                      Confirmar mudança
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="min-h-11 flex-1 text-sm"
+                      onClick={() => { setTrocarAberto(false); setEscolhaHoje(null); }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   data-testid="hoje-trocar-treino"
-                  onClick={() => { setTrocarAberto(true); setAvisoEdicao(null); }}
+                  onClick={() => { setTrocarAberto(true); setEscolhaHoje(null); setAvisoEdicao(null); }}
                   className="motion-press mt-2 min-h-11 w-full rounded-2xl border border-border text-sm font-semibold text-bone-50"
                 >
                   {estadoHero === "descanso" ? "Treinar hoje mesmo assim" : "Trocar o treino de hoje"}
