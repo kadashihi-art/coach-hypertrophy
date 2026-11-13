@@ -136,7 +136,7 @@ type Ctx = {
   /** Último erro ao salvar no servidor (null = salvo). As mudanças continuam neste aparelho. */
   syncErro: string | null;
   /** Trocar o treino de hoje (só após "Confirmar mudança"). Fecha treino aberto sem série. */
-  trocarTreinoDeHoje: (paraId: string) => { ok: boolean; motivo?: "com_series" | "invalido"; saiu?: string | null };
+  trocarTreinoDeHoje: (paraId: string) => { ok: boolean; motivo?: "com_series" | "invalido"; saiu?: string | null; desmarcados?: string[]; feitosHoje?: string[] };
   markCalendario: (
     sessaoId: string | null,
     action: AcaoDia,
@@ -1110,7 +1110,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const r = trocarTreinoHoje(state, paraId, hojeIsoSaoPaulo());
     if (!r.ok) return { ok: false, motivo: r.motivo };
     setState(r.state);
-    return { ok: true, saiu: r.saiu };
+    return { ok: true, saiu: r.saiu, desmarcados: r.desmarcados, feitosHoje: r.feitosHoje };
   }, [state]);
 
   const markCalendario = useCallback(

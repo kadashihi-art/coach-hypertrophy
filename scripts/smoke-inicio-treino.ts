@@ -75,6 +75,22 @@ ok(!treinoAbertoAntigo({ status: "concluida", data: "2026-11-12", iniciada_em: "
   ok(r.sessoes.find((s) => s.id === s0.id)!.data !== hojeIsoSaoPaulo(ms("2026-11-13T15:00:00Z")), "hoje não aparece como feito por causa do treino de ontem à noite");
 }
 
+// 6b) Execução guardada ao repetir (…#feito-…) com séries da noite anterior: volta pro dia das séries.
+{
+  const av = { ...s0, id: `${s0.id}#feito-2026-11-13`, status: "concluida" as const, data: "2026-11-13", data_manual: true, prescricoes: [] };
+  const st: AppState = {
+    ...base,
+    sessoes: [...base.sessoes, av],
+    registros: [reg(av.id, "2026-11-13T00:30:00Z", 1), reg(av.id, "2026-11-13T01:10:00Z", 2)],
+  };
+  const r = corrigirDataDoTreinoNoturno(st);
+  ok(r.sessoes.find((s) => s.id === av.id)!.data === "2026-11-12", "repetido com séries às 21h30 de 12/nov: volta pra 12/nov");
+  const tarde: AppState = { ...st, registros: [reg(av.id, "2026-11-13T16:00:00Z", 1)] };
+  ok(corrigirDataDoTreinoNoturno(tarde) === tarde, "séries da tarde de 13/nov: não muda");
+  const semSerie: AppState = { ...st, registros: [] };
+  ok(corrigirDataDoTreinoNoturno(semSerie) === semSerie, "sem série: não muda");
+}
+
 // 7) Próxima sessão continua sugerindo o treino aberto (pra começar do zero ou continuar).
 {
   const st = comSessao({ status: "em_andamento", data: "2026-11-10", iniciada_em: "2026-11-10T22:00:00Z" });
@@ -134,6 +150,34 @@ ok(!treinoAbertoAntigo({ status: "concluida", data: "2026-11-12", iniciada_em: "
   const ativoVelho: AppState = { ...st, sessoes: st.sessoes.map((s) => (s.id === a ? { ...s, status: "planejada" as const, data: "2026-11-13" } : s)), active_sessao_id: a };
   const r3 = trocarTreinoHoje(ativoVelho, b2, "2026-11-13");
   ok(r3.ok && r3.state.active_sessao_id === null && proximaSessao(r3.state, "2026-11-13")?.id === b2, "ativo antigo: limpo, e o escolhido aparece no Hoje");
+
+  // Escolhido já marcado como feito HOJE (caso real): sem série → tira a marcação e vira o de hoje.
+  const feitoHojeSemSerie: AppState = {
+    ...st,
+    sessoes: st.sessoes.map((s) => (s.id === b2 ? { ...s, status: "concluida" as const, data: "2026-11-13", finalizada_em: "2026-11-13T15:00:00Z" } : s)),
+  };
+  const r4 = trocarTreinoHoje(feitoHojeSemSerie, b2, "2026-11-13");
+  const b2r4 = r4.ok ? r4.state.sessoes.find((s) => s.id === b2)! : null;
+  ok(r4.ok && b2r4!.status === "planejada" && b2r4!.data === "2026-11-13", "feito hoje sem série: a marcação sai e ele vira o treino de hoje");
+  ok(r4.ok && !r4.state.sessoes.some((s) => s.id.startsWith(`${b2}#`)), "feito hoje sem série: não cria registro avulso vazio");
+  ok(r4.ok && proximaSessao(r4.state, "2026-11-13")?.id === b2, "feito hoje sem série: aparece no Hoje");
+
+  // Feito hoje COM série: a execução fica guardada (avulso de hoje, com as séries) e o treino repete hoje.
+  const feitoHojeComSerie: AppState = { ...feitoHojeSemSerie, registros: [{ ...reg(a, "2026-11-13T14:00:00Z", 1), sessao_id: b2 }] };
+  const r5 = trocarTreinoHoje(feitoHojeComSerie, b2, "2026-11-13");
+  const av = r5.ok ? r5.state.sessoes.find((s) => s.id.startsWith(`${b2}#`)) : undefined;
+  ok(r5.ok && !!av && av.data === "2026-11-13" && r5.state.registros.every((r) => r.sessao_id === av.id), "feito hoje com série: execução guardada com as séries");
+  ok(r5.ok && r5.state.sessoes.find((s) => s.id === b2)!.status === "planejada" && proximaSessao(r5.state, "2026-11-13")?.id === b2, "feito hoje com série: repete hoje");
+
+  // Outro treino marcado como feito HOJE sem série (ex.: Finalizar num treino vazio) segurava o dia: volta pra fila.
+  const c = ids[2]!;
+  const ocupado: AppState = { ...st, sessoes: st.sessoes.map((s) => (s.id === c ? { ...s, status: "concluida" as const, data: "2026-11-13" } : s)) };
+  const r6 = trocarTreinoHoje(ocupado, b2, "2026-11-13");
+  ok(r6.ok && r6.desmarcados.includes(c) && r6.state.sessoes.find((s) => s.id === c)!.status === "planejada", "feito hoje sem série: a marcação falsa sai e avisa");
+  // Feito hoje com série continua feito e é avisado.
+  const real: AppState = { ...ocupado, registros: [{ ...reg(a, "2026-11-13T14:00:00Z", 1), sessao_id: c }] };
+  const r7 = trocarTreinoHoje(real, b2, "2026-11-13");
+  ok(r7.ok && r7.feitosHoje.includes(c) && r7.state.sessoes.find((s) => s.id === c)!.status === "concluida", "feito hoje com série: continua feito e é avisado");
 }
 
 if (fail) { console.error(`\n${fail} falha(s)`); process.exit(1); }

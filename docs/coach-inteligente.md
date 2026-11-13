@@ -139,3 +139,10 @@ Você marca um, vê a prévia ("Hoje passa a ser Lower B. Upper B volta pra fila
 Toda mudança fica marcada como pendente até o servidor confirmar (`marcarPendente`/`limparPendente` em `src/lib/storage.ts`).
 Ao abrir o app, se há pendência e o servidor tem a mesma versão, a cópia local ganha. Antes, um envio que falhava fazia a mudança voltar atrás.
 O servidor só ganha quando tem uma versão mais nova, vinda de outro aparelho.
+
+### Casos da troca (relatos do uso)
+- Escolhido já feito hoje: com séries, a execução fica guardada e ele repete hoje; sem série, a marcação de feito sai e ele vira o de hoje.
+- Outros treinos marcados como feitos hoje sem nenhuma série (ex.: "Finalizar" num treino vazio) voltam pra fila na troca, com aviso.
+- Treino feito de verdade hoje (com séries) continua feito. O calendário mostra ele, o Hoje mostra o escolhido, e o aviso explica.
+- A lista mostra só os treinos da fase atual. A troca funciona com ou sem data de início do plano.
+- `corrigirDataDoTreinoNoturno` também usa o horário das séries. Isso inclui a execução guardada ao repetir (`…#feito-…`): séries de 21h–24h de um dia salvas com a data do dia seguinte voltam para o dia certo.
