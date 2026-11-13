@@ -74,22 +74,51 @@ export function liberarParaHoje(state: AppState, sessaoId: string, agoraMs: numb
 /** Data UTC (AAAA-MM-DD) de um instante. */
 const diaUtc = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
+const diaSeguinte = (iso: string) => new Date(Date.parse(iso + "T12:00:00Z") + 86400_000).toISOString().slice(0, 10);
+
 /**
  * Corrige treinos que ficaram com a data de amanhã por terem começado depois das 21h (o início
- * gravava o dia em UTC). Só mexe quando a data salva é exatamente o dia UTC do início e difere do
- * dia de São Paulo, e nunca em data escolhida à mão nem em registro avulso.
+ * gravava o dia em UTC). Dois sinais, os dois exatos:
+ *  1) treino do plano: a data salva é o dia UTC do início e difere do dia de São Paulo
+ *     (nunca em data escolhida à mão nem em registro avulso);
+ *  2) treino feito com séries (inclusive a execução guardada ao repetir, `…#feito-…`): todas as
+ *     séries são do mesmo dia em São Paulo, e a data salva é o dia seguinte, igual ao dia UTC
+ *     da primeira série. Sem série, nada muda.
  */
 export function corrigirDataDoTreinoNoturno(state: AppState): AppState {
+  const porSessao = new Map<string, number[]>();
+  for (const r of state.registros ?? []) {
+    const ms = Date.parse(r.executado_em);
+    if (!Number.isFinite(ms)) continue;
+    const l = porSessao.get(r.sessao_id) ?? [];
+    l.push(ms);
+    porSessao.set(r.sessao_id, l);
+  }
   let mudou = false;
   const sessoes = state.sessoes.map((s) => {
-    if (!s.data || !s.iniciada_em || s.data_manual || s.id.includes("#")) return s;
+    if (!s.data) return s;
     if (s.status !== "concluida" && s.status !== "parcial" && s.status !== "em_andamento") return s;
-    const t = Date.parse(s.iniciada_em);
-    if (!Number.isFinite(t)) return s;
-    const sp = hojeIsoSaoPaulo(t);
-    if (s.data !== diaUtc(t) || s.data === sp) return s;
+    // 1) Pelo início do treino.
+    if (s.iniciada_em && !s.data_manual && !s.id.includes("#")) {
+      const t = Date.parse(s.iniciada_em);
+      if (Number.isFinite(t)) {
+        const sp = hojeIsoSaoPaulo(t);
+        if (s.data === diaUtc(t) && s.data !== sp) {
+          mudou = true;
+          return { ...s, data: sp };
+        }
+      }
+    }
+    // 2) Pelas séries registradas.
+    if (s.status === "em_andamento") return s;
+    const ms = (porSessao.get(s.id) ?? []).sort((a, b) => a - b);
+    if (!ms.length) return s;
+    const diasSp = new Set(ms.map((m) => hojeIsoSaoPaulo(m)));
+    if (diasSp.size !== 1) return s;
+    const diaSp = [...diasSp][0]!;
+    if (s.data !== diaSeguinte(diaSp) || s.data !== diaUtc(ms[0]!)) return s;
     mudou = true;
-    return { ...s, data: sp };
+    return { ...s, data: diaSp };
   });
   return mudou ? { ...state, sessoes } : state;
 }

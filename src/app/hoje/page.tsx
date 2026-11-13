@@ -327,8 +327,19 @@ export default function HojePage() {
     }
     // Fixa o escolhido hoje (no calendário, quando o plano tem data de início); o que saiu volta pra fila.
     setPicked(null);
-    const saiu = r.saiu ? state.sessoes.find((x) => x.id === r.saiu)?.nome : null;
-    setAvisoEdicao(`Pronto, hoje é ${nome} (no Hoje e no calendário).${saiu ? ` ${saiu} voltou pra fila e entra no próximo dia de treino.` : ""}`);
+    const nomeDe = (sid: string) => state.sessoes.find((x) => x.id === sid)?.nome ?? sid;
+    const saiu = r.saiu ? nomeDe(r.saiu) : null;
+    const desm = (r.desmarcados ?? []).map(nomeDe);
+    // Nome do treino feito (a execução guardada tem id "<treino>#feito-<data>").
+    const feitos = (r.feitosHoje ?? []).map((sid) => nomeDe(sid.split("#")[0]!));
+    setAvisoEdicao(
+      `Pronto, hoje é ${nome} (no Hoje e no calendário).` +
+        (saiu ? ` ${saiu} voltou pra fila e entra no próximo dia de treino.` : "") +
+        (desm.length ? ` ${desm.join(" e ")} ${desm.length > 1 ? "estavam marcados" : "estava marcado"} como feito hoje sem nenhuma série e ${desm.length > 1 ? "voltaram" : "voltou"} pra fila.` : "") +
+        (feitos.length
+          ? ` Hoje você já tem ${feitos.join(" e ")} feito com séries: no calendário o dia aparece como feito, e ${nome} fica como o treino a fazer aqui no Hoje. Se ${feitos.length > 1 ? "eles não foram" : "ele não foi"} hoje, corrija no calendário.`
+          : ""),
+    );
   }
 
   const alvoEdicao = alvoEditarHoje(state, sess?.id);
@@ -600,7 +611,13 @@ export default function HojePage() {
                               {o.grupos.slice(0, 4).map((g) => labelGrupo(g).toLowerCase()).join(" · ")}
                             </span>
                             {feito ? (
-                              <span className="block text-xs text-accent">Já feito em {ddmmHoje(o.data)}: fazer de novo hoje</span>
+                              <span className="block text-xs text-accent">
+                                {!state.registros.some((r) => r.sessao_id === o.id)
+                                  ? "Marcado como feito sem nenhuma série: vira o treino de hoje"
+                                  : o.data === hoje
+                                    ? "Já feito hoje: fazer de novo"
+                                    : `Já feito em ${ddmmHoje(o.data)}: fazer de novo hoje`}
+                              </span>
                             ) : null}
                           </span>
                           <span
