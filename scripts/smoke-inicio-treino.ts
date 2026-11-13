@@ -3,6 +3,7 @@ import { seedState } from "../src/lib/seed";
 import type { AppState, RegistroSerie, Sessao } from "../src/lib/domain";
 import { hojeIsoSaoPaulo, proximaSessao } from "../src/lib/plan/proxima-sessao";
 import { corrigirDataDoTreinoNoturno, liberarParaHoje, treinoAbertoAntigo } from "../src/lib/treino/sessao-aberta";
+import { marcarDia } from "../src/lib/plan/calendario";
 
 let fail = 0;
 const ok = (c: boolean, m: string) => { if (c) console.log("PASS", m); else { fail++; console.log("FAIL", m); } };
@@ -77,6 +78,24 @@ ok(!treinoAbertoAntigo({ status: "concluida", data: "2026-11-12", iniciada_em: "
 {
   const st = comSessao({ status: "em_andamento", data: "2026-11-10", iniciada_em: "2026-11-10T22:00:00Z" });
   ok(proximaSessao(st, "2026-11-13")?.id === s0.id, "treino aberto continua sendo o sugerido");
+}
+
+// 8) Trocar o treino de hoje: o escolhido vira o de hoje (sugestão e calendário); o anterior volta pra fila.
+{
+  const ids = base.sessoes.filter((s) => s.prescricoes.length > 0).map((s) => s.id);
+  const [a, b2] = [ids[0]!, ids[1]!];
+  const st: AppState = {
+    ...base,
+    plano: base.plano ? { ...base.plano, mesociclo: { ...base.plano.mesociclo, data_inicio: "2026-11-09" } } : base.plano,
+    sessoes: base.sessoes.map((s) => (s.id === a ? { ...s, status: "planejada" as const, data: "2026-11-13" } : s.id === b2 ? { ...s, status: "planejada" as const, data: null } : s)),
+    active_sessao_id: null,
+  };
+  const r = marcarDia(st, st.sessoes, "2026-11-13", a, "trocar", b2);
+  const escolhido = r.sessoes.find((s) => s.id === b2)!;
+  const saiu = r.sessoes.find((s) => s.id === a)!;
+  ok(escolhido.data === "2026-11-13" && !!escolhido.data_manual && escolhido.status === "planejada", "trocar hoje: o escolhido fica fixo hoje");
+  ok(saiu.data === null && saiu.status === "planejada", "trocar hoje: o que estava hoje volta pra fila");
+  ok(proximaSessao(r, "2026-11-13")?.id === b2, "trocar hoje: o escolhido vira o treino sugerido de hoje");
 }
 
 if (fail) { console.error(`\n${fail} falha(s)`); process.exit(1); }

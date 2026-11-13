@@ -151,6 +151,11 @@ export function TrocarExercicioSheet({
                       </p>
                     ) : null}
                     <p className="mt-1 text-xs leading-relaxed text-muted">{llm[a.exercicio.id] ?? a.explicacao}</p>
+                    {a.ciencia ? (
+                      <p className="mt-1 text-xs leading-relaxed text-bone-50/80" data-testid="alt-ciencia">
+                        Ciência: {a.ciencia}
+                      </p>
+                    ) : null}
                     {a.memoria ? (
                       <p className={`mt-1 text-xs ${a.memoria.startsWith("Você marcou dor") ? "text-warn" : "text-bone-50/80"}`} data-testid="alt-memoria">
                         {a.memoria}

@@ -38,6 +38,7 @@ import { agendaEfetiva, avisoPendente } from "@/lib/plan/pendente";
 import { projetarOcorrencias } from "@/lib/plan/projecao";
 import { faixaDeDias, TEXTO_STATUS, type StatusFaixa } from "@/lib/plan/faixa";
 import { DiaAcoes } from "@/components/DiaAcoes";
+import { treinosParaRegistrar } from "@/lib/plan/calendario";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { alvoEditarHoje } from "@/lib/plan/hoje-editar";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
@@ -70,7 +71,9 @@ const COR_STATUS: Record<StatusFaixa, string> = {
 };
 
 export default function HojePage() {
-  const { state, ready, startSession } = useApp();
+  const { state, ready, startSession, markCalendario } = useApp();
+  // Trocar o treino de hoje (ex.: o calendário diz Upper, mas hoje você vai fazer Lower).
+  const [trocarAberto, setTrocarAberto] = useState(false);
   const { alternado } = useModoCarga();
   const router = useRouter();
   // escolha manual vale só enquanto a sugerida não muda (ex.: acabou de concluir)
@@ -291,6 +294,26 @@ export default function HojePage() {
       : deloadResumo
         ? "deload"
         : null;
+
+  // Opções pra trocar o treino de hoje: qualquer treino do plano (um já feito vira "repetir").
+  const podeTrocarHoje = !!sess && !parqBloqueado && !plano?.bloqueado && (estadoHero === "novo" || estadoHero === "descanso");
+  const opcoesHoje = podeTrocarHoje
+    ? treinosParaRegistrar(state).filter((o) => o.status !== "em_andamento" && (estadoHero === "descanso" || o.id !== sess?.id))
+    : [];
+  const ddmmHoje = (iso: string | null | undefined) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
+  function trocarHojePara(id: string) {
+    const nome = state.sessoes.find((x) => x.id === id)?.nome ?? "Treino";
+    const doDia = sessHoje && !sessHoje.id.includes("#") && sessHoje.id !== id ? sessHoje : null;
+    if (state.plano?.mesociclo?.data_inicio && hoje) {
+      // Fixa o escolhido hoje no calendário; o que estava aqui volta pra fila (nada é apagado).
+      markCalendario(doDia?.id ?? null, "trocar", hoje, id);
+      setPicked(null);
+    } else {
+      setPickedId(id);
+    }
+    setTrocarAberto(false);
+    setAvisoEdicao(`Hoje: ${nome}.${doDia ? ` ${doDia.nome} voltou pra fila e entra no próximo dia de treino.` : ""}`);
+  }
 
   const alvoEdicao = alvoEditarHoje(state, sess?.id);
   const botaoEdicao = alvoEdicao ? (
@@ -527,6 +550,42 @@ export default function HojePage() {
               </Button>
               </>
             )}
+            {opcoesHoje.length > 0 ? (
+              trocarAberto ? (
+                <div className="mt-2 rounded-2xl border border-border p-3" data-testid="trocar-treino-hoje">
+                  <p className="mb-2 text-xs text-muted">
+                    {estadoHero === "descanso" ? "Qual treino você vai fazer hoje?" : `Hoje no lugar de ${sess?.nome}:`}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {opcoesHoje.map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        data-testid="opcao-treino-hoje"
+                        className="chip-motion text-xs"
+                        onClick={() => trocarHojePara(o.id)}
+                      >
+                        {o.nome}
+                        {o.status === "concluida" || o.status === "parcial" ? ` · feito ${ddmmHoje(o.data)}, repetir` : ""}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] text-faint">O treino que estava hoje volta pra fila. Nenhuma série é apagada.</p>
+                  <button type="button" className="mt-1 min-h-11 w-full text-xs text-muted" onClick={() => setTrocarAberto(false)}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="hoje-trocar-treino"
+                  onClick={() => { setTrocarAberto(true); setAvisoEdicao(null); }}
+                  className="motion-press mt-2 min-h-11 w-full rounded-2xl border border-border text-sm font-semibold text-bone-50"
+                >
+                  {estadoHero === "descanso" ? "Treinar hoje mesmo assim" : "Trocar o treino de hoje"}
+                </button>
+              )
+            ) : null}
             {botaoEdicao}
             {avisoEdicao ? (
               <p role="status" className="mt-2 text-xs text-muted">{avisoEdicao}</p>

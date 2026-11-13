@@ -28,6 +28,7 @@ import { preparacaoDaSessao, rotuloOrdemSeries, textoPreparacao } from "@/lib/tr
 import { textoCarga } from "@/lib/catalog/tipo-carga";
 import { useModoCarga } from "@/lib/use-modo-carga";
 import { feitoNaSemana } from "@/lib/plan/repetir";
+import { porqueEspecifico } from "@/lib/plan/evidencia-exercicio";
 import type { Sessao } from "@/lib/domain";
 
 /** T8 — Split visual + mesociclo · plano gerado do perfil */
@@ -281,6 +282,11 @@ export default function PlanoPage() {
                         {rotuloOrdemSeries(p) ? ` · ${rotuloOrdemSeries(p)}` : ""}
                         {textoPreparacao(preparacaoDaSessao(s!.prescricoes, state.exercicios)[i]) ? (
                           <span className="text-accent"> · {textoPreparacao(preparacaoDaSessao(s!.prescricoes, state.exercicios)[i])}</span>
+                        ) : null}
+                        {porqueEspecifico(p.exercicio_id) ? (
+                          <span className="mt-0.5 block text-[11px] leading-snug text-faint" data-testid="porque-exercicio">
+                            Por quê: {porqueEspecifico(p.exercicio_id)}
+                          </span>
                         ) : null}
                       </span>
                       {s!.status !== "em_andamento" ? (

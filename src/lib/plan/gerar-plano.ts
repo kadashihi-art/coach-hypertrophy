@@ -24,6 +24,8 @@ import { posicionarDescanso, microcicloTexto } from "./estrutura";
 import { dividirSemanasDoPlano, SEMANAS_MESOCICLO } from "./semanas";
 import { derivarRacional } from "./racional";
 import { findAlt } from "./alternativa";
+import { garantirCobertura } from "./cobertura-exercicios";
+import { bonusHipertrofia } from "./evidencia-exercicio";
 import { GRUPOS_OPCIONAIS, incrementoCargaKg, type GrupoOpcional } from "@/lib/domain";
 import { GRUPO_LABEL } from "@/lib/labels";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao } from "./parq";
@@ -490,6 +492,9 @@ function scoreExercise(
 
   const ei = prefOrder.indexOf(ex.equipamento);
   if (ei >= 0) score += (prefOrder.length - ei);
+
+  // Evidência de hipertrofia (ex.: músculo treinado alongado). Ver evidencia-exercicio.ts.
+  score += bonusHipertrofia(ex.id);
 
   // Histórico (só ao refazer o plano): já fez e evolui sobe; travado desce; dor recente afunda.
   score += historico?.get(ex.id) ?? 0;
@@ -980,6 +985,7 @@ export function gerarPlanoFromPerfil(
   // piso por nível (e +4 nos prioritários), dentro do tempo do perfil. Ver docs/series-validas.md.
   const prioridades = perfil.prioridades_musculares ?? [];
   const notasVolume: string[] = [];
+  const notasCobertura: string[] = [];
   const grupoDoEx = new Map(catalog.map((e) => [e.id, e.grupo_primario]));
   const ehOpcional = (id: string) => (GRUPOS_OPCIONAIS as string[]).includes(grupoDoEx.get(id) ?? "");
   for (const f of faseDefs) {
@@ -1001,6 +1007,19 @@ export function gerarPlanoFromPerfil(
         return null;
       },
     };
+    // Cobertura por músculo (tríceps acima da cabeça, extensora, flexora, inclinado, rosca alongada),
+    // antes do volume: o equilíbrio já conta o que entrou. Ver docs/selecao-exercicios.md.
+    const cob = garantirCobertura(paraEquilibrar, {
+      catalog,
+      equips,
+      restr,
+      criarPrescricao: (ex, sess, series, ordem, used) => novaPrescricao(ex, sess.id, series, ordem, used),
+      duracao: ctxVolume.duracao,
+      limiteMin: Math.round(perfil.minutos_por_sessao * 1.1),
+      seriesNovo: perfil.experiencia === "iniciante" ? 2 : 3,
+      historico: opts.historico,
+    });
+    notasCobertura.push(...cob.notas.map((n) => (faseDefs.length > 1 ? `${f.prefix ? "Fase 2" : "Fase 1"}: ${n}` : n)));
     let r = equilibrarVolume(paraEquilibrar, ctxVolume);
     // Ajuste pessoal por músculo (aprendido no fechamento do bloco): parte do volume já equilibrado.
     const alvos = alvosComAjustePessoal(volumeSemanalDasSessoes(paraEquilibrar, catalog), perfil.ajuste_volume_musculo, ctxVolume.perfil);
@@ -1032,7 +1051,7 @@ export function gerarPlanoFromPerfil(
     omitted: uniqueOmitted,
     cardio: perfil.cardio_min_semana ?? 0,
     experiencia: perfil.experiencia,
-    notasVolume,
+    notasVolume: [...notasCobertura, ...notasVolume],
     prioridades,
     pisoSemanal: alvoSemanalGrupo("peito", { ...perfil, prioridades_musculares: [] }).min,
   });
@@ -1088,7 +1107,8 @@ export function gerarPlanoFromPerfil(
   return {
     plano,
     sessoes,
-    estados: [...estadosMap.values()],
+    // Só estados de exercícios que ficaram no plano (a cobertura pode ter trocado algum).
+    estados: [...estadosMap.values()].filter((e) => sessoes.some((s) => s.prescricoes.some((p) => p.exercicio_id === e.exercicio_id))),
     volumes_semanais: [],
   };
 }

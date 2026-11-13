@@ -125,3 +125,10 @@ Nunca pula o primeiro composto de cada músculo e sempre sobram 2+ exercícios. 
 Vale só no dia: séries via `ajuste_series_dia` e exercícios via `pulado_hoje`, ambos limpos no próximo início. Se nem o mínimo cabe, o app diz quanto tempo o mínimo leva.
 
 Junto veio um ajuste: "Continuar" um treino em andamento hoje não recalcula mais as prescrições do dia (isso desfaria tempo curto, leitura do dia e ajustes ao vivo no meio do treino).
+
+## Trocar o treino de hoje
+No card do Hoje, "Trocar o treino de hoje" (ou "Treinar hoje mesmo assim" em dia de descanso) lista os treinos do plano.
+- O escolhido fica fixo hoje no calendário (`marcarDia` com "trocar"), e o treino que estava hoje volta pra fila.
+- `proximaSessao` passa a sugerir o treino que você fixou hoje antes da fila.
+- Um treino já feito na semana vira "repetir": a execução anterior fica guardada no dia dela.
+- Nenhuma série é apagada. Sem data de início do plano, a troca vale só pra tela (não mexe no calendário).

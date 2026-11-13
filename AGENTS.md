@@ -17,6 +17,7 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
   - `sugestao-exercicio.ts`: sinais do histórico (já fez, tendência, travado, dor recente) para ranquear a troca e desempatar o gerador ao refazer o plano.
   - `mesociclo.ts`: semana real do bloco pela data (`mesocicloEfetivo`). O `semana_atual` salvo fica em 1; use sempre o efetivo. Deload programado (R6) só na última semana.
   - `equilibrar-volume.ts`: volume do plano gerado (teto 20/semana e 10/sessão por músculo, piso por nível, +4 nos prioritários, dentro do tempo). Ver `docs/series-validas.md`.
+  - `evidencia-exercicio.ts` e `cobertura-exercicios.ts`: escolha de exercícios por evidência de hipertrofia (nota por exercício, cobertura por músculo na semana, "por quê" com o estudo no plano, na troca e no contexto do coach). Só cite estudos cadastrados em `ESTUDOS`. Ver `docs/selecao-exercicios.md`.
   - `prioridades.ts`: prioridade muscular (sugestão pelo histórico + prévia sem gravar). Card em /plano/ajustar; muda o plano só com "Confirmar e remontar".
 - `src/lib/treino/estrutura-series.ts`: ordem das séries (aproximação → top → back-offs no mesmo RIR) e preparação por músculo/padrão.
 - `src/lib/treino/sessao-aberta.ts`: começar o treino sem misturar dias. O "hoje" do treino é sempre o dia de São Paulo (`hojeIsoSaoPaulo`), nunca o UTC; treino esquecido aberto (12 h+) vira parcial do dia dele; `corrigirDataDoTreinoNoturno` conserta, ao carregar, treinos da noite que ficaram com a data de amanhã.
@@ -68,7 +69,7 @@ npm run smoke:engine && npm run smoke:plano && npm run smoke:coach && npm run sm
 npm run smoke:t5-arsenal && npm run smoke:perfil-calendario && npm run smoke:racional-hibrido
 npm run smoke:negociacao && npm run smoke:coleta && npm run smoke:tom
 npm run smoke:estrutura-series && npm run smoke:volume-plano && npm run smoke:prioridades && npm run smoke:conceitos
-npm run smoke:inteligencia && npm run smoke:fechamento-bloco && npm run smoke:tempo-curto && npm run smoke:inicio-treino
+npm run smoke:inteligencia && npm run smoke:fechamento-bloco && npm run smoke:tempo-curto && npm run smoke:inicio-treino && npm run smoke:selecao-exercicios
 ```
 
 ## Fluxo
