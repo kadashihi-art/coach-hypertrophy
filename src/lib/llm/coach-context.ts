@@ -21,6 +21,7 @@ import { ajusteDoMusculo } from "@/lib/inteligencia/volume-autorregulado";
 import { diagnosticarEstagnacao } from "@/lib/inteligencia/diagnostico";
 import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import type { PlanoRacional } from "@/lib/domain";
+import { porqueEspecifico } from "@/lib/plan/evidencia-exercicio";
 
 export type CoachContextOpts = {
   grupo?: GrupoMuscular;
@@ -63,6 +64,8 @@ export type CoachContextPrescSnap = {
   top_set_kg: number | null;
   /** Técnica opcional na última série, escolhida pelo usuário (nome em PT). Só leitura. */
   tecnica_ultima_serie?: string;
+  /** Por que esse exercício pra hipertrofia (vantagem + estudo conferido). Use pra explicar; não invente outros estudos. */
+  por_que?: string;
 };
 
 export type CoachContext = {
@@ -327,6 +330,7 @@ export function buildCoachContext(
         carga_trabalho_kg: p.carga.trabalho_kg,
         top_set_kg: p.carga.top_set_kg ?? null,
         ...(p.tecnica_final ? { tecnica_ultima_serie: nomeTecnica(p.tecnica_final) } : {}),
+        ...(porqueEspecifico(p.exercicio_id) ? { por_que: porqueEspecifico(p.exercicio_id)! } : {}),
       }));
     proxima_sessao = {
       id: next.id,

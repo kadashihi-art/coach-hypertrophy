@@ -66,7 +66,8 @@
     "smoke:inteligencia": "npx --yes tsx scripts/smoke-inteligencia.ts",
     "smoke:fechamento-bloco": "npx --yes tsx scripts/smoke-fechamento-bloco.ts",
     "smoke:tempo-curto": "npx --yes tsx scripts/smoke-tempo-curto.ts",
-    "smoke:inicio-treino": "npx --yes tsx scripts/smoke-inicio-treino.ts"
+    "smoke:inicio-treino": "npx --yes tsx scripts/smoke-inicio-treino.ts",
+    "smoke:selecao-exercicios": "npx --yes tsx scripts/smoke-selecao-exercicios.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

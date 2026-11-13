@@ -25,6 +25,7 @@ import {
 import type { RestricaoKey } from "@/lib/plan/restricoes";
 import { labelGrupo } from "@/lib/labels";
 import { pontosHistorico, sinalDoExercicio, textoMemoria, type FonteHistorico } from "@/lib/plan/sugestao-exercicio";
+import { bonusHipertrofia, porqueEspecifico } from "@/lib/plan/evidencia-exercicio";
 
 const EQUIP_TXT: Record<string, string> = {
   barra: "a barra",
@@ -56,6 +57,8 @@ export type AlternativaTroca = {
   recomendado?: boolean;
   /** Por que é a recomendada (texto curto). */
   motivo_recomendacao?: string | null;
+  /** Vantagem pra hipertrofia com o estudo, quando há (ex.: "Braço acima da cabeça… (Maeo et al., 2023)"). */
+  ciencia?: string | null;
 };
 
 export type PreviaTroca = {
@@ -155,21 +158,27 @@ export function listarAlternativasTroca(args: {
       Number(!mesmaFamilia(de, a.exercicio)) - Number(!mesmaFamilia(de, b.exercicio)) ||
       Number(a.secundarios_mudam) - Number(b.secundarios_mudam),
   );
-  if (!args.historico) return base;
   const hist = args.historico;
-  // Pontos: estrutura (família +6, mesmos auxiliares +3) + histórico. Empate mantém a ordem acima.
+  // Pontos: estrutura (família +6, mesmos auxiliares +3) + evidência de hipertrofia + histórico.
+  // Empate mantém a ordem acima.
   const pont = base.map((a, i) => {
-    const sinal = sinalDoExercicio(a.exercicio, hist);
+    const sinal = hist ? sinalDoExercicio(a.exercicio, hist) : null;
     const pts =
-      (mesmaFamilia(de, a.exercicio) ? 6 : 0) + (a.secundarios_mudam ? 0 : 3) + pontosHistorico(sinal);
-    return { a: { ...a, memoria: textoMemoria(sinal, a.exercicio) }, pts, i, sinal };
+      (mesmaFamilia(de, a.exercicio) ? 6 : 0) + (a.secundarios_mudam ? 0 : 3) + bonusHipertrofia(a.exercicio.id) + pontosHistorico(sinal);
+    const ciencia = porqueEspecifico(a.exercicio.id);
+    return { a: { ...a, ciencia, ...(sinal ? { memoria: textoMemoria(sinal, a.exercicio) } : {}) }, pts, i, sinal };
   });
   pont.sort((x, y) => y.pts - x.pts || x.i - y.i);
   const top = pont[0];
-  const feito = top?.sinal.memoria && top.sinal.memoria.sessoes > 0 && !top.sinal.dor_em && !top.sinal.travado;
+  const feito = !!(top?.sinal?.memoria && top.sinal.memoria.sessoes > 0 && !top.sinal.dor_em && !top.sinal.travado);
+  // Sem histórico decidindo: recomenda pela ciência quando a vantagem é clara (bônus alto) e sem dor.
+  const pelaCiencia = !feito && !!top && bonusHipertrofia(top.a.exercicio.id) >= 6 && !top.sinal?.dor_em;
   return pont.map((p, idx) => {
+    if (idx === 0 && pelaCiencia) {
+      return { ...p.a, recomendado: true, motivo_recomendacao: "Melhor opção pra hipertrofia nos estudos." };
+    }
     if (idx !== 0 || !feito) return p.a;
-    const tend = p.sinal.memoria?.tendencia_pct ?? null;
+    const tend = p.sinal?.memoria?.tendencia_pct ?? null;
     return {
       ...p.a,
       recomendado: true,
