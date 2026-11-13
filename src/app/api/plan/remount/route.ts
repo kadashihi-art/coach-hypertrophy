@@ -39,6 +39,7 @@ const PerfilPatchSchema = z.object({
   acordos_plano: PerfilSchema.shape.acordos_plano,
   prioridades_musculares: PerfilSchema.shape.prioridades_musculares,
   prioridade_motivo: PerfilSchema.shape.prioridade_motivo,
+  ajuste_volume_musculo: PerfilSchema.shape.ajuste_volume_musculo,
   sexo: PerfilSchema.shape.sexo,
   idade: PerfilSchema.shape.idade,
   onboarding_concluido: z.boolean().optional(),

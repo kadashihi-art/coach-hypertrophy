@@ -17,6 +17,9 @@ import { aplicarVolumeAutorregulado, gruposPrincipaisDoTreino, textosAutorregula
 import { montarBriefing } from "@/lib/inteligencia/briefing";
 import { BriefingTreino } from "@/components/BriefingTreino";
 import { RevisaoSemanalResumo } from "@/components/RevisaoSemanal";
+import { FechamentoBlocoCard } from "@/components/FechamentoBlocoCard";
+import { ativos, encurtarTreino, limparPulos, opcoesDeTempo } from "@/lib/inteligencia/tempo-curto";
+import { estimateDurationMin } from "@/lib/plan/gerar-plano";
 import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import {
   AlertaCard,
@@ -25,6 +28,7 @@ import {
   EvidenciaBadge,
 } from "@/components/ui";
 import { addDaysIso, semanaDoCalendario } from "@/lib/plan/calendario";
+import { treinoAbertoAntigo } from "@/lib/treino/sessao-aberta";
 import {
   hojeIsoSaoPaulo,
   proximaSessao,
@@ -108,7 +112,11 @@ export default function HojePage() {
   const plano = state.plano;
   // ready só é true no cliente (estado hidratado), então dá pra ler a data direto
   const agora = ready ? new Date() : null;
-  const hojeIso = agora ? agora.toISOString().slice(0, 10) : null;
+  // Dia de São Paulo (o UTC já vira amanhã às 21h).
+  const hojeIso = hojeSP;
+  // Treino esquecido aberto de outro dia: começa do zero hoje (as séries ficam no dia delas).
+  const abertoAntigo = agora ? treinoAbertoAntigo(sess, agora.getTime()) : false;
+  const emAndamento = sess?.status === "em_andamento" && !abertoAntigo;
   const hojeLabel = agora
     ? agora.toLocaleDateString("pt-BR", {
         weekday: "long",
@@ -131,9 +139,9 @@ export default function HojePage() {
 
   // Prévia da rampa de volume (o mesmo cálculo do início do treino). Em andamento já está aplicada.
   const rampaPreview = useMemo(() => {
-    if (!sess || !hojeIso || sess.status === "em_andamento") return null;
+    if (!sess || !hojeIso || emAndamento) return null;
     return aplicarRampaVolume({
-      prescricoes: voltarParaBase(sess.prescricoes),
+      prescricoes: limparPulos(voltarParaBase(sess.prescricoes)),
       exercicios: state.exercicios,
       estados: state.estados,
       mesociclo: meso,
@@ -143,11 +151,11 @@ export default function HojePage() {
       registros: state.registros,
       hojeIso,
     });
-  }, [sess, hojeIso, state, meso, ck]);
+  }, [sess, hojeIso, state, meso, ck, emAndamento]);
 
   // Prévia do volume autorregulado (feedback por músculo), por cima da rampa — mesmo cálculo do início do treino.
   const autoPreview = useMemo(() => {
-    if (!sess || !hojeIso || sess.status === "em_andamento" || !rampaPreview) return null;
+    if (!sess || !hojeIso || emAndamento || !rampaPreview) return null;
     return aplicarVolumeAutorregulado({
       prescricoes: rampaPreview.prescricoes,
       exercicios: state.exercicios,
@@ -156,7 +164,7 @@ export default function HojePage() {
       checkin: ck ?? null,
       sessoesDaSemana: sessoesDoPlano(state, hojeIso),
     });
-  }, [sess, hojeIso, state, meso, ck, rampaPreview]);
+  }, [sess, hojeIso, state, meso, ck, rampaPreview, emAndamento]);
 
   const deloadPreview = useMemo(() => {
     if (!sess || !hojeIso) return null;
@@ -178,19 +186,36 @@ export default function HojePage() {
     return dow === 0 || dow === 1 ? revisarSemana(state, hojeIso) : null;
   }, [state, hojeIso]);
 
+  // Tempo curto: prévia do treino encurtado (o mesmo cálculo do início do treino).
+  const [tempoHoje, setTempoHoje] = useState<number | null>(null);
+  const duracaoDia = useMemo(
+    () => (sess && deloadPreview ? estimateDurationMin(ativos(deloadPreview.prescricoes), state.exercicios) : 0),
+    [sess, deloadPreview, state.exercicios],
+  );
+  const tempoPreview = useMemo(() => {
+    if (!sess || !deloadPreview || !tempoHoje || emAndamento) return null;
+    return encurtarTreino({
+      prescricoes: deloadPreview.prescricoes,
+      exercicios: state.exercicios,
+      minutos: tempoHoje,
+      prioridades: state.perfil?.prioridades_musculares,
+      duracao: (ps) => estimateDurationMin(ps, state.exercicios),
+    });
+  }, [sess, deloadPreview, tempoHoje, state.exercicios, state.perfil?.prioridades_musculares, emAndamento]);
+
   // Briefing: meta de cada exercício com as séries do dia já ajustadas.
   const briefing = useMemo(() => {
-    if (!sess || !hojeIso || sess.status === "em_andamento") return null;
+    if (!sess || !hojeIso || emAndamento) return null;
     const base = new Map(voltarParaBase(sess.prescricoes).map((p) => [p.id, p.series]));
     return montarBriefing({
       state,
-      prescricoes: deloadPreview?.prescricoes ?? sess.prescricoes,
+      prescricoes: ativos(tempoPreview?.prescricoes ?? deloadPreview?.prescricoes ?? limparPulos(sess.prescricoes)),
       mesociclo: meso,
       checkin: ck ?? null,
       hojeIso,
       baseSeries: base,
     });
-  }, [sess, hojeIso, state, meso, ck, deloadPreview]);
+  }, [sess, hojeIso, state, meso, ck, deloadPreview, tempoPreview, emAndamento]);
 
   const deloadResumo =
     [rampaPreview ? resumoRampa(rampaPreview, state.exercicios) : null, deloadPreview ? resumoAjusteDeload(deloadPreview) : null]
@@ -206,7 +231,7 @@ export default function HojePage() {
       if (parqPendente) router.push("/onboarding");
       return;
     }
-    startSession(sess.id);
+    startSession(sess.id, tempoPreview ? { minutos: tempoHoje ?? undefined } : undefined);
     router.push("/treino");
   }
 
@@ -224,7 +249,7 @@ export default function HojePage() {
     .slice(-1)[0];
 
   // Hero: 4 estados (não iniciado · em andamento · feito · descanso)
-  const totalSeries = sess ? sess.prescricoes.reduce((n, p) => n + p.series, 0) : 0;
+  const totalSeries = sess ? (emAndamento ? ativos(sess.prescricoes) : sess.prescricoes).reduce((n, p) => n + p.series, 0) : 0;
   const feitas = sess ? state.registros.filter((r) => r.sessao_id === sess.id).length : 0;
   const hoje = hojeSP ?? hojeIso;
   // Agenda efetiva (só leitura): treino não feito não é pulado, a sequência anda por treino.
@@ -237,7 +262,7 @@ export default function HojePage() {
   const diaSel = faixa.find((f) => f.dia.data === diaAberto) ?? null;
   const sessHoje = hoje ? agendaSess.find((s) => s.data === hoje && s.status !== "pulada") : undefined;
   const estadoHero: "andamento" | "feito" | "descanso" | "novo" =
-    sess?.status === "em_andamento"
+    emAndamento
       ? "andamento"
       : sess?.status === "concluida" && (!hoje || sess.data === hoje || !sess.data)
         ? "feito"
@@ -377,6 +402,9 @@ export default function HojePage() {
 
       <ReavaliacaoNivelCard />
 
+      {/* Fim do bloco: análise por músculo e proposta do próximo (só muda com confirmação). */}
+      {hojeSP ? <FechamentoBlocoCard hojeIso={hojeSP} /> : null}
+
       {/* Revisão da semana: domingo (semana fechando) e segunda (semana que passou). */}
       {revisao ? <RevisaoSemanalResumo r={revisao} /> : null}
 
@@ -462,11 +490,42 @@ export default function HojePage() {
                 Ver semana →
               </Link>
             ) : (
+              <>
+              {estadoHero === "novo" && !parqBloqueado && opcoesDeTempo(duracaoDia).length > 0 ? (
+                <div className="mb-3" data-testid="tempo-curto">
+                  <p className="mb-1.5 text-xs text-muted">Quanto tempo você tem hoje?</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" aria-pressed={tempoHoje === null} className={`chip-motion text-xs ${tempoHoje === null ? "on" : ""}`} onClick={() => setTempoHoje(null)}>
+                      Treino completo
+                    </button>
+                    {opcoesDeTempo(duracaoDia).map((m) => (
+                      <button key={m} type="button" aria-pressed={tempoHoje === m} className={`chip-motion text-xs ${tempoHoje === m ? "on" : ""}`} onClick={() => setTempoHoje(m)}>
+                        {m} min
+                      </button>
+                    ))}
+                  </div>
+                  {tempoPreview ? (
+                    <div className="mt-2 rounded-xl border border-border p-3 text-xs">
+                      <p className="mb-1 text-sm font-semibold">
+                        {tempoPreview.cabe ? `Cabe em ~${tempoPreview.duracao_depois} min.` : `O mínimo que rende leva ~${tempoPreview.duracao_depois} min.`}
+                      </p>
+                      <ul className="space-y-0.5 text-muted">
+                        {tempoPreview.mudancas.map((m) => {
+                          const nome = state.exercicios.find((e) => e.id === m.exercicio_id)?.nome ?? m.exercicio_id;
+                          return <li key={m.prescricao_id}>{m.pulado ? `${nome}: fica pra semana que vem` : `${nome}: ${m.de} → ${m.para} séries`}</li>;
+                        })}
+                      </ul>
+                      <p className="mt-1 text-muted">Mantive a primeira série pesada de cada músculo. Vale só hoje: semana que vem o treino volta inteiro.</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <Button onClick={iniciar} disabled={ctaDisabled} className="motion-cta-glow min-h-14 py-5 text-lg">
                 {estadoHero === "andamento"
                   ? `Continuar · série ${Math.min(feitas + 1, totalSeries || 1)}/${totalSeries}`
-                  : `Começar · ${sess.nome} · ~${sess.duracao_estimada_min} min`}
+                  : `Começar · ${sess.nome} · ~${tempoPreview ? tempoPreview.duracao_depois : sess.duracao_estimada_min} min`}
               </Button>
+              </>
             )}
             {botaoEdicao}
             {avisoEdicao ? (

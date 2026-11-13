@@ -93,3 +93,35 @@ Onde aparece:
 - contexto do coach (`revisao_semana`).
 
 É só leitura: ajustes do dia já entram sozinhos, e mudança de plano continua em Plano → Ajustar.
+
+## Fechamento de bloco (`fechamento-bloco.ts`, `FechamentoBlocoCard`)
+Aparece no `/hoje` na última semana do bloco e depois que ele termina. Cruza, por músculo:
+- **volume feito:** média semanal de séries efetivas nas semanas de trabalho (sem a semana leve);
+- **progresso:** variação do 1RM estimado dos exercícios do músculo, início × fim (3+ sessões por exercício);
+- **recuperação:** vezes em que chegou bem dolorido ou incomodou a articulação.
+
+| Situação | Próximo bloco |
+|---|---|
+| 2+ sinais de excesso (dolorido/articulação) | −2 séries/semana |
+| Progrediu 2% ou mais | mantém |
+| Pouco progresso, volume cumprido, recuperação ok | +2 séries/semana |
+| Pouco progresso sem cumprir o volume (mais de 2 abaixo do piso) | mantém, e avisa |
+| Pouco progresso já perto de 20 séries | mantém, e sugere variar o exercício |
+| Sem dados | mantém |
+
+O ajuste acumula em `Perfil.ajuste_volume_musculo` (−4…+4 por músculo). O gerador aplica por cima do volume já equilibrado (`alvosComAjustePessoal`), sem passar de 20 nem descer de 10.
+
+A prévia mostra o volume antes → depois e os exercícios que saem e entram (mesmo cálculo do remontar, em memória).
+"Confirmar e começar o novo bloco" só aparece depois que o bloco termina: remonta o plano (sem a etapa de texto da LLM, para o plano ser exatamente o da prévia) e põe o início do bloco em hoje. Histórico e cargas continuam.
+
+Se o bloco terminou há mais de uma semana e o plano não foi refeito, a análise usa só as últimas semanas (dados de meses atrás não contam).
+
+## Tempo curto (`tempo-curto.ts`)
+No `/hoje`, antes de começar: "Quanto tempo você tem hoje?" (60, 45 ou 30 min, só as opções menores que o treino). Corta nesta ordem até caber:
+1. séries, uma por vez, até 2 por exercício: isolador não prioritário → composto repetido do mesmo músculo → o resto;
+2. exercícios inteiros: isolador de músculo que um composto do treino já trabalha → outros isoladores → composto repetido.
+
+Nunca pula o primeiro composto de cada músculo e sempre sobram 2+ exercícios. Músculo prioritário é o último a perder.
+Vale só no dia: séries via `ajuste_series_dia` e exercícios via `pulado_hoje`, ambos limpos no próximo início. Se nem o mínimo cabe, o app diz quanto tempo o mínimo leva.
+
+Junto veio um ajuste: "Continuar" um treino em andamento hoje não recalcula mais as prescrições do dia (isso desfaria tempo curto, leitura do dia e ajustes ao vivo no meio do treino).

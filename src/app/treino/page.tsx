@@ -21,7 +21,8 @@ import {
 import type { TipoSerie } from "@/lib/domain";
 import { incrementoCargaKg } from "@/lib/domain";
 import { avisoSaltoCarga, cargaMaxKg, LIMITES_ENTRADA, validarCarga, validarReps } from "@/lib/domain/limites";
-import { proximaSessao } from "@/lib/plan/proxima-sessao";
+import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
+import { treinoAbertoAntigo } from "@/lib/treino/sessao-aberta";
 import { RestTimerPill, useRestTimer } from "@/components/RestTimer";
 import { EditarDuranteTreinoSheet } from "@/components/EditarDuranteTreinoSheet";
 import { Passo } from "@/components/EditarTreinoSheet";
@@ -35,6 +36,7 @@ import { focoDoDia, mesocicloEfetivo } from "@/lib/plan/mesociclo";
 import { descansoSugerido } from "@/lib/treino/rest-timer";
 import { ExplicaConceito } from "@/components/Conceito";
 import { lerDia } from "@/lib/inteligencia/leitura-dia";
+import { ativos } from "@/lib/inteligencia/tempo-curto";
 import type { ConceitoId } from "@/lib/conceitos";
 import { cargaAproximacao, cargaAquecimento, cargaPrimeiraTrabalho, cargasDaEstrutura, estruturaSeries, preparacaoDaSessao, proximaFase, repsSugeridasFase, textoAquecimento, type PrepNivel } from "@/lib/treino/estrutura-series";
 
@@ -109,7 +111,8 @@ export default function TreinoPage() {
     state.sessoes.find((s) => s.status === "em_andamento") ??
     proximaSessao(state);
 
-  const prescricoes = sess?.prescricoes ?? [];
+  // Tempo curto: exercícios pulados hoje ficam fora do treino (voltam na semana seguinte).
+  const prescricoes = ativos(sess?.prescricoes ?? []);
   const prescId = state.logger_prescricao_id ?? prescricoes[0]?.id ?? null;
   const prescIdx = Math.max(
     0,
@@ -177,7 +180,12 @@ export default function TreinoPage() {
   };
 
   // RIR alvo do dia: padrão de movimento, fase do bloco, nível, deload e recuperação (determinístico).
-  const hojeIso = useClientValue(() => new Date().toISOString().slice(0, 10), "");
+  // Dia de São Paulo (o UTC já vira amanhã às 21h).
+  const hojeIso = useClientValue(() => hojeIsoSaoPaulo(), "");
+  // Hora cheia: valor estável entre leituras (o snapshot não pode mudar a cada chamada).
+  const agoraMs = useClientValue(() => Math.floor(Date.now() / 3600_000) * 3600_000, 0);
+  // Treino esquecido aberto de outro dia: não continua com as séries antigas, começa do zero.
+  const abertoAntigo = agoraMs > 0 && treinoAbertoAntigo(sess, agoraMs);
   const ckHoje = hojeIso ? state.checkins.find((c) => c.data === hojeIso) ?? null : null;
   // Semana real do bloco: aperta o RIR ao longo do meso e solta na semana de deload.
   const mesoHoje = mesocicloEfetivo(state, hojeIso || null);
@@ -288,7 +296,10 @@ export default function TreinoPage() {
     );
   }
 
-  if (sess.status !== "em_andamento") {
+  if (sess.status !== "em_andamento" || abertoAntigo) {
+    const feitoHoje = (sess.status === "concluida" || sess.status === "parcial") && !!hojeIso && sess.data === hojeIso;
+    const diaTxt = (iso: string | null | undefined) =>
+      iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" }).replace(".", "") : null;
     return (
       <main className="flex min-h-dvh flex-col justify-center px-5">
         <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
@@ -296,20 +307,28 @@ export default function TreinoPage() {
         </p>
         <h1 className="mb-2 text-2xl font-bold">{sess.nome}</h1>
         <p className="mb-2 text-sm text-muted">
-          {sess.prescricoes.length} exercícios · ~{sess.duracao_estimada_min}{" "}
+          {prescricoes.length} exercícios · ~{sess.duracao_estimada_min}{" "}
           min
         </p>
-        {sess.status === "concluida" && (
-          <p className="mb-4 text-xs text-go">
-            Sessão já concluída — reiniciar aplica cargas do EstadoExercicio.
+        {abertoAntigo ? (
+          <p className="mb-4 text-xs text-muted">
+            Esse treino ficou aberto{diaTxt(sess.data) ? ` desde ${diaTxt(sess.data)}` : ""} sem finalizar. As séries daquele dia ficam guardadas nele e o de hoje começa do zero.
           </p>
-        )}
+        ) : feitoHoje ? (
+          <p className="mb-4 text-xs text-warn">
+            Você já fez esse treino hoje. Treinar de novo apaga as séries de hoje e começa do zero.
+          </p>
+        ) : (sess.status === "concluida" || sess.status === "parcial") && diaTxt(sess.data) ? (
+          <p className="mb-4 text-xs text-muted">
+            Última vez: {diaTxt(sess.data)}. Essa execução fica guardada no dia dela.
+          </p>
+        ) : null}
         <Button
           onClick={() => {
             startSession(sess.id);
           }}
         >
-          {sess.status === "concluida" ? "Treinar de novo" : "Iniciar treino"}
+          {feitoHoje ? "Treinar de novo" : "Iniciar treino"}
         </Button>
         <Link
           href="/hoje"

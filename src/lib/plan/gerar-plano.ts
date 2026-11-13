@@ -27,7 +27,7 @@ import { findAlt } from "./alternativa";
 import { GRUPOS_OPCIONAIS, incrementoCargaKg, type GrupoOpcional } from "@/lib/domain";
 import { GRUPO_LABEL } from "@/lib/labels";
 import { PARQ_BLOQUEIO_MSG, parqBloqueiaPrescricao } from "./parq";
-import { alvoSemanalGrupo, equilibrarVolume, ordenarPorPrioridade, type SessaoParaEquilibrar } from "./equilibrar-volume";
+import { alvoSemanalGrupo, alvosComAjustePessoal, equilibrarVolume, ordenarPorPrioridade, volumeSemanalDasSessoes, type SessaoParaEquilibrar } from "./equilibrar-volume";
 import {
   exerciseAllowed,
   parseRestricoes,
@@ -985,12 +985,12 @@ export function gerarPlanoFromPerfil(
   for (const f of faseDefs) {
     const daFase = sessoes.filter((x) => faseDoTemplate(x.id) === (f.prefix ? "f2" : "f1"));
     const paraEquilibrar: SessaoParaEquilibrar[] = daFase.map((x) => ({ id: x.id, tipo: tipoDoTemplate(x.id), prescricoes: x.prescricoes }));
-    const r = equilibrarVolume(paraEquilibrar, {
+    const ctxVolume = {
       catalog,
       perfil: { ...perfil, prioridades_musculares: prioridades },
       // Opcionais (abdômen, antebraço…) são extras leves: não roubam tempo do equilíbrio dos principais.
-      duracao: (ps) => estimateDurationMin(ps.filter((x) => !ehOpcional(x.exercicio_id)), catalog),
-      criarPrescricao: (grupo, sess, series) => {
+      duracao: (ps: Prescricao[]) => estimateDurationMin(ps.filter((x) => !ehOpcional(x.exercicio_id)), catalog),
+      criarPrescricao: (grupo: GrupoMuscular, sess: SessaoParaEquilibrar, series: number) => {
         const used = new Set(sess.prescricoes.map((x) => x.exercicio_id));
         // Tenta o slot principal do grupo e, se o exercício dele já está no treino, o reserva.
         for (const slot of [SLOT_REFORCO[grupo], SLOT_REFORCO_2[grupo]]) {
@@ -1000,7 +1000,11 @@ export function gerarPlanoFromPerfil(
         }
         return null;
       },
-    });
+    };
+    let r = equilibrarVolume(paraEquilibrar, ctxVolume);
+    // Ajuste pessoal por músculo (aprendido no fechamento do bloco): parte do volume já equilibrado.
+    const alvos = alvosComAjustePessoal(volumeSemanalDasSessoes(paraEquilibrar, catalog), perfil.ajuste_volume_musculo, ctxVolume.perfil);
+    if (alvos.size) r = equilibrarVolume(paraEquilibrar, { ...ctxVolume, alvos });
     notasVolume.push(...r.notas.map((n) => (faseDefs.length > 1 ? `${f.prefix ? "Fase 2" : "Fase 1"}: ${n}` : n)));
   }
   for (const sess of sessoes) {

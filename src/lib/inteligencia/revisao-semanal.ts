@@ -119,7 +119,7 @@ export function revisarSemana(
   const meso = mesocicloEfetivo(state, segundaProx < hojeIso ? hojeIso : segundaProx);
   if (meso) {
     if (ehSemanaDeload(meso)) proxima.push(`Semana ${meso.semana_atual} de ${meso.total_semanas}: semana leve (deload). RIR 3 em tudo, pra recuperar e voltar mais forte.`);
-    else if (meso.semana_atual > meso.total_semanas) proxima.push("O bloco terminou. Vale remontar o plano em Plano → Ajustar pra começar um bloco novo.");
+    else if (meso.semana_atual > meso.total_semanas) proxima.push("O bloco terminou. A proposta do próximo bloco está no Hoje, esperando a sua confirmação.");
     else proxima.push(`Semana ${meso.semana_atual} de ${meso.total_semanas}: seguimos subindo aos poucos.`);
   }
   const desde = state.plano?.mesociclo?.data_inicio ?? null;

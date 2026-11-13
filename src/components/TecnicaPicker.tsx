@@ -7,6 +7,7 @@ import { useApp } from "@/components/AppProvider";
 import { liberacaoTecnicas } from "@/lib/engine/proximidade-falha";
 import { useClientValue } from "@/lib/use-client-value";
 import { LIMITE_TECNICAS_SESSAO, TECNICAS, infoTecnica, nomeTecnica } from "@/lib/engine/tecnicas";
+import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
 
 /**
  * Técnica opcional na última série. Só aparece em isoladores/máquinas.
@@ -32,7 +33,7 @@ export function TecnicaPicker({
 }) {
   const [aberto, setAberto] = useState(false);
   const { state } = useApp();
-  const hojeIso = useClientValue(() => new Date().toISOString().slice(0, 10), "2026-01-01");
+  const hojeIso = useClientValue(() => hojeIsoSaoPaulo(), "2026-01-01");
   // Técnica só é sugerida quando você já chega perto da falha de forma confiável e está recuperado.
   const lib = liberacaoTecnicas({
     registros: state.registros,
