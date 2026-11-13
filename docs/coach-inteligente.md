@@ -133,3 +133,9 @@ Você marca um, vê a prévia ("Hoje passa a ser Lower B. Upper B volta pra fila
 - `proximaSessao` passa a sugerir o treino que você fixou hoje antes da fila.
 - Um treino já feito na semana vira "repetir": a execução anterior fica guardada no dia dela.
 - Nenhuma série é apagada. Sem data de início do plano, a troca vale só pra tela (não mexe no calendário).
+- Treino aberto sem nenhuma série (tocou em Começar e voltou) também pode ser trocado: ele é fechado e volta pra fila (`src/lib/plan/trocar-hoje.ts`). Com série registrada, a troca não acontece.
+
+## Mudança local que não chegou ao servidor
+Toda mudança fica marcada como pendente até o servidor confirmar (`marcarPendente`/`limparPendente` em `src/lib/storage.ts`).
+Ao abrir o app, se há pendência e o servidor tem a mesma versão, a cópia local ganha. Antes, um envio que falhava fazia a mudança voltar atrás.
+O servidor só ganha quando tem uma versão mais nova, vinda de outro aparelho.

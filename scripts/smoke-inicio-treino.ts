@@ -4,6 +4,7 @@ import type { AppState, RegistroSerie, Sessao } from "../src/lib/domain";
 import { hojeIsoSaoPaulo, proximaSessao } from "../src/lib/plan/proxima-sessao";
 import { corrigirDataDoTreinoNoturno, liberarParaHoje, treinoAbertoAntigo } from "../src/lib/treino/sessao-aberta";
 import { marcarDia } from "../src/lib/plan/calendario";
+import { trocarTreinoHoje } from "../src/lib/plan/trocar-hoje";
 
 let fail = 0;
 const ok = (c: boolean, m: string) => { if (c) console.log("PASS", m); else { fail++; console.log("FAIL", m); } };
@@ -96,6 +97,32 @@ ok(!treinoAbertoAntigo({ status: "concluida", data: "2026-11-12", iniciada_em: "
   ok(escolhido.data === "2026-11-13" && !!escolhido.data_manual && escolhido.status === "planejada", "trocar hoje: o escolhido fica fixo hoje");
   ok(saiu.data === null && saiu.status === "planejada", "trocar hoje: o que estava hoje volta pra fila");
   ok(proximaSessao(r, "2026-11-13")?.id === b2, "trocar hoje: o escolhido vira o treino sugerido de hoje");
+}
+
+// 9) Trocar com o treino de hoje aberto (tocou em Começar e voltou, sem série): fecha e troca.
+{
+  const ids = base.sessoes.filter((s) => s.prescricoes.length > 0).map((s) => s.id);
+  const [a, b2] = [ids[0]!, ids[1]!];
+  const st: AppState = {
+    ...base,
+    plano: base.plano ? { ...base.plano, mesociclo: { ...base.plano.mesociclo, data_inicio: "2026-11-02" } } : base.plano,
+    sessoes: base.sessoes.map((s) =>
+      s.id === a ? { ...s, status: "em_andamento" as const, data: "2026-11-13", iniciada_em: "2026-11-13T20:30:00Z" } : s.id === b2 ? { ...s, status: "planejada" as const, data: null } : s,
+    ),
+    registros: [],
+    active_sessao_id: a,
+  };
+  const r = trocarTreinoHoje(st, b2, "2026-11-13");
+  ok(r.ok, "aberto sem série: a troca acontece");
+  if (r.ok) {
+    ok(r.state.active_sessao_id === null, "aberto sem série: o treino aberto é fechado");
+    ok(r.state.sessoes.find((s) => s.id === a)!.status === "planejada" && r.state.sessoes.find((s) => s.id === a)!.data === null, "aberto sem série: volta pra fila");
+    ok(r.state.sessoes.find((s) => s.id === b2)!.data === "2026-11-13", "aberto sem série: o escolhido fica hoje no calendário");
+    ok(proximaSessao(r.state, "2026-11-13")?.id === b2, "aberto sem série: o escolhido aparece no Hoje");
+    ok(r.saiu === a, "aberto sem série: avisa qual treino saiu");
+  }
+  const comSerie = trocarTreinoHoje({ ...st, registros: [reg(a, "2026-11-13T20:35:00Z", 1)] }, b2, "2026-11-13");
+  ok(!comSerie.ok && comSerie.motivo === "com_series", "aberto com série: não troca (as séries ficariam sem treino)");
 }
 
 if (fail) { console.error(`\n${fail} falha(s)`); process.exit(1); }

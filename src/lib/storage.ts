@@ -46,6 +46,32 @@ export function saveSyncedAt(iso: string): void {
   window.localStorage.setItem(SYNCED_AT_KEY, iso);
 }
 
+/**
+ * Mudança local ainda não confirmada pelo servidor (ms da última mudança). Se o envio falhar,
+ * ao abrir o app de novo a cópia local ganha da do servidor com a mesma versão, em vez de a
+ * mudança ser desfeita (ex.: trocar o treino de hoje e ver voltar o anterior).
+ */
+export const PENDENTE_KEY = "coach-hypertrophy:v5:pendente";
+
+export function marcarPendente(agoraMs = Date.now()): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(PENDENTE_KEY, String(agoraMs)); } catch { /* sem storage */ }
+}
+
+/** Limpa só se nada mudou depois do envio confirmado. */
+export function limparPendente(enviadoEmMs: number): void {
+  if (typeof window === "undefined") return;
+  try {
+    const v = Number(window.localStorage.getItem(PENDENTE_KEY));
+    if (!Number.isFinite(v) || v <= enviadoEmMs) window.localStorage.removeItem(PENDENTE_KEY);
+  } catch { /* sem storage */ }
+}
+
+export function temPendente(): boolean {
+  if (typeof window === "undefined") return false;
+  try { return !!window.localStorage.getItem(PENDENTE_KEY); } catch { return false; }
+}
+
 export function resetState(): AppState {
   const next = structuredClone(seedState);
   saveState(next);

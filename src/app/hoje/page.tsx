@@ -71,7 +71,7 @@ const COR_STATUS: Record<StatusFaixa, string> = {
 };
 
 export default function HojePage() {
-  const { state, ready, startSession, markCalendario } = useApp();
+  const { state, ready, startSession, trocarTreinoDeHoje } = useApp();
   // Trocar o treino de hoje (ex.: o calendário diz Upper, mas hoje você vai fazer Lower).
   const [trocarAberto, setTrocarAberto] = useState(false);
   // Treino marcado na lista; só muda depois de "Confirmar mudança".
@@ -298,24 +298,32 @@ export default function HojePage() {
         : null;
 
   // Opções pra trocar o treino de hoje: qualquer treino do plano (um já feito vira "repetir").
-  const podeTrocarHoje = !!sess && !parqBloqueado && !plano?.bloqueado && (estadoHero === "novo" || estadoHero === "descanso");
+  // Treino aberto sem nenhuma série (tocou em Começar e voltou) também pode ser trocado.
+  const podeTrocarHoje =
+    !!sess && !parqBloqueado && !plano?.bloqueado &&
+    (estadoHero === "novo" || estadoHero === "descanso" || (estadoHero === "andamento" && feitas === 0));
   const opcoesHoje = podeTrocarHoje
     ? treinosParaRegistrar(state).filter((o) => o.status !== "em_andamento" && (estadoHero === "descanso" || o.id !== sess?.id))
     : [];
   const ddmmHoje = (iso: string | null | undefined) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : "");
   function trocarHojePara(id: string) {
     const nome = state.sessoes.find((x) => x.id === id)?.nome ?? "Treino";
-    const doDia = sessHoje && !sessHoje.id.includes("#") && sessHoje.id !== id ? sessHoje : null;
-    if (state.plano?.mesociclo?.data_inicio && hoje) {
-      // Fixa o escolhido hoje no calendário; o que estava aqui volta pra fila (nada é apagado).
-      markCalendario(doDia?.id ?? null, "trocar", hoje, id);
-      setPicked(null);
-    } else {
-      setPickedId(id);
-    }
+    const r = trocarTreinoDeHoje(id);
     setTrocarAberto(false);
     setEscolhaHoje(null);
-    setAvisoEdicao(`Pronto, hoje é ${nome} (no Hoje e no calendário).${doDia ? ` ${doDia.nome} voltou pra fila e entra no próximo dia de treino.` : ""}`);
+    if (!r.ok) {
+      setAvisoEdicao(
+        r.motivo === "com_series"
+          ? "Esse treino já tem série registrada hoje. Finalize ele antes de trocar."
+          : "Não deu pra trocar esse treino agora.",
+      );
+      return;
+    }
+    // Fixa o escolhido hoje (no calendário, quando o plano tem data de início); o que saiu volta pra fila.
+    setPicked(null);
+    if (!state.plano?.mesociclo?.data_inicio) setPickedId(id);
+    const saiu = r.saiu ? state.sessoes.find((x) => x.id === r.saiu)?.nome : null;
+    setAvisoEdicao(`Pronto, hoje é ${nome} (no Hoje e no calendário).${saiu ? ` ${saiu} voltou pra fila e entra no próximo dia de treino.` : ""}`);
   }
 
   const alvoEdicao = alvoEditarHoje(state, sess?.id);
