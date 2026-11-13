@@ -12,6 +12,7 @@ import {
   feedbackSono,
   formatarDuracaoSono,
 } from "@/lib/domain/sono";
+import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
 
 const AGUA_CHIPS: { label: string; ml: number }[] = [
   { label: "1 L", ml: 1000 },
@@ -73,7 +74,7 @@ export default function CheckinPage() {
     () =>
       [...state.checkins]
         .sort((a, b) => b.data.localeCompare(a.data))
-        .filter((c) => c.data !== new Date().toISOString().slice(0, 10))
+        .filter((c) => c.data !== hojeIsoSaoPaulo())
         .slice(0, 6),
     [state.checkins],
   );
@@ -84,7 +85,7 @@ export default function CheckinPage() {
 
   function salvar() {
     saveCheckin({
-      data: new Date().toISOString().slice(0, 10),
+      data: hojeIsoSaoPaulo(),
       sono_h: sonoH,
       sono_inicio: sonoInicio,
       sono_fim: sonoFim,

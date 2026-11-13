@@ -36,6 +36,7 @@ import { seedState } from "@/lib/seed";
 import { useSession } from "next-auth/react";
 import { aplicarEstadoNaPrescricao } from "@/lib/engine/progression";
 import { hojeIsoSaoPaulo, proximaSessao, sessoesDoPlano } from "@/lib/plan/proxima-sessao";
+import { corrigirDataDoTreinoNoturno, liberarParaHoje, treinoAbertoAntigo } from "@/lib/treino/sessao-aberta";
 import { estimateDurationMin, gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import {
   agendarSessoes,
@@ -47,7 +48,6 @@ import {
   type AcaoDia,
 } from "@/lib/plan/calendario";
 import { agendaEfetiva } from "@/lib/plan/pendente";
-import { arquivarConclusao } from "@/lib/plan/repetir";
 import { remountPlano } from "@/lib/plan/remount-plano";
 import {
   PARQ_BLOQUEIO_MSG,
@@ -171,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function hydrate() {
-      const local = loadState();
+      const local = corrigirDataDoTreinoNoturno(loadState());
       if (!authenticated || !userId) {
         if (!cancelled) {
           setState(local);
@@ -217,7 +217,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           isSeedLike(local) ||
           !localSynced ||
           body.updated_at >= localSynced;
-        const next = preferServer ? body.state : local;
+        const next = preferServer ? corrigirDataDoTreinoNoturno(body.state) : local;
         saveState(next);
         saveSyncedAt(body.updated_at);
         if (!preferServer) {
@@ -559,9 +559,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let sess = s.sessoes.find((x) => x.id === sid);
       if (!sess) return s;
 
+      // Dia de São Paulo (o UTC já vira amanhã às 21h).
+      const agoraMs = Date.now();
+      const hojeIso = hojeIsoSaoPaulo(agoraMs);
+
       // Continuar o treino de hoje: mantém o que já foi decidido no dia (tempo curto, leitura do dia,
       // ajustes ao vivo). Recalcular aqui desfaria essas escolhas no meio do treino.
-      if (sess.status === "em_andamento" && sess.data === new Date().toISOString().slice(0, 10)) {
+      if (sess.status === "em_andamento" && !treinoAbertoAntigo(sess, agoraMs)) {
         return {
           ...s,
           active_sessao_id: sid,
@@ -571,11 +575,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Repetir na semana: treino feito em outro dia guarda a execução anterior (com as séries)
       // como registro avulso daquele dia, em vez de apagar. As cargas vêm da memória (estados).
-      if ((sess.status === "concluida" || sess.status === "parcial") && sess.data && sess.data !== hojeIsoSaoPaulo()) {
-        s = arquivarConclusao(s, sid);
-        sess = s.sessoes.find((x) => x.id === sid);
-        if (!sess) return s;
-      }
+      // Treino esquecido aberto de outro dia: as séries ficam no dia delas e hoje começa do zero.
+      s = liberarParaHoje(s, sid, agoraMs);
+      sess = s.sessoes.find((x) => x.id === sid);
+      if (!sess) return s;
 
       // Reinicia sessão concluída no mesmo dia: limpa registros dela e reaplica cargas do EstadoExercicio
       const reiniciando = sess.status === "concluida" || sess.status === "parcial";
@@ -583,7 +586,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? s.registros.filter((r) => r.sessao_id !== sid)
         : s.registros;
 
-      const hojeIso = new Date().toISOString().slice(0, 10);
       // Séries partem sempre da base do plano: o ajuste do treino anterior não acumula.
       const basePresc = limparPulos(voltarParaBase(sess.prescricoes)).map((p) => {
         const est = s.estados.find((e) => e.exercicio_id === p.exercicio_id);
@@ -600,7 +602,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         mesociclo: mesoHoje,
         experiencia: s.perfil?.experiencia,
         checkin: ckHoje,
-        sessoesDaSemana: sessoesDoPlano(s, hojeIsoSaoPaulo()),
+        sessoesDaSemana: sessoesDoPlano(s, hojeIso),
         registros: s.registros,
         hojeIso,
       });
@@ -611,7 +613,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         feedbacks: s.feedbacks_musculo,
         mesociclo: mesoHoje,
         checkin: ckHoje,
-        sessoesDaSemana: sessoesDoPlano(s, hojeIsoSaoPaulo()),
+        sessoesDaSemana: sessoesDoPlano(s, hojeIso),
       });
       const deload = avaliarCheckinDeload({
         checkin: ckHoje,

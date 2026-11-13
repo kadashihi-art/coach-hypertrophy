@@ -24,8 +24,10 @@ import {
 } from "@/lib/sono-agua/avaliacao";
 import { inicioDeUso } from "@/lib/inicio";
 import type { AlertaApresentado } from "@/lib/alertas/apresentar";
+import { hojeIsoSaoPaulo } from "@/lib/plan/proxima-sessao";
 
-const hojeUtc = () => new Date().toISOString().slice(0, 10);
+// Dia de São Paulo (o UTC já vira amanhã às 21h).
+const hojeUtc = () => hojeIsoSaoPaulo();
 const DIAS_SEMANA = ["D", "S", "T", "Q", "Q", "S", "S"];
 function rotuloDia(iso: string): string {
   return DIAS_SEMANA[new Date(`${iso}T12:00:00Z`).getUTCDay()]!;

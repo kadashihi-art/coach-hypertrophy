@@ -27,6 +27,8 @@ import { podeDesfazerCorrecao, sessaoCorrigivel } from "@/lib/plan/corrigir-conc
 import { preparacaoDaSessao, rotuloOrdemSeries, textoPreparacao } from "@/lib/treino/estrutura-series";
 import { textoCarga } from "@/lib/catalog/tipo-carga";
 import { useModoCarga } from "@/lib/use-modo-carga";
+import { feitoNaSemana } from "@/lib/plan/repetir";
+import type { Sessao } from "@/lib/domain";
 
 /** T8 — Split visual + mesociclo · plano gerado do perfil */
 export default function PlanoPage() {
@@ -85,6 +87,10 @@ export default function PlanoPage() {
     .filter(Boolean);
 
   const perfil = state.perfil;
+
+  // Situação na semana (seg–dom): treino feito na semana passada volta a ser "a fazer".
+  const situacao = (s: Sessao): "feito" | "andamento" | "afazer" =>
+    s.status === "em_andamento" ? "andamento" : hojePlano && feitoNaSemana(s, hojePlano) ? "feito" : "afazer";
 
   function iniciar(id: string) {
     startSession(id);
@@ -248,14 +254,14 @@ export default function PlanoPage() {
               </div>
               <Badge
                 tone={
-                  s!.status === "concluida"
+                  situacao(s!) === "feito"
                     ? "go"
-                    : s!.status === "em_andamento"
+                    : situacao(s!) === "andamento"
                       ? "accent"
                       : "muted"
                 }
               >
-                {s!.status.replace("_", " ")}
+                {situacao(s!) === "feito" ? "feito na semana" : situacao(s!) === "andamento" ? "em andamento" : s!.status === "pulada" ? "pulada" : "a fazer"}
               </Badge>
             </div>
             {s!.prescricoes.length > 0 && (
@@ -353,9 +359,9 @@ export default function PlanoPage() {
               disabled={s!.prescricoes.length === 0 || !!plano.bloqueado}
               onClick={() => iniciar(s!.id)}
             >
-              {s!.status === "em_andamento"
+              {situacao(s!) === "andamento"
                 ? "Continuar"
-                : s!.status === "concluida"
+                : situacao(s!) === "feito"
                   ? "Treinar de novo"
                   : "Iniciar"}
             </Button>

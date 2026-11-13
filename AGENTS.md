@@ -19,6 +19,7 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
   - `equilibrar-volume.ts`: volume do plano gerado (teto 20/semana e 10/sessão por músculo, piso por nível, +4 nos prioritários, dentro do tempo). Ver `docs/series-validas.md`.
   - `prioridades.ts`: prioridade muscular (sugestão pelo histórico + prévia sem gravar). Card em /plano/ajustar; muda o plano só com "Confirmar e remontar".
 - `src/lib/treino/estrutura-series.ts`: ordem das séries (aproximação → top → back-offs no mesmo RIR) e preparação por músculo/padrão.
+- `src/lib/treino/sessao-aberta.ts`: começar o treino sem misturar dias. O "hoje" do treino é sempre o dia de São Paulo (`hojeIsoSaoPaulo`), nunca o UTC; treino esquecido aberto (12 h+) vira parcial do dia dele; `corrigirDataDoTreinoNoturno` conserta, ao carregar, treinos da noite que ficaram com a data de amanhã.
 - `src/lib/conceitos.ts`: RM, RIR, série válida etc. explicados na prática (página `/conceitos` e botões "?" via `src/components/Conceito.tsx`).
 - `src/lib/inteligencia/`: coach que guia (determinístico). `volume-autorregulado.ts` faz o feedback por músculo (estímulo, articulação, recuperação) virar ±séries do dia por cima da rampa. `briefing.ts` mostra a meta de cada exercício no /hoje. `diagnostico.ts` explica por que um exercício travou e prevê a força pelo ritmo. `leitura-dia.ts` propõe ajustar o resto do treino em dia ruim ou forte (só com confirmação). `revisao-semanal.ts` resume a semana e o que vem. `fechamento-bloco.ts` analisa o bloco por músculo e propõe o próximo (`Perfil.ajuste_volume_musculo`, só com confirmação). `tempo-curto.ts` encurta o treino do dia (`pulado_hoje`). Ver `docs/coach-inteligente.md`.
 - `src/lib/nivel/reavaliacao.ts`: reavaliação de nível (determinística, só leitura). Cartão em `/hoje` (`ReavaliacaoNivelCard`); muda o plano só com "Confirmar e remontar". Ver `docs/reavaliacao-nivel.md`.
@@ -67,7 +68,7 @@ npm run smoke:engine && npm run smoke:plano && npm run smoke:coach && npm run sm
 npm run smoke:t5-arsenal && npm run smoke:perfil-calendario && npm run smoke:racional-hibrido
 npm run smoke:negociacao && npm run smoke:coleta && npm run smoke:tom
 npm run smoke:estrutura-series && npm run smoke:volume-plano && npm run smoke:prioridades && npm run smoke:conceitos
-npm run smoke:inteligencia && npm run smoke:fechamento-bloco && npm run smoke:tempo-curto
+npm run smoke:inteligencia && npm run smoke:fechamento-bloco && npm run smoke:tempo-curto && npm run smoke:inicio-treino
 ```
 
 ## Fluxo
