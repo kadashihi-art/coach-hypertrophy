@@ -30,6 +30,9 @@ import {
   resetState,
   loadSyncedAt,
   saveSyncedAt,
+  marcarPendente,
+  limparPendente,
+  temPendente,
   isSeedLike,
 } from "@/lib/storage";
 import { seedState } from "@/lib/seed";
@@ -37,6 +40,7 @@ import { useSession } from "next-auth/react";
 import { aplicarEstadoNaPrescricao } from "@/lib/engine/progression";
 import { hojeIsoSaoPaulo, proximaSessao, sessoesDoPlano } from "@/lib/plan/proxima-sessao";
 import { corrigirDataDoTreinoNoturno, liberarParaHoje, treinoAbertoAntigo } from "@/lib/treino/sessao-aberta";
+import { trocarTreinoHoje } from "@/lib/plan/trocar-hoje";
 import { estimateDurationMin, gerarPlanoFromPerfil } from "@/lib/plan/gerar-plano";
 import {
   agendarSessoes,
@@ -129,6 +133,8 @@ type Ctx = {
   /** Set mesociclo.data_inicio and schedule session dates */
   setDataInicio: (isoDate: string) => void;
   /** Mark session pulada / restore planejada / sync feito */
+  /** Trocar o treino de hoje (só após "Confirmar mudança"). Fecha treino aberto sem série. */
+  trocarTreinoDeHoje: (paraId: string) => { ok: boolean; motivo?: "com_series" | "invalido"; saiu?: string | null };
   markCalendario: (
     sessaoId: string | null,
     action: AcaoDia,
@@ -213,10 +219,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           state: AppState;
         };
         const localSynced = loadSyncedAt();
+        // Com mudança local que não chegou ao servidor, a local ganha da mesma versão do servidor
+        // (só perde se o servidor tiver uma versão mais nova, de outro aparelho).
+        const pendente = temPendente();
         const preferServer =
           isSeedLike(local) ||
           !localSynced ||
-          body.updated_at >= localSynced;
+          (pendente ? body.updated_at > localSynced : body.updated_at >= localSynced);
         const next = preferServer ? corrigirDataDoTreinoNoturno(body.state) : local;
         saveState(next);
         saveSyncedAt(body.updated_at);
@@ -230,6 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (r.ok) {
               const b = (await r.json()) as { updated_at: string };
               saveSyncedAt(b.updated_at);
+              limparPendente(Date.now());
             }
           });
         }
@@ -258,7 +268,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!ready) return;
     saveState(state);
     if (!authenticated) return;
+    // Até o servidor confirmar, a mudança fica marcada como pendente (não some ao reabrir o app).
+    marcarPendente();
     const t = window.setTimeout(() => {
+      const enviadoEm = Date.now();
       void fetch("/api/state", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -268,6 +281,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (!r.ok) return;
           const body = (await r.json()) as { updated_at: string };
           saveSyncedAt(body.updated_at);
+          limparPendente(enviadoEm);
         })
         .catch(() => {
           /* offline — local cache keeps working */
@@ -1079,6 +1093,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const trocarTreinoDeHoje = useCallback((paraId: string) => {
+    const r = trocarTreinoHoje(state, paraId, hojeIsoSaoPaulo());
+    if (!r.ok) return { ok: false, motivo: r.motivo };
+    setState(r.state);
+    return { ok: true, saiu: r.saiu };
+  }, [state]);
+
   const markCalendario = useCallback(
     (sessaoId: string | null, action: AcaoDia, dataDia: string, escolhido?: string | null) => {
       setState((s) => marcarDia(s, agendaEfetiva(s, hojeIsoSaoPaulo()).sessoes, dataDia, sessaoId, action, escolhido));
@@ -1192,6 +1213,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
+      trocarTreinoDeHoje,
       limparDiaCalendario,
       desfazerLimpezaDia,
       registrarFeitoDia,
@@ -1228,6 +1250,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
+      trocarTreinoDeHoje,
       limparDiaCalendario,
       desfazerLimpezaDia,
       registrarFeitoDia,
