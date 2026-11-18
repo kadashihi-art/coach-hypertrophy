@@ -67,7 +67,8 @@
     "smoke:fechamento-bloco": "npx --yes tsx scripts/smoke-fechamento-bloco.ts",
     "smoke:tempo-curto": "npx --yes tsx scripts/smoke-tempo-curto.ts",
     "smoke:inicio-treino": "npx --yes tsx scripts/smoke-inicio-treino.ts",
-    "smoke:selecao-exercicios": "npx --yes tsx scripts/smoke-selecao-exercicios.ts"
+    "smoke:selecao-exercicios": "npx --yes tsx scripts/smoke-selecao-exercicios.ts",
+    "smoke:agenda-semanal": "npx --yes tsx scripts/smoke-agenda-semanal.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",

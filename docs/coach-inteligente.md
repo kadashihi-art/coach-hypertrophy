@@ -146,3 +146,21 @@ O servidor só ganha quando tem uma versão mais nova, vinda de outro aparelho.
 - Treino feito de verdade hoje (com séries) continua feito. O calendário mostra ele, o Hoje mostra o escolhido, e o aviso explica.
 - A lista mostra só os treinos da fase atual. A troca funciona com ou sem data de início do plano.
 - `corrigirDataDoTreinoNoturno` também usa o horário das séries. Isso inclui a execução guardada ao repetir (`…#feito-…`): séries de 21h–24h de um dia salvas com a data do dia seguinte voltam para o dia certo.
+
+## Agenda única do calendário (`src/lib/plan/agenda-semanal.ts`)
+Relato do uso: dias de treino e dias do calendário não batiam. Havia treino em dia de folga, treino feito aparecia em outro dia e semanas mostravam menos treinos.
+
+Antes:
+- A semana atual vinha de um cálculo ("agenda efetiva": o pendente ia pra hoje, e os dias extras copiavam o ritmo do histórico).
+- As semanas seguintes vinham de outro (projeção pelo microciclo).
+- Treino feito numa semana anterior só aparecia nesta como previsão. Se o dia passava, ele sumia.
+
+Agora, para planos com fases:
+- Cada semana do plano tem os treinos do microciclo e cai só em dia de treino. Folga continua folga.
+- Feito, parcial, em andamento, pulado e marcado à mão tiram o treino da fila.
+- O que passou sem ser feito (desta semana ou da anterior) vira pendente no próximo dia de treino. Os seguintes andam pra frente.
+- O dia perdido aparece como "Pendente" com o treino que andou. Dá pra "Registrar como feito" nele.
+- Hoje, faixa, calendário e `proximaSessao` usam a mesma agenda. O Hoje decide "descanso" pela agenda completa.
+- Parcial aparece como feito.
+
+Planos antigos sem fases continuam com a agenda legada. Smoke: `smoke:agenda-semanal`.

@@ -214,7 +214,7 @@ export default function CalendarioPage() {
               </p>
             );
           })()}
-          <DiaAcoes key={selected.data} dia={selected} />
+          <DiaAcoes key={`${selected.data}:${selected.sessao_id ?? ""}`} dia={selected} />
         </Card>
         </section>
       ) : null}

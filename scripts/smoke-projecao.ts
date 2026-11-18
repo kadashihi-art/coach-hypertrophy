@@ -145,7 +145,10 @@ const A = montar(base, inicio);
     ocs.filter((s) => ehOcorrenciaProjetada(s.id)).every((s) => s.data! >= hoje),
     "nenhuma ocorrência projetada no passado",
   );
-  assert.equal(ocorrencias(ocs, "2026-11-09", "2026-11-15").length, 0, "semana 2 passada não é inventada");
+  // Semana 2 sem treino: nada é inventado como feito ou previsto. Só os dias de treino perdidos nos
+  // últimos 7 dias aparecem como pendentes (#falta), com o treino que andou pra frente.
+  const sem2 = ocorrencias(ocs, "2026-11-09", "2026-11-15");
+  assert.ok(sem2.every((s) => s.id.includes("#falta-") && s.status === "planejada" && s.data! >= "2026-11-11"), "semana 2 passada: só pendentes recentes, nada inventado");
   assert.equal(
     ocs.filter((s) => s.status === "concluida").length,
     4,
@@ -170,8 +173,10 @@ const A = montar(base, inicio);
 
   const quarto = D.sessoes.find((s) => s.ordem === 4)!;
   const ocorrenciasQuarto = ocs.filter((s) => s.id === quarto.id || s.id.startsWith(`${quarto.id}#`));
-  const reaisQuarto = ocorrenciasQuarto.filter((s) => !ehOcorrenciaProjetada(s.id));
+  // O dia em que ele estava previsto aparece como pendente (#falta); a ocorrência de verdade é uma só.
+  const reaisQuarto = ocorrenciasQuarto.filter((s) => !ehOcorrenciaProjetada(s.id) && !s.id.includes("#falta-"));
   assert.equal(reaisQuarto.length, 1, "o pendente aparece uma única vez como ocorrência real");
+  assert.ok(ocorrenciasQuarto.some((s) => s.id.includes("#falta-") && s.data! < hoje), "o dia perdido fica marcado como pendente");
   assert.equal(reaisQuarto[0]!.data, hoje, "o pendente foi para hoje");
   for (const p of ocorrenciasQuarto.filter((s) => ehOcorrenciaProjetada(s.id))) {
     assert.ok(p.data! > hoje, `as próximas semanas do mesmo treino vêm depois: ${p.data}`);
