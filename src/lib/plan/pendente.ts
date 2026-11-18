@@ -13,6 +13,7 @@
  * para a fila sem data e entra no próximo dia de treino livre, na ordem do plano.
  */
 import type { AppState, Sessao } from "@/lib/domain";
+import { montarAgendaSemanal, type OcorrenciaAgenda } from "./agenda-semanal";
 import { sessoesDoPlano } from "./proxima-sessao";
 
 function somaDias(iso: string, n: number): string {
@@ -28,6 +29,8 @@ export type AgendaEfetiva = {
   pendentes: Pendente[];
   /** Dias já passados em que um treino foi pulado (o treino em si voltou para a fila). Só para mostrar. */
   pulos: Sessao[];
+  /** Agenda semanal completa de hoje em diante (planos com fases). A projeção e o Hoje usam esta. */
+  ocorrencias?: OcorrenciaAgenda[];
 };
 
 /** Sessões para o calendário e a faixa: agenda + marcas de pulo dos dias que já passaram. */
@@ -41,6 +44,37 @@ export function agendaEfetiva(
 ): AgendaEfetiva {
   const base = { sessoes: state.sessoes, pendentes: [] as Pendente[], pulos: [] as Sessao[] };
   if (!hoje || !state.plano?.mesociclo?.data_inicio) return base;
+
+  // Plano com fases: agenda única por semana do microciclo (ver agenda-semanal.ts).
+  const semanal = montarAgendaSemanal(state, hoje);
+  if (semanal) {
+    const primeira = new Map<string, OcorrenciaAgenda>();
+    for (const o of semanal.ocorrencias) if (!primeira.has(o.sessao_id)) primeira.set(o.sessao_id, o);
+    const pendentes: Pendente[] = [];
+    for (const o of semanal.ocorrencias) {
+      if (!o.pendente_de || pendentes.some((p) => p.sessao_id === o.sessao_id)) continue;
+      const s = state.sessoes.find((x) => x.id === o.sessao_id);
+      pendentes.push({ sessao_id: o.sessao_id, nome: s?.nome ?? o.sessao_id, data_original: o.pendente_de });
+    }
+    pendentes.sort((a, b) => a.data_original.localeCompare(b.data_original));
+    // Pulo em dia que já passou: o dia continua aparecendo como pulado (o treino segue na fila).
+    const pulos = state.sessoes
+      .filter((s) => s.status === "pulada" && !!s.data && s.data < hoje)
+      .map((s) => ({ ...s, id: `${s.id}#pulo-${s.data}` }));
+    return {
+      sessoes: state.sessoes.map((s) => {
+        const o = primeira.get(s.id);
+        // Treino planejado (ou pulado num dia que passou) assume a próxima ocorrência da agenda.
+        if (o && (s.status === "planejada" || (s.status === "pulada" && !!s.data && s.data < hoje))) {
+          return o.fixo ? s : { ...s, data: o.data, status: "planejada" as const, data_manual: undefined };
+        }
+        return s;
+      }),
+      pendentes,
+      pulos,
+      ocorrencias: semanal.ocorrencias,
+    };
+  }
   const limpos = new Set(state.dias_limpos ?? []);
   const ordered = sessoesDoPlano(state as AppState, hoje);
   // Marcação manual no calendário (data futura) fica onde o usuário pôs.

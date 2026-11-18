@@ -1,6 +1,7 @@
 import type { AppState, Sessao } from "@/lib/domain";
 import { faseAtiva } from "./estrutura";
 import { feitoNaSemana } from "./repetir";
+import { montarAgendaSemanal } from "./agenda-semanal";
 
 /** Sessões do plano na ordem do mesociclo (só da fase ativa, se houver fases). */
 export function sessoesDoPlano(state: AppState, hojeIso?: string | null): Sessao[] {
@@ -60,6 +61,13 @@ export function proximaSessao(
     ? ordered.find((s) => elegivel(s) && s.status === "planejada" && s.data_manual && s.data === hojeEscolha)
     : undefined;
   if (escolhidoHoje) return escolhidoHoje;
+
+  // Plano com fases: o próximo é o da agenda (o mesmo dia que o calendário e a faixa mostram).
+  if (state.plano?.mesociclo?.data_inicio && state.plano.estrutura?.fases?.length && hojeEscolha) {
+    const prox = montarAgendaSemanal(state, hojeEscolha)?.ocorrencias[0];
+    const s = prox ? state.sessoes.find((x) => x.id === prox.sessao_id) : undefined;
+    if (s && s.prescricoes.length > 0) return s;
+  }
 
   // Com agenda: a ordem é por treino, não por data. Treino planejado que passou sem ser feito
   // continua sendo o próximo (não é pulado); só "pulada" explícita sai da fila.

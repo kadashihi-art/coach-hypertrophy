@@ -15,6 +15,7 @@ App PWA de treino de hipertrofia: o coach conversa em PT, e um motor determinís
   - `tecnicas.ts`: técnicas avançadas opcionais na última série (regras, carga do drop, volume conservador). Ver `docs/tecnicas-avancadas.md`.
 - `src/lib/plan/`: geração do plano. `gerar-plano.ts` e `estrutura.ts` montam o split e o volume. `parq.ts` é o gate do PAR-Q+. `coleta.ts` faz o onboarding conversacional (schema, mais `validarEstrategia`). `negociacao.ts` traz os ajustes propostos pelo coach. Também ficam aqui `remount-plano.ts`, `racional.ts` e `calendario.ts`.
   - `sugestao-exercicio.ts`: sinais do histórico (já fez, tendência, travado, dor recente) para ranquear a troca e desempatar o gerador ao refazer o plano.
+  - `agenda-semanal.ts`: agenda única de planos com fases (Hoje, faixa e calendário usam a mesma). Cada semana do plano tem os treinos do microciclo, só em dia de treino; o que foi feito/pulado/marcado à mão sai da fila; treino perdido vira pendente no próximo dia de treino (nunca em folga) e o dia perdido aparece como pendente. `pendente.ts` e `projecao.ts` usam esta; planos antigos sem fases seguem a agenda legada. `proximaSessao` sugere o primeiro treino desta agenda.
   - `mesociclo.ts`: semana real do bloco pela data (`mesocicloEfetivo`). O `semana_atual` salvo fica em 1; use sempre o efetivo. Deload programado (R6) só na última semana.
   - `equilibrar-volume.ts`: volume do plano gerado (teto 20/semana e 10/sessão por músculo, piso por nível, +4 nos prioritários, dentro do tempo). Ver `docs/series-validas.md`.
   - `evidencia-exercicio.ts` e `cobertura-exercicios.ts`: escolha de exercícios por evidência de hipertrofia (nota por exercício, cobertura por músculo na semana, "por quê" com o estudo no plano, na troca e no contexto do coach). Só cite estudos cadastrados em `ESTUDOS`. Ver `docs/selecao-exercicios.md`.
@@ -69,7 +70,7 @@ npm run smoke:engine && npm run smoke:plano && npm run smoke:coach && npm run sm
 npm run smoke:t5-arsenal && npm run smoke:perfil-calendario && npm run smoke:racional-hibrido
 npm run smoke:negociacao && npm run smoke:coleta && npm run smoke:tom
 npm run smoke:estrutura-series && npm run smoke:volume-plano && npm run smoke:prioridades && npm run smoke:conceitos
-npm run smoke:inteligencia && npm run smoke:fechamento-bloco && npm run smoke:tempo-curto && npm run smoke:inicio-treino && npm run smoke:selecao-exercicios
+npm run smoke:inteligencia && npm run smoke:fechamento-bloco && npm run smoke:tempo-curto && npm run smoke:inicio-treino && npm run smoke:selecao-exercicios && npm run smoke:agenda-semanal
 ```
 
 ## Fluxo

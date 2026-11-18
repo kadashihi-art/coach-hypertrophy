@@ -37,7 +37,9 @@ export function DiaAcoes({ dia: selected }: { dia: CalendarioDiaView }) {
   // semana). A execução anterior fica guardada no dia em que foi feita.
   const opcoes = treinosParaRegistrar(state);
   const proximo = proximoDaFila(state, agendaEfetiva(state, hojeCal).sessoes);
-  const padrao = doDia ?? proximo?.id ?? opcoes[0]?.id ?? "";
+  // Dia de treino que passou sem treino (pendente): o padrão é o treino que estava previsto nele.
+  const previstoNoDia = selected.sessao_id?.includes("#falta-") ? selected.sessao_id.split("#")[0]! : null;
+  const padrao = doDia ?? previstoNoDia ?? proximo?.id ?? opcoes[0]?.id ?? "";
   const [escolha, setEscolha] = useState<string>(padrao);
   const alvo = opcoes.find((o) => o.id === escolha) ? escolha : padrao;
   const nomeAlvo = opcoes.find((o) => o.id === alvo)?.nome ?? state.sessoes.find((s) => s.id === alvo)?.nome;

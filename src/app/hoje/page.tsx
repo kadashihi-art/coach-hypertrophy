@@ -260,11 +260,16 @@ export default function HojePage() {
   const agenda = agendaEfetiva(state, hoje);
   const agendaSess = agenda.sessoes;
   const aviso = hoje ? avisoPendente(agenda.pendentes, hoje) : null;
-  const dataEfetiva = (id: string | undefined) => agendaSess.find((x) => x.id === id)?.data ?? null;
+  // Mesma agenda do calendário (inclui as ocorrências de treinos já feitos em semanas anteriores).
+  const doCalendario = hoje ? projetarOcorrencias(state, hoje, agenda) : agendaSess;
+  const dataEfetiva = (id: string | undefined) =>
+    doCalendario.filter((x) => x.id.split("#")[0] === id && !!x.data && (!hoje || x.data >= hoje) && x.status === "planejada").map((x) => x.data!).sort()[0] ??
+    agendaSess.find((x) => x.id === id)?.data ??
+    null;
   const temAgenda = state.sessoes.some((s) => !!s.data);
   const faixa = faixaDeDias(state, hoje);
   const diaSel = faixa.find((f) => f.dia.data === diaAberto) ?? null;
-  const sessHoje = hoje ? agendaSess.find((s) => s.data === hoje && s.status !== "pulada") : undefined;
+  const sessHoje = hoje ? doCalendario.find((s) => s.data === hoje && s.status !== "pulada") : undefined;
   const estadoHero: "andamento" | "feito" | "descanso" | "novo" =
     emAndamento
       ? "andamento"
@@ -733,7 +738,7 @@ export default function HojePage() {
                 </p>
                 <span className={`text-xs font-semibold ${COR_STATUS[diaSel.status]}`}>{TEXTO_STATUS[diaSel.status]}</span>
               </div>
-              <DiaAcoes key={diaSel.dia.data} dia={diaSel.dia} />
+              <DiaAcoes key={`${diaSel.dia.data}:${diaSel.dia.sessao_id ?? ""}`} dia={diaSel.dia} />
               <div className="mt-3 flex gap-2">
                 {diaSel.dia.sessao_id && !diaSel.dia.sessao_id.includes("#") && diaSel.status !== "feito" && diaSel.dia.sessao_id !== sess?.id ? (
                   <Button variant="ghost" className="min-h-11 flex-1 text-sm" onClick={() => { setPickedId(diaSel.dia.sessao_id!); setAvisoEdicao(null); }}>

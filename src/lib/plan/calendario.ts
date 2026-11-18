@@ -176,7 +176,7 @@ export function derivarDias(sessoes: Sessao[], datas: string[], diasLimpos: stri
     const rank = (x: Sessao) =>
       x.status === "em_andamento"
         ? 4
-        : x.status === "concluida"
+        : x.status === "concluida" || x.status === "parcial"
           ? 3
           : x.status === "pulada"
             ? 2
@@ -192,7 +192,8 @@ export function derivarDias(sessoes: Sessao[], datas: string[], diasLimpos: stri
       continue;
     }
     let status: CalendarioDiaView["status"] = "planejado";
-    if (s.status === "concluida") status = "feito";
+    // Parcial (treino feito em parte) também é feito: antes aparecia como "planejado" no passado.
+    if (s.status === "concluida" || s.status === "parcial") status = "feito";
     else if (s.status === "pulada") status = "pulado";
     else if (s.status === "em_andamento") status = "em_andamento";
     const projetado = ehOcorrenciaProjetada(s.id);

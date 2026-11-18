@@ -71,6 +71,40 @@ export function projetarOcorrencias(
   const dataInicio = plano?.mesociclo?.data_inicio;
   if (!hoje || !plano || !dataInicio) return reais;
 
+  // Plano com fases: a agenda semanal já tem todas as ocorrências de hoje em diante.
+  if (agenda.ocorrencias) {
+    // O que fica como está: registros (feito, parcial, em andamento, pulado), dias passados e
+    // marcações à mão. Treino planejado de hoje em diante vem só da agenda (sem duplicar).
+    const futuraPlanejada = (s: Sessao) => s.status === "planejada" && !s.id.includes("#") && (!s.data || s.data >= hoje);
+    const saida: Sessao[] = reais.filter((s) => !futuraPlanejada(s));
+    const porId = new Map(agenda.sessoes.map((s) => [s.id, s] as const));
+    const usados = new Set(saida.map((s) => s.id));
+    for (const o of agenda.ocorrencias) {
+      const base = porId.get(o.sessao_id);
+      if (!base) continue;
+      // Primeira ocorrência de um treino planejado: é o próprio treino (ações do dia valem nele).
+      if (base.status === "planejada" && base.data === o.data && !usados.has(base.id)) {
+        saida.push(base);
+        usados.add(base.id);
+        continue;
+      }
+      let id = marcaProjecao(base.id, o.semana);
+      if (usados.has(id)) id = marcaProjecao(`${base.id}#d${o.data}`, o.semana);
+      usados.add(id);
+      saida.push({ ...base, id, data: o.data, data_manual: undefined, status: "planejada" });
+    }
+    // Dia de treino que passou sem treino: aparece como pendente (não como folga), com o treino que andou.
+    const ocupadosPassado = new Set(saida.filter((s) => s.data && s.data < hoje).map((s) => s.data!));
+    for (const p of agenda.pendentes) {
+      if (ocupadosPassado.has(p.data_original)) continue;
+      const base = porId.get(p.sessao_id);
+      if (!base) continue;
+      saida.push({ ...base, id: `${base.id}#falta-${p.data_original}`, data: p.data_original, data_manual: undefined, status: "planejada" });
+      ocupadosPassado.add(p.data_original);
+    }
+    return saida;
+  }
+
   const totalBase = plano.mesociclo.total_semanas || SEMANAS_MESOCICLO;
   const totalSemanas = Math.max(
     totalBase,
