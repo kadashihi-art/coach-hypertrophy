@@ -183,3 +183,10 @@ O cartão do Hoje passa para o próximo treino, com o dia dele ("Próximo treino
 - Depois de um erro do servidor, o app tenta de novo sozinho em 1 minuto.
 - Leitura que falha ao abrir o app (ex.: 403 do Blob bloqueado) também aparece no aviso: o aparelho mostra só o que tem guardado, e outro aparelho pode estar diferente.
 - O envio espera 4 s sem mudança (antes 0,5 s) e sai na hora quando o app vai pro fundo. Menos gravações por treino.
+
+### Cópia dos dados (`src/lib/backup.ts`, Perfil → Conta)
+Motivo: com o armazenamento da Vercel bloqueado pelo limite do plano gratuito, os treinos só existem no aparelho, e trocar de endereço do app (outra conta) começaria do zero.
+- **Exportar meus dados:** gera `coach-hypertrophy-AAAA-MM-DD.json` com todo o estado deste aparelho. No celular abre a folha de compartilhar (salvar em Arquivos, Drive ou e-mail); no PC baixa o arquivo.
+- **Importar:** lê o arquivo, confere se é uma cópia válida do app e mostra o resumo da cópia e do aparelho (treinos feitos, séries, último treino). Só troca com "Substituir". Treino aberto não vem junto.
+- Funciona sem o servidor. Depois de importar, o envio ao servidor sai como qualquer mudança.
+Smoke: `smoke:backup`.
