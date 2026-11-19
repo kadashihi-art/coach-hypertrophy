@@ -47,6 +47,9 @@ export default function PlanoPage() {
   const [barsOn, setBarsOn] = useState(false);
   const [trocar, setTrocar] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Treinos fechados: abre um por vez ao tocar (null = só o próximo aberto).
+  const [abertos, setAbertos] = useState<string[] | null>(null);
+  const [porqueAberto, setPorqueAberto] = useState(false);
 
   useEffect(() => {
     if (!plano) return;
@@ -129,36 +132,32 @@ export default function PlanoPage() {
           {labelSplit(plano.divisao)}
         </h1>
       </div>
-      <p className="mb-3 text-sm text-muted">
-        {plano.dias_por_semana}×/semana · {plano.minutos_por_sessao} min ·{" "}
-        {labelObjetivo(plano.objetivo)}
+      <p className="mb-2 text-sm text-muted">
+        {plano.dias_por_semana} treinos por semana · {plano.minutos_por_sessao} min · {labelObjetivo(plano.objetivo).toLowerCase()}
         {plano.mesociclo.data_inicio
-          ? ` · início ${plano.mesociclo.data_inicio}`
+          ? ` · começou ${plano.mesociclo.data_inicio.slice(8, 10)}/${plano.mesociclo.data_inicio.slice(5, 7)}`
           : ""}
       </p>
 
       {perfil ? (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {perfil.equipamentos.map((e) => (
-            <span key={e} className="chip-motion on text-[11px] !px-2.5 !py-1">
-              {labelEquipamento(e)}
-            </span>
-          ))}
-          {perfil.restricoes.map((r) => (
-            <span
-              key={r}
-              className="rounded-full border border-warn/50 bg-warn/10 px-2.5 py-1 text-[11px] font-semibold capitalize text-warn"
-            >
-              {acentuar(r.replace(/_/g, " "))}
-            </span>
-          ))}
+        <div className="mb-4 text-xs text-muted" data-testid="contexto-plano">
+          <p>
+            <span className="text-faint">Equipamento: </span>
+            {perfil.equipamentos.map((e) => labelEquipamento(e).toLowerCase()).join(", ") || "—"}
+          </p>
+          {perfil.restricoes.length ? (
+            <p className="mt-1 text-warn">
+              <span className="text-faint">Cuidados: </span>
+              {perfil.restricoes.map((r) => acentuar(r.replace(/_/g, " "))).join(" · ")}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
       <Card className="mb-4 card-motion">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted">Mesociclo</p>
+            <p className="text-xs text-muted">Bloco de {plano.mesociclo.total_semanas} semanas</p>
             <p className="font-semibold">
               {rotuloSemanaBloco(meso ?? plano.mesociclo)}
             </p>
@@ -182,11 +181,23 @@ export default function PlanoPage() {
       </Card>
 
       <Card className="mb-4">
-        <p className="text-sm leading-relaxed text-muted">{acentuar(humanizarSplits(semCodigoRegra(plano.justificativa.texto)))}</p>
-        <div className="mt-2">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">Por que esse plano</p>
           <EvidenciaBadge evidencia={plano.justificativa.evidencia} />
         </div>
-        {next?.prescricoes[0] ? (
+        {(() => {
+          const t = acentuar(humanizarSplits(semCodigoRegra(plano.justificativa.texto)));
+          const txt = t.charAt(0).toUpperCase() + t.slice(1);
+          return (
+            <p data-testid="porque-plano" className={`text-sm leading-relaxed text-muted ${porqueAberto ? "" : "line-clamp-3"}`}>
+              {txt}
+            </p>
+          );
+        })()}
+        <button type="button" className="mt-1 text-xs font-semibold text-accent" onClick={() => setPorqueAberto((v) => !v)} data-testid="porque-plano-toggle">
+          {porqueAberto ? "Ver menos" : "Ver mais"}
+        </button>
+        {porqueAberto && next?.prescricoes[0] ? (
           <p className="mt-3 text-xs leading-relaxed text-muted">
             <span className="font-semibold text-accent">Coach · </span>
             {narrarCargaPrescricao({
@@ -205,9 +216,7 @@ export default function PlanoPage() {
         {plano.bloqueado && (
           <p className="mt-3 text-sm text-danger">⛔ Plano pausado por segurança. Procure liberação profissional antes de treinar com progressão.</p>
         )}
-        {next && (
-          <p className="mt-3 text-xs text-accent">Próximo do ciclo: {next.nome}</p>
-        )}
+
       </Card>
 
       {volumeRows.length > 0 ? (
@@ -234,12 +243,24 @@ export default function PlanoPage() {
         </div>
       ) : null}
 
-      <SectionTitle title={`Split · ${sessoes.length} dias`} />
+      <SectionTitle title={`Treinos · ${sessoes.length} por semana`} />
       <div className="motion-stagger space-y-3">
-        {sessoes.map((s) => (
+        {sessoes.map((s) => {
+          const aberto = abertos ? abertos.includes(s!.id) : next?.id === s!.id;
+          const alternar = () => {
+            const base = abertos ?? (next ? [next.id] : []);
+            setAbertos(base.includes(s!.id) ? base.filter((x) => x !== s!.id) : [...base, s!.id]);
+          };
+          return (
           <Card key={s!.id} className="card-motion">
-            <div className="flex items-center justify-between gap-2">
-              <div>
+            <button
+              type="button"
+              onClick={alternar}
+              aria-expanded={aberto}
+              data-testid="treino-acordeao"
+              className="flex w-full items-center justify-between gap-2 text-left"
+            >
+              <div className="min-w-0">
                 <p className="font-semibold">
                   {s!.ordem}. {s!.nome}
                   {next?.id === s!.id ? (
@@ -264,9 +285,11 @@ export default function PlanoPage() {
               >
                 {situacao(s!) === "feito" ? "feito na semana" : situacao(s!) === "andamento" ? "em andamento" : s!.status === "pulada" ? "pulada" : "a fazer"}
               </Badge>
-            </div>
+              <span aria-hidden className={`shrink-0 text-muted transition-transform ${aberto ? "rotate-90" : ""}`}>›</span>
+            </button>
+            {aberto ? (<>
             {s!.prescricoes.length > 0 && (
-              <ul className="mt-2 space-y-1 text-xs text-muted">
+              <ul className="mt-3 space-y-2.5 border-t border-border pt-3 text-xs text-muted">
                 {s!.prescricoes.map((p, i) => {
                   const ex = state.exercicios.find((e) => e.id === p.exercicio_id);
                   const est = state.estados.find(
@@ -276,9 +299,9 @@ export default function PlanoPage() {
                     est?.alvo_proxima_sessao.carga_kg ?? p.carga.trabalho_kg;
                   return (
                     <li key={p.id} className="flex items-center justify-between gap-2">
-                      <span>
-                        {ex?.nome} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]} @{" "}
-                        {textoCarga(carga, ex, alternado(ex?.id))}
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-bone-50">{ex?.nome}</span>
+                        <span className="load-num">{p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]}</span> · {textoCarga(carga, ex, alternado(ex?.id))}
                         {rotuloOrdemSeries(p) ? ` · ${rotuloOrdemSeries(p)}` : ""}
                         {textoPreparacao(preparacaoDaSessao(s!.prescricoes, state.exercicios)[i]) ? (
                           <span className="text-accent"> · {textoPreparacao(preparacaoDaSessao(s!.prescricoes, state.exercicios)[i])}</span>
@@ -371,8 +394,10 @@ export default function PlanoPage() {
                   ? "Treinar de novo"
                   : "Iniciar"}
             </Button>
+            </>) : null}
           </Card>
-        ))}
+          );
+        })}
       </div>
     </main>
   );

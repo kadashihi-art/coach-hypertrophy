@@ -146,7 +146,7 @@ export function useRestTimer() {
   };
 }
 
-export function RestTimerPill({ rt }: { rt: ReturnType<typeof useRestTimer> }) {
+export function RestTimerPill({ rt, compacto = false }: { rt: ReturnType<typeof useRestTimer>; compacto?: boolean }) {
   const { timer, agora } = rt;
   const [perm, setPerm] = useState<NotificationPermission | "indisponivel">("indisponivel");
   useEffect(() => {
@@ -159,7 +159,7 @@ export function RestTimerPill({ rt }: { rt: ReturnType<typeof useRestTimer> }) {
   const reta = !fim && seg <= 5;
   const p = progresso(timer, agora);
   const rm = semMovimento();
-  const cls = ["rt-pill", fim ? "rt-fim" : "", reta ? "rt-reta" : "", rm ? "rt-rm" : ""].join(" ");
+  const cls = ["rt-pill", compacto ? "rt-compacto" : "", fim ? "rt-fim" : "", reta ? "rt-reta" : "", rm ? "rt-rm" : ""].join(" ");
   // portal no body: ancestrais com transform (motion-fade-up) quebram position:fixed
   return (
     <>

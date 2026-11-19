@@ -49,7 +49,8 @@ export function rotuloOrdemSeries(presc: Pick<Prescricao, "series" | "tecnica">)
   const f = fasesDeTrabalho(presc);
   const n = f.filter((x) => x === "back_off").length;
   if (n === 0) return "";
-  return `top → ${n > 1 ? `${n}× ` : ""}back-off`;
+  // Linguagem de academia: "1 pesada + 2 mais leves" (antes "top → 2× back-off").
+  return `1 pesada + ${n} ${n > 1 ? "mais leves" : "mais leve"}`;
 }
 
 /** Fases de trabalho conforme a prescrição. */

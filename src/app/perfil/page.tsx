@@ -439,7 +439,7 @@ export default function PerfilPage() {
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">Você</p>
       <h1 className="mb-1 text-2xl font-bold">Seus dados</h1>
       <p className="mb-5 text-sm text-muted">
-        Toque num campo pra editar. Se mudar o plano, eu te mostro o ajuste antes — nada muda sem você confirmar.
+        Toque num campo pra editar. Se a mudança mexer no plano, eu mostro o ajuste antes e só mudo com a sua confirmação.
       </p>
 
       <SectionTitle title="Corpo" />
@@ -467,16 +467,30 @@ export default function PerfilPage() {
         <Linha label="Nível" valor={EXP_LABEL[perfil.experiencia]} onClick={() => abrir("experiencia")} flash={flash === "experiencia"} />
         <Linha label="Cardio / semana" valor={`${perfil.cardio_min_semana ?? 0} min`} onClick={() => abrir("cardio")} flash={flash === "cardio"} />
       </Card>
-      <Link
-        href={REFAZER_HREF}
-        className="motion-press -mt-2 mb-4 flex min-h-11 items-center justify-between rounded-2xl border border-border px-4 text-sm"
-      >
-        <span>
-          <span className="font-semibold text-accent">Refazer onboarding</span>
-          <span className="block text-[11px] text-muted">Conversa nova com o coach · só muda se você confirmar</span>
-        </span>
-        <span className="text-accent">→</span>
-      </Link>
+
+      <SectionTitle title="Seu plano" />
+      <Card className="mb-4 !py-1" data-testid="voce-plano">
+        <Link href="/plano/calendario" className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-1 py-3 text-sm">
+          <span className="text-muted">Dias de treino</span>
+          <span className="truncate font-semibold">
+            {perfil.dias_treino_semana?.length
+              ? [1, 2, 3, 4, 5, 6, 0].filter((d) => perfil.dias_treino_semana!.includes(d)).map((d) => ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d]).join(" ")
+              : "escolher"}{" "}
+            <span className="text-muted">›</span>
+          </span>
+        </Link>
+        <Link href="/plano/ajustar" className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-1 py-3 text-sm">
+          <span className="text-muted">Estilo e músculos prioritários</span>
+          <span className="font-semibold">Ajustar <span className="text-muted">›</span></span>
+        </Link>
+        <Link href={REFAZER_HREF} className="flex min-h-12 items-center justify-between gap-3 px-1 py-3 text-sm">
+          <span>
+            <span className="font-semibold text-accent">Refazer meu plano com o coach</span>
+            <span className="block text-[11px] text-muted">Conversa nova · só muda se você confirmar</span>
+          </span>
+          <span className="text-accent">›</span>
+        </Link>
+      </Card>
 
       <SectionTitle title="Contexto" />
       <Card className="mb-4 !py-1">

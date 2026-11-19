@@ -75,7 +75,7 @@ export function labelEquipamento(e: string): string {
 }
 /** Foco do mesociclo → rótulo de tela. */
 export const FOCO_LABEL: Record<string, string> = {
-  acumulo: "Acúmulo", intensificacao: "Intensificação", realizacao: "Realização", deload: "Semana leve",
+  acumulo: "Subindo volume", intensificacao: "Carga mais alta", realizacao: "Pico de força", deload: "Semana leve",
   manutencao: "Manutenção", adaptacao: "Adaptação", recuperacao: "Recuperação", hipertrofia: "Hipertrofia", forca: "Força",
 };
 export function labelFoco(f?: string | null): string {
@@ -102,5 +102,5 @@ export function labelPadrao(p: string): string {
 export function rotuloSemanaBloco(m: { semana_atual: number; total_semanas: number }): string {
   return m.semana_atual > m.total_semanas
     ? `Bloco de ${m.total_semanas} semanas concluído`
-    : `Semana ${m.semana_atual}/${m.total_semanas}`;
+    : `Semana ${m.semana_atual} de ${m.total_semanas}`;
 }

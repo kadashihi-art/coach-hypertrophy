@@ -63,8 +63,8 @@ assert.deepEqual(fasesDeTrabalho({ series: 2, tecnica: "padrao" } as never), ["t
 assert.deepEqual(fasesDeTrabalho({ series: 1, tecnica: "padrao" } as never), ["trabalho"]);
 assert.deepEqual(fasesDeTrabalho({ series: 3, tecnica: "drop_set" } as never), ["trabalho", "trabalho", "trabalho"]);
 assert.deepEqual(fasesDeTrabalho({ series: 3, tecnica: "rest_pause" } as never), ["trabalho", "trabalho", "trabalho"]);
-assert.equal(rotuloOrdemSeries({ series: 3, tecnica: "padrao" } as never), "top → 2× back-off");
-assert.equal(rotuloOrdemSeries({ series: 2, tecnica: "padrao" } as never), "top → back-off");
+assert.equal(rotuloOrdemSeries({ series: 3, tecnica: "padrao" } as never), "1 pesada + 2 mais leves");
+assert.equal(rotuloOrdemSeries({ series: 2, tecnica: "padrao" } as never), "1 pesada + 1 mais leve");
 assert.equal(rotuloOrdemSeries({ series: 3, tecnica: "drop_set" } as never), "");
 // cargas: top = motor / back-off ~90% pra baixo no step / trabalho = série reta na carga do motor
 assert.deepEqual(cargasDaEstrutura(100, 5), { trabalho: 100, top_set: 100, back_off: 90 });
