@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useApp } from "@/components/AppProvider";
 import { Badge, Button, Card, EvidenciaBadge, NumStepper, SectionTitle } from "@/components/ui";
+import { BackupDados } from "@/components/BackupDados";
 import type { Equipamento, Experiencia, Objetivo, Perfil, PlanoRacional } from "@/lib/domain";
 import { CATALOG_EXERCICIOS } from "@/lib/catalog/exercicios";
 import { gerarProposta } from "@/lib/plan/negociacao";
@@ -515,6 +516,7 @@ export default function PerfilPage() {
       </Card>
 
       <SectionTitle title="Conta" />
+      <BackupDados />
       <Card className="mb-4 !py-1">
         <div className="flex min-h-12 items-center justify-between gap-3 border-b border-border px-1 py-3">
           <span className="text-sm text-muted">E-mail</span>

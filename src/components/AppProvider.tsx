@@ -126,6 +126,8 @@ type Ctx = {
   addRest: (seconds: number) => void;
   finishSession: () => DecisaoProgressao[];
   resetApp: () => void;
+  /** Troca os dados deste aparelho pela cópia importada (a tela confirma antes). */
+  importarDados: (novo: AppState) => void;
   /** Patch perfil + remount plan (motor; LLM via API when authenticated) */
   updatePerfilAndRemount: (
     partial: Partial<Perfil>,
@@ -1242,6 +1244,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(resetState());
   }, []);
 
+  const importarDados = useCallback((novo: AppState) => {
+    // Vira a versão deste aparelho; o envio ao servidor sai como qualquer mudança.
+    setState(corrigirDataDoTreinoNoturno(novo));
+  }, []);
+
   const value = useMemo(
     () => ({
       state,
@@ -1263,6 +1270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addRest,
       finishSession,
       resetApp,
+      importarDados,
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
@@ -1301,6 +1309,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addRest,
       finishSession,
       resetApp,
+      importarDados,
       updatePerfilAndRemount,
       setDataInicio,
       markCalendario,
