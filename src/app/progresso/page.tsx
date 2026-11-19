@@ -103,7 +103,7 @@ export default function ProgressoPage() {
   return (
     <main className="motion-fade-up motion-stagger px-5 pb-8 pt-8">
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
-        Progresso
+        Evolução
       </p>
       <h1 className="mb-4 text-2xl font-bold">Evolução real</h1>
 

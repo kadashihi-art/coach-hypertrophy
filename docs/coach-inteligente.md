@@ -190,3 +190,11 @@ Motivo: com o armazenamento da Vercel bloqueado pelo limite do plano gratuito, o
 - **Importar** (também na primeira tela do cadastro, "Já usava o app?", pra um endereço novo do app que abre vazio): lê o arquivo, confere se é uma cópia válida do app e mostra o resumo da cópia e do aparelho (treinos feitos, séries, último treino). Só troca com "Substituir". Treino aberto não vem junto.
 - Funciona sem o servidor. Depois de importar, o envio ao servidor sai como qualquer mudança.
 Smoke: `smoke:backup`.
+
+## Reformulação 2.0: fase 1 (base + Hoje)
+Proposta completa: artifact "Coach Hypertrophy 2.0" (diagnóstico, mapa de abas, mockups, fases).
+- Abas: Hoje · Semana · Evolução · Coach · Você (rotas iguais: /hoje, /plano, /progresso, /coach, /perfil). Dentro de Semana: Treinos · Calendário · Ajustar.
+- `MensagensCoach`: todo aviso do Hoje num formato só (bloqueio, atenção, informação), em ordem de prioridade: PAR-Q+ > servidor > alerta de volume > treino pendente > ajuste do dia (rampa/deload) > dias de treino > sono/água/proteína. Mostra até 2; o resto fica em "Mais N avisos". PAR-Q+ nunca fecha.
+- `StatusConexao`: o selo "Offline" só aparece sem internet.
+- Hoje: cartão do treino com as séries do dia já ajustadas ("4×6–12 (+1)"), um botão "Começar" e, lado a lado, "Menos tempo" e "Trocar treino". "Corrigir registro" não aparece antes de começar. A meta de cada exercício abre ao tocar (abre sozinha se algum exercício incomodou a articulação). Check-in e cardio viram uma linha cada; a faixa de dias é uma só.
+- Altura do Hoje no celular (390 px, dados de teste): 2.260 → 1.470 px.

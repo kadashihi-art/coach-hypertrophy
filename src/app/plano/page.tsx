@@ -122,7 +122,7 @@ export default function PlanoPage() {
       ) : null}
 
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
-        Plano
+        Seu plano
       </p>
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-2xl font-bold capitalize">

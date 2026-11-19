@@ -18,7 +18,9 @@ export function DiasDeTreinoCard({ hoje }: { hoje: string }) {
   const salvos = diasEscolhidos(state.perfil);
   const sugeridos = diasDoMicrociclo(state.plano, hoje);
   const [sel, setSel] = useState<number[] | null>(null);
-  const [aberto, setAberto] = useState(!salvos);
+  // Aberto por padrão só sem dias salvos (decidido no render: no primeiro render o estado ainda não carregou).
+  const [abertoEscolhido, setAberto] = useState<boolean | null>(null);
+  const aberto = abertoEscolhido ?? !salvos;
   const [ok, setOk] = useState(false);
   const atual = sel ?? salvos ?? sugeridos;
   const n = treinosNaSemana(state.plano, hoje);

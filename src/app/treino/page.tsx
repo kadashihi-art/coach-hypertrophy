@@ -1,5 +1,7 @@
 "use client";
 
+import { StatusConexao } from "@/components/StatusConexao";
+
 import { ExercicioImagem } from "@/components/ExercicioImagem";
 import { cargaParaExercicio, resolverAlternativa } from "@/lib/plan/alternativa"
 import { labelPadrao } from "@/lib/labels";
@@ -559,7 +561,7 @@ export default function TreinoPage() {
             ← {sess.nome}
           </Link>
           <div className="flex items-center gap-2">
-            <span className="pill-offline">Offline</span>
+            <StatusConexao />
             <span className="num text-xs text-faint">
               {prescIdx + 1}/{prescricoes.length}
             </span>

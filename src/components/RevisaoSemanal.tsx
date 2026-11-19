@@ -33,7 +33,7 @@ export function RevisaoSemanalCard({ r }: { r: RevisaoSemanal }) {
         <Bloco titulo="Pede atenção" itens={r.atencao} cor="text-warn" />
         <Bloco titulo="Semana que vem" itens={r.proxima} cor="text-accent" />
         <p className="text-[11px] text-muted">
-          Os ajustes de séries do dia entram sozinhos. Mudança no plano só acontece em Plano → Ajustar, com a sua confirmação.
+          Os ajustes de séries do dia entram sozinhos. Mudança no plano só acontece em Semana → Ajustar, com a sua confirmação.
         </p>
       </Card>
     </section>
