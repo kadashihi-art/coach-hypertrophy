@@ -1,6 +1,5 @@
 "use client";
 
-import { LIMITES_ENTRADA as LE, validarAltura, validarPeso } from "@/lib/domain/limites";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
@@ -22,18 +21,6 @@ import {
   parqBloqueiaPrescricao,
   precisaResponderParq,
 } from "@/lib/plan/parq";
-
-const EQUIPS: Equipamento[] = [
-  "barra",
-  "halteres",
-  "maquina",
-  "cabo",
-  "peso_corporal",
-  "banco",
-  "rack",
-];
-
-const RESTRICOES = ["ombro", "lombar", "joelho", "punho"] as const;
 
 function Chip({
   selected,
@@ -61,19 +48,16 @@ export default function MeuTreinoPage() {
   const router = useRouter();
   const p = state.perfil;
 
-  const [peso, setPeso] = useState(p?.peso_kg ?? 80);
-  const [altura, setAltura] = useState(p?.altura_cm ?? 175);
-  const [exp, setExp] = useState<Experiencia>(p?.experiencia ?? "intermediario");
-  const [dias, setDias] = useState(p?.dias_por_semana ?? 4);
-  const [mins, setMins] = useState(p?.minutos_por_sessao ?? 60);
-  const [cardio, setCardio] = useState(p?.cardio_min_semana ?? 0);
-  const [equips, setEquips] = useState<Equipamento[]>(
-    p?.equipamentos ?? ["halteres", "maquina"],
-  );
-  const [restricoes, setRestricoes] = useState<string[]>(p?.restricoes ?? []);
-  const [objetivo, setObjetivo] = useState<Objetivo>(
-    p?.objetivo ?? "hipertrofia",
-  );
+  // Dados pessoais vêm do perfil (editados em Você); aqui só passam adiante no remonte.
+  const peso = p?.peso_kg ?? 80;
+  const altura = p?.altura_cm ?? 175;
+  const exp: Experiencia = p?.experiencia ?? "intermediario";
+  const dias = p?.dias_por_semana ?? 4;
+  const mins = p?.minutos_por_sessao ?? 60;
+  const cardio = p?.cardio_min_semana ?? 0;
+  const equips: Equipamento[] = p?.equipamentos ?? ["halteres", "maquina"];
+  const restricoes: string[] = p?.restricoes ?? [];
+  const objetivo: Objetivo = p?.objetivo ?? "hipertrofia";
   const [inicio, setInicio] = useState(
     state.plano?.mesociclo?.data_inicio ?? "",
   );
@@ -110,17 +94,6 @@ export default function MeuTreinoPage() {
       return { tone: "danger" as const, text: "PAR-Q+ bloqueado (SIM)" };
     return { tone: "go" as const, text: "PAR-Q+ liberado" };
   }, [parqBloqueado, parqPendente]);
-
-  function toggleEquip(e: Equipamento) {
-    setEquips((prev) =>
-      prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e],
-    );
-  }
-  function toggleRestricao(r: string) {
-    setRestricoes((prev) =>
-      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r],
-    );
-  }
 
   function buildPatch(): Partial<Perfil> {
     return {
@@ -234,72 +207,45 @@ export default function MeuTreinoPage() {
     <main className="motion-fade-up px-5 pb-10 pt-8">
       <PlanoTabs />
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
-        Plano · Ajustar
+        Semana · Ajustar
       </p>
       <h1 className="mb-2 text-2xl font-bold">Ajustar plano</h1>
       <p className="mb-4 text-sm text-muted">
-        Escolha o estilo, negocie com o coach ou remonte. Nada muda sem você
-        confirmar — e as cargas que você já tem são mantidas.
+        Estilo, músculos prioritários e data de início. Nada muda sem você confirmar, e as cargas que você já tem continuam.
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={parqLabel.tone}>{parqLabel.text}</Badge>
-        <Link href="/perfil" className="text-xs font-semibold text-accent">
-          Mudar dias/equipamento →
-        </Link>
       </div>
 
       {parqBloqueado ? (
         <Card className="mb-4 border border-danger/40 bg-danger/10">
-          <p className="text-sm font-semibold text-danger">Remount bloqueado</p>
+          <p className="text-sm font-semibold text-danger">Mudanças no plano pausadas</p>
           <p className="mt-1 text-xs text-muted">{PARQ_BLOQUEIO_MSG}</p>
           <Link
             href="/perfil"
             className="mt-2 inline-block text-xs font-semibold text-accent"
           >
-            Ver PAR-Q+ no Perfil →
+            Ver PAR-Q+ em Você →
           </Link>
         </Card>
       ) : null}
 
-      <SectionTitle title="Corpo" />
-      <Card className="mb-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-muted">Peso (kg)</span>
-          <NumStepper value={peso} step={0.5} unit="kg" min={LE.peso_min_kg} max={LE.peso_max_kg} validar={validarPeso} onChange={setPeso} />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-muted">Altura (cm)</span>
-          <NumStepper value={altura} step={1} unit="cm" min={LE.altura_min_cm} max={LE.altura_max_cm} validar={validarAltura} onChange={setAltura} />
-        </div>
-      </Card>
-
-      <SectionTitle title="Experiência" />
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(["iniciante", "intermediario", "avancado"] as Experiencia[]).map(
-          (e) => (
-            <Chip key={e} selected={exp === e} onClick={() => setExp(e)}>
-              {e}
-            </Chip>
-          ),
-        )}
-      </div>
-
-      <SectionTitle title="Rotina" />
-      <Card className="mb-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-muted">Dias / semana</span>
-          <NumStepper value={dias} step={1} onChange={(n) => setDias(Math.min(6, Math.max(2, n)))} />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-muted">Min / sessão</span>
-          <NumStepper value={mins} step={5} onChange={(n) => setMins(Math.min(180, Math.max(20, n)))} />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm text-muted">Cardio min / sem</span>
-          <NumStepper value={cardio} step={10} onChange={(n) => setCardio(Math.min(400, Math.max(0, n)))} />
-        </div>
-      </Card>
+      {/* Seus dados (peso, nível, dias, tempo, cardio, objetivo, equipamento, cuidados) ficam só em Você:
+          aqui ficam as escolhas do plano. Um lugar por dado. */}
+      <Link
+        href="/perfil"
+        data-testid="dados-em-voce"
+        className="motion-press mb-4 flex min-h-12 items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-2 text-sm"
+      >
+        <span className="min-w-0">
+          <span className="block font-semibold">Seus dados</span>
+          <span className="block truncate text-xs text-muted">
+            {p ? `${p.dias_por_semana} dias · ${p.minutos_por_sessao} min · ${p.experiencia} · ${p.equipamentos.length} equipamentos` : "peso, nível, dias, equipamento"}
+          </span>
+        </span>
+        <span className="shrink-0 text-xs font-semibold text-accent">Editar em Você ›</span>
+      </Link>
 
       {p ? (
         <>
@@ -326,7 +272,7 @@ export default function MeuTreinoPage() {
           {state.perfil ? (
             <>
             <Link href={REFAZER_HREF} className="motion-press mb-4 flex min-h-11 items-center justify-center rounded-[14px] border border-accent/40 text-sm font-semibold text-accent">
-              Refazer onboarding com o coach →
+              Refazer meu plano com o coach →
             </Link>
             <p className="-mt-2 mb-4 text-center text-[11px] text-muted">Seu plano só muda se você tocar em Confirmar plano. Histórico e cargas ficam.</p>
             </>
@@ -390,43 +336,6 @@ export default function MeuTreinoPage() {
           <p className="text-[11px] text-muted">O plano sempre tem {SEMANAS_MESOCICLO} semanas de treino.</p>
         )}
       </Card>
-
-      <SectionTitle title="Objetivo" />
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(
-          ["hipertrofia", "forca", "recomposicao", "saude"] as Objetivo[]
-        ).map((o) => (
-          <Chip key={o} selected={objetivo === o} onClick={() => setObjetivo(o)}>
-            {o}
-          </Chip>
-        ))}
-      </div>
-
-      <SectionTitle title="Equipamentos" />
-      <div className="mb-4 flex flex-wrap gap-2">
-        {EQUIPS.map((e) => (
-          <Chip
-            key={e}
-            selected={equips.includes(e)}
-            onClick={() => toggleEquip(e)}
-          >
-            {e.replace("_", " ")}
-          </Chip>
-        ))}
-      </div>
-
-      <SectionTitle title="Restrições / lesões" />
-      <div className="mb-4 flex flex-wrap gap-2">
-        {RESTRICOES.map((r) => (
-          <Chip
-            key={r}
-            selected={restricoes.some((x) => x.toLowerCase().includes(r))}
-            onClick={() => toggleRestricao(r)}
-          >
-            {r}
-          </Chip>
-        ))}
-      </div>
 
       <SectionTitle title="Começar em" />
       <Card className="mb-4">

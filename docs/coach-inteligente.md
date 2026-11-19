@@ -202,3 +202,11 @@ Proposta completa: artifact "Coach Hypertrophy 2.0" (diagnóstico, mapa de abas,
 ## Reformulação 2.0: fase 2 (treino + fim do treino)
 - Treino: "exercício X de Y" no topo; uma linha de meta, com o porquê do RIR num toque; "Ocupado? Fazer <alternativa>" num botão só (antes eram sugestão + botão); séries feitas com rótulo em cima e valores embaixo; tipos de série numa linha; cronômetro compacto (`RestTimerPill compacto`) cobrindo menos da carga; "Finalizar treino" discreto enquanto há série a fazer.
 - Fim do treino (`/treino/feedback`): resumo (duração, séries de trabalho, descanso médio), recordes de hoje (`recordesDaSessao`), feedback por músculo, próximo treino com o dia, "O que muda na próxima vez" (sobe/mantém/desce, sem código de regra) e séries por músculo recolhidas. Smoke: `smoke:fim-treino`.
+
+## Reformulação 2.0: fases 4, 5 e 6
+- Semana (`/plano`): treinos fechados que abrem ao tocar (o próximo vem aberto); "Por que esse plano" em 3 linhas com "Ver mais"; equipamento e cuidados em texto (não parecem botões); "Bloco de 6 semanas" no lugar de "Mesociclo". Altura: 4.404 → 1.868 px.
+- Ajustar: só estilo, músculos prioritários, refazer com o coach e data de início. Peso, nível, dias, tempo, cardio, objetivo, equipamento e cuidados ficam só em Você (atalho "Editar em Você").
+- Você (`/perfil`): seção "Seu plano" (dias de treino, estilo e prioridades, refazer meu plano com o coach).
+- Evolução (`/progresso`): abas Semana · Força · Corpo (links `#cardio`, `#sono-agua`, `#forca` abrem a aba certa). Força em lista compacta; exercícios sem dado viram uma linha.
+- Textos: "Subindo volume"/"Carga mais alta"/"Pico de força" (antes Acúmulo…); "1 pesada + 2 mais leves" (antes "top → 2× back-off"); séries "Pesada"/"Mais leve" (antes Top/Back); meta "N séries de X–Y, parando com R reps sobrando"; "Semana 3 de 6".
+- Acessibilidade: cinza fraco com contraste ≥ 4,5:1; contorno de foco visível no teclado.

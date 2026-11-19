@@ -22,10 +22,8 @@ import {
   AlertaCard,
   Badge,
   Card,
-  EvidenciaBadge,
   ProgressBar,
   SectionTitle,
-  Stat,
 } from "@/components/ui";
 import { useClientValue } from "@/lib/use-client-value";
 import { faixaVolume, VOLUME_MAX, VOLUME_MIN } from "@/lib/domain";
@@ -56,6 +54,17 @@ export default function ProgressoPage() {
   const hojeDiag = useClientValue(() => hojeIsoSaoPaulo(), "");
   const [barsOn, setBarsOn] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);
+  type Aba = "semana" | "forca" | "corpo";
+  const abaDoLink = useClientValue<Aba | null>(() => {
+    const h = window.location.hash.replace("#", "");
+    return h === "cardio" || h === "sono-agua" || h === "corpo" ? "corpo" : h === "forca" ? "forca" : null;
+  }, null);
+  const [abaEscolhida, setAba] = useState<Aba | null>(null);
+  const aba: Aba = abaEscolhida ?? abaDoLink ?? "semana";
+  const trocarAba = (a: Aba) => {
+    setAba(a);
+    try { history.replaceState(null, "", a === "semana" ? location.pathname : `#${a}`); } catch { /* ignore */ }
+  };
   useEffect(() => {
     const id = requestAnimationFrame(() => setBarsOn(true));
     return () => cancelAnimationFrame(id);
@@ -105,14 +114,13 @@ export default function ProgressoPage() {
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
         Evolução
       </p>
-      <h1 className="mb-4 text-2xl font-bold">Evolução real</h1>
+      <h1 className="mb-4 text-2xl font-bold">Sua evolução</h1>
 
       {!temHistorico ? (
         <Card className="mb-6 border border-accent/20 bg-accent/5">
           <p className="text-sm font-semibold text-accent">Sem dados ainda</p>
           <p className="mt-1 text-sm text-muted">
-            Complete um treino e registre séries — volume, e1RM e PRs sobem só
-            com o que você fez de verdade.
+            Complete um treino e registre as séries. Volume, força e recordes aparecem só com o que você fez de verdade.
           </p>
           <Link
             href="/hoje"
@@ -123,6 +131,24 @@ export default function ProgressoPage() {
         </Card>
       ) : null}
 
+      <div role="tablist" aria-label="Evolução" className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-border bg-surface p-1">
+        {([["semana", "Semana"], ["forca", "Força"], ["corpo", "Corpo"]] as const).map(([id, rot]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={aba === id}
+            data-testid={`aba-${id}`}
+            onClick={() => trocarAba(id)}
+            className={`chip-motion flex min-h-11 items-center justify-center !rounded-xl text-sm font-semibold ${aba === id ? "on" : "!border-transparent text-muted"}`}
+          >
+            {rot}
+          </button>
+        ))}
+      </div>
+
+      {aba === "semana" ? (
+        <>
       {(() => {
         const rev = hojeDiag ? revisarSemana(state, hojeDiag) : null;
         return rev ? <RevisaoSemanalCard r={rev} /> : null;
@@ -136,7 +162,7 @@ export default function ProgressoPage() {
       <Card className="card-motion mb-6 space-y-4 motion-stagger">
         {vols.length === 0 && (
           <p className="text-sm text-muted">
-            Sem dados ainda — complete um treino.
+            Sem dados ainda: complete um treino.
           </p>
         )}
         {vols.map((v, vi) => {
@@ -246,47 +272,6 @@ export default function ProgressoPage() {
         )}
       </Card></div>
 
-      <SonoAguaSection />
-
-      <CardioSection />
-
-      <SectionTitle title="Força estimada (e1RM) e recordes" action={<ExplicaConceito id="rm" ctx={contextoPessoal(state)} />} />
-      <div className="mb-6 space-y-3 motion-stagger">
-        {estadosReais.length === 0 && (
-          <Card>
-            <p className="text-sm text-muted">
-              Sem dados ainda — complete um treino.
-            </p>
-          </Card>
-        )}
-        {estadosReais.map((e, i) => {
-          const ex = state.exercicios.find((x) => x.id === e.exercicio_id);
-          return (
-            <Card
-              key={e.exercicio_id}
-              className={`flex items-start justify-between gap-3 ${i === 0 ? "pr-pop" : ""}`}
-            >
-              <div className="min-w-0">
-                <p className="font-semibold">{ex?.nome ?? "Exercício"}</p>
-                <p className="text-xs text-muted">
-                  {e.pr_reps > 0
-                    ? `Recorde ${textoCarga(e.pr_carga_kg, ex, alternado(ex?.id))} × ${e.pr_reps}`
-                    : "Recorde: sem dados ainda"}{" "}
-                  · carga atual {textoCarga(e.carga_atual_kg, ex, alternado(ex?.id))}
-                </p>
-                {hojeDiag ? (
-                  <DiagnosticoExercicio
-                    diag={diagnosticarEstagnacao(state, e.exercicio_id, hojeDiag)}
-                    prev={preverForca(state.registros, e.exercicio_id, hojeDiag)}
-                  />
-                ) : null}
-              </div>
-              <Stat label="e1RM" value={e.pr_reps > 0 && e.e1rm_estimado_kg > 0 ? `${e.e1rm_estimado_kg}` : "—"} mono />
-            </Card>
-          );
-        })}
-      </div>
-
       <SectionTitle title="Consistência (4 semanas)" />
       <Card className="mb-6">
         <div className="mb-2 flex justify-between text-sm">
@@ -297,16 +282,67 @@ export default function ProgressoPage() {
         <p className="mt-2 text-xs text-muted">
           {temHistorico
             ? `${concluidas} ${concluidas === 1 ? "treino feito" : "treinos feitos"} nas últimas 4 semanas.`
-            : "Sem dados ainda — complete um treino."}
+            : "Sem dados ainda: complete um treino."}
         </p>
       </Card>
 
-      <SectionTitle title="Decisões recentes" />
+        </>
+      ) : null}
+
+      {aba === "forca" ? (
+        <>
+      <SectionTitle title="Força estimada e recordes" action={<ExplicaConceito id="rm" ctx={contextoPessoal(state)} />} />
+      {(() => {
+        const comDados = estadosReais.filter((e) => e.pr_reps > 0 && e.e1rm_estimado_kg > 0);
+        const semDados = estadosReais.length - comDados.length;
+        return (
+          <div className="mb-6" data-testid="forca-lista">
+            <Card className="!py-1">
+              {comDados.length === 0 ? (
+                <p className="py-3 text-sm text-muted">Sem dados ainda: complete um treino com séries de trabalho.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {comDados.map((e) => {
+                    const ex = state.exercicios.find((x) => x.id === e.exercicio_id);
+                    return (
+                      <li key={e.exercicio_id} className="py-3">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="min-w-0 truncate text-sm font-semibold">{ex?.nome ?? "Exercício"}</span>
+                          <span className="load-num shrink-0 text-sm">
+                            {e.e1rm_estimado_kg} <span className="text-xs text-muted">kg</span>
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted">
+                          Recorde {textoCarga(e.pr_carga_kg, ex, alternado(ex?.id))} × {e.pr_reps} · agora {textoCarga(e.carga_atual_kg, ex, alternado(ex?.id))}
+                        </p>
+                        {hojeDiag ? (
+                          <DiagnosticoExercicio
+                            diag={diagnosticarEstagnacao(state, e.exercicio_id, hojeDiag)}
+                            prev={preverForca(state.registros, e.exercicio_id, hojeDiag)}
+                          />
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </Card>
+            {semDados > 0 && comDados.length > 0 ? (
+              <p className="mt-2 text-xs text-muted">
+                {semDados} {semDados === 1 ? "exercício ainda sem" : "exercícios ainda sem"} série de trabalho registrada.
+              </p>
+            ) : null}
+            <p className="mt-2 text-xs text-faint">Força estimada = quanto você levantaria numa repetição só, calculado pelas suas séries.</p>
+          </div>
+        );
+      })()}
+
+      <SectionTitle title="Últimas mudanças de carga" />
       <div className="motion-stagger space-y-3">
         {state.decisoes.length === 0 && (
           <Card>
             <p className="text-sm text-muted">
-              Sem decisões ainda — o coach registra a decisão de cada exercício após cada sessão.
+              Ainda sem mudanças: depois de cada treino aparece aqui o que mudou na carga de cada exercício.
             </p>
           </Card>
         )}
@@ -316,7 +352,6 @@ export default function ProgressoPage() {
             <Card key={d.id}>
               <div className="mb-1 flex flex-wrap gap-2">
                 <Badge tone={d.acao === "subir_carga" ? "go" : d.acao === "reduzir_carga" || d.acao === "deload" ? "warn" : "muted"}>{labelAcao(d.acao)}</Badge>
-                <EvidenciaBadge evidencia={d.evidencia} />
               </div>
               <p className="text-sm">
                 {ex?.nome ?? "Exercício"} ·{" "}
@@ -329,6 +364,17 @@ export default function ProgressoPage() {
           );
         })}
       </div>
+        </>
+      ) : null}
+
+      {aba === "corpo" ? (
+        <>
+      <SonoAguaSection />
+
+      <CardioSection />
+
+        </>
+      ) : null}
     </main>
   );
 }

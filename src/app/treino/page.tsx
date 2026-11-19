@@ -55,16 +55,16 @@ const FASE_META: Record<
     hint: "Poucas reps perto da carga de trabalho, sem cansar",
   },
   top_set: {
-    label: "Top",
-    hint: "Série mais pesada do dia, no RIR alvo",
+    label: "Pesada",
+    hint: "Série mais pesada do dia, parando com as reps sobrando da meta",
   },
   back_off: {
-    label: "Back",
-    hint: "~10% mais leve, mesmo RIR: sai com mais reps",
+    label: "Mais leve",
+    hint: "~10% mais leve, mesma margem: sai com mais reps",
   },
   trabalho: {
     label: "Trabalho",
-    hint: "Série que vale, no RIR alvo",
+    hint: "Série que vale, parando com as reps sobrando da meta",
   },
   drop: {
     label: "Drop",
@@ -284,7 +284,7 @@ export default function TreinoPage() {
   }, []);
 
   const alvoLabel = presc
-    ? `Alvo: ${presc.series}×${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, RIR ${alvoRir}${prep === "completa" ? " · antes: aquecimento + aproximação" : prep === "aproximacao" ? " · antes: 1 aproximação (movimento novo)" : ""}${presc.tecnica_final ? ` · última série: ${nomeTecnica(presc.tecnica_final)}` : ""}`
+    ? `Meta: ${presc.series} séries de ${presc.faixa_reps[0]}–${presc.faixa_reps[1]}, parando com ${alvoRir} ${alvoRir === 1 ? "rep sobrando" : "reps sobrando"}${prep === "completa" ? " · antes: aquecimento + aproximação" : prep === "aproximacao" ? " · antes: 1 aproximação (movimento novo)" : ""}${presc.tecnica_final ? ` · última série: ${nomeTecnica(presc.tecnica_final)}` : ""}`
     : "";
 
   if (!sess) {
