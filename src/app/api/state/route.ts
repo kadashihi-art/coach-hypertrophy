@@ -10,6 +10,10 @@ import { readUserState, writeUserState } from "@/lib/user-state";
 import { validarEntradasNovas } from "@/lib/domain/limites";
 
 export async function GET() {
+  return comMotivo(lerEstado);
+}
+
+async function lerEstado() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,9 +49,9 @@ async function comMotivo(fn: () => Promise<Response>): Promise<Response> {
   } catch (e) {
     const nome = e instanceof Error ? e.name : "Erro";
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("[api/state] falha ao salvar", nome, msg);
+    console.error("[api/state] falha", nome, msg);
     return NextResponse.json(
-      { error: "Falha ao salvar", details: `${nome}: ${msg}`.replace(/\s+/g, " ").slice(0, 200) },
+      { error: "Falha no servidor", details: `${nome}: ${msg}`.replace(/\s+/g, " ").slice(0, 200) },
       { status: 500 },
     );
   }
