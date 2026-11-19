@@ -80,6 +80,7 @@ export default function HojePage() {
   // escolha manual vale só enquanto a sugerida não muda (ex.: acabou de concluir)
   const [picked, setPicked] = useState<{ id: string; sug: string | null } | null>(null);
   const [alertaFechado, setAlertaFechado] = useState(false);
+  const [rampaFechada, setRampaFechada] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);
   const [avisoEdicao, setAvisoEdicao] = useState<string | null>(null);
   // Faixa de dias: dia aberto no painel + rolagem inicial até hoje (uma vez).
@@ -478,6 +479,23 @@ export default function HojePage() {
               ×
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* Séries que sobem hoje: aparece também quando há um alerta (antes o alerta escondia este aviso). */}
+      {alertaUnico === "alerta" && deloadResumo && !rampaFechada ? (
+        <div className="motion-swap relative mb-4" data-testid="aviso-rampa">
+          <div className="rounded-2xl border border-accent/30 bg-[rgba(184,255,60,.08)] px-4 py-3 pr-10 text-sm text-accent">
+            {deloadResumo}
+          </div>
+          <button
+            type="button"
+            aria-label="Fechar aviso"
+            onClick={() => setRampaFechada(true)}
+            className="motion-press absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full text-muted"
+          >
+            ×
+          </button>
         </div>
       ) : null}
 
