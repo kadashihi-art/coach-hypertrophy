@@ -102,10 +102,12 @@ export default function CalendarioPage() {
     return (d.getUTCDay() + 6) % 7;
   }, [year, month0]);
 
-  const titulo = new Date(year, month0, 1).toLocaleDateString("pt-BR", {
+  // "novembro de 2026" → "Novembro de 2026" (antes o capitalize deixava "De" maiúsculo).
+  const tituloBruto = new Date(year, month0, 1).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
   });
+  const titulo = tituloBruto.charAt(0).toUpperCase() + tituloBruto.slice(1);
 
   const hojeIso = useClientValue<string | null>(hojeIsoSaoPaulo, null);
   const next = hydrated ? proximaSessao(state, hojeIso) : undefined;
@@ -125,10 +127,10 @@ export default function CalendarioPage() {
       <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
         Calendário
       </p>
-      <h1 className="mb-2 text-2xl font-bold capitalize">{titulo}</h1>
+      <h1 className="mb-2 text-2xl font-bold">{titulo}</h1>
       <p className="mb-3 text-sm text-muted">
         {dataInicio
-          ? `Início do meso: ${dataHumana(dataInicio)}`
+          ? `Início do bloco: ${dataHumana(dataInicio)}`
           : "Defina a data de início em Meu treino."}{" "}
         {next ? `· Próximo: ${next.nome}` : ""}
       </p>

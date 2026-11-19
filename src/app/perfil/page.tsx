@@ -436,7 +436,7 @@ export default function PerfilPage() {
 
   return (
     <main className="motion-fade-up motion-stagger px-5 pb-28 pt-8">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">Perfil</p>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">Você</p>
       <h1 className="mb-1 text-2xl font-bold">Seus dados</h1>
       <p className="mb-5 text-sm text-muted">
         Toque num campo pra editar. Se mudar o plano, eu te mostro o ajuste antes — nada muda sem você confirmar.

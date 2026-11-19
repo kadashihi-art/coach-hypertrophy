@@ -174,7 +174,7 @@ export default function FeedbackPage() {
         return (
           <Card className="mb-4 border-warn/40 bg-[rgba(255,184,60,.08)]">
             <p className="text-sm text-warn">
-              ⚠️ {bits.join(" e ")}. Já ajustei os próximos treinos. Veja os detalhes em Progresso.
+              ⚠️ {bits.join(" e ")}. Já ajustei os próximos treinos. Veja os detalhes em Evolução.
             </p>
           </Card>
         );

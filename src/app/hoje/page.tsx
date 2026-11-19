@@ -1,6 +1,5 @@
 "use client";
 
-import { VolumeBar } from "@/components/VolumeBar";
 import { alertaVolumeValido } from "@/lib/engine/alertas-volume";
 import { inicioDeUso } from "@/lib/inicio";
 import { semCodigoRegra } from "@/lib/llm/tom";
@@ -22,12 +21,11 @@ import { ativos, encurtarTreino, limparPulos, opcoesDeTempo } from "@/lib/inteli
 import { estimateDurationMin } from "@/lib/plan/gerar-plano";
 import { revisarSemana } from "@/lib/inteligencia/revisao-semanal";
 import {
-  AlertaCard,
   Button,
   Card,
   EvidenciaBadge,
 } from "@/components/ui";
-import { addDaysIso, semanaDoCalendario } from "@/lib/plan/calendario";
+import { addDaysIso } from "@/lib/plan/calendario";
 import { treinoAbertoAntigo } from "@/lib/treino/sessao-aberta";
 import {
   hojeIsoSaoPaulo,
@@ -38,6 +36,8 @@ import { agendaEfetiva, avisoPendente } from "@/lib/plan/pendente";
 import { projetarOcorrencias } from "@/lib/plan/projecao";
 import { faixaDeDias, TEXTO_STATUS, type StatusFaixa } from "@/lib/plan/faixa";
 import { DiaAcoes } from "@/components/DiaAcoes";
+import { MensagensCoach, type MensagemCoach } from "@/components/MensagensCoach";
+import { StatusConexao } from "@/components/StatusConexao";
 import { faseAtiva } from "@/lib/plan/estrutura";
 import { alvoEditarHoje } from "@/lib/plan/hoje-editar";
 import { EditarTreinoSheet } from "@/components/EditarTreinoSheet";
@@ -47,10 +47,9 @@ import {
   resumoAjusteDeload,
 } from "@/lib/engine/checkin-deload";
 import {
-  feedbackSono,
   resumoSonoCheckin,
 } from "@/lib/domain/sono";
-import { SonoAguaResumo } from "@/components/SonoAgua";
+import { useSonoAgua } from "@/components/SonoAgua";
 import { CardioResumo } from "@/components/Cardio";
 import {
   precisaResponderParq,
@@ -76,12 +75,15 @@ export default function HojePage() {
   // Treino marcado na lista; só muda depois de "Confirmar mudança".
   const [escolhaHoje, setEscolhaHoje] = useState<string | null>(null);
   const { alternado } = useModoCarga();
+  const sonoAgua = useSonoAgua(7);
   const router = useRouter();
   // escolha manual vale só enquanto a sugerida não muda (ex.: acabou de concluir)
   const [picked, setPicked] = useState<{ id: string; sug: string | null } | null>(null);
-  const [alertaFechado, setAlertaFechado] = useState(false);
-  const [rampaFechada, setRampaFechada] = useState(false);
   const [editar, setEditar] = useState<string | null>(null);
+  // "Tenho menos tempo": as opções de duração só aparecem quando pedidas.
+  const [tempoAberto, setTempoAberto] = useState(false);
+  // Meta de cada exercício (briefing): detalhe recolhido abaixo do treino.
+  const [briefingAberto, setBriefingAberto] = useState(false);
   const [avisoEdicao, setAvisoEdicao] = useState<string | null>(null);
   // Faixa de dias: dia aberto no painel + rolagem inicial até hoje (uma vez).
   const [diaAberto, setDiaAberto] = useState<string | null>(null);
@@ -289,8 +291,6 @@ export default function HojePage() {
     ? new Date(`${dataEfetiva(sess?.id)}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
     : null;
 
-  // Semana strip (seg→dom da semana atual, fuso SP)
-  const semana = hoje ? semanaDoCalendario(projetarOcorrencias(state, hoje, agenda), hoje, state.dias_limpos ?? []) : [];
   const consistencia = (() => {
     if (!hoje) return null;
     const ini = addDaysIso(hoje, -27);
@@ -299,14 +299,72 @@ export default function HojePage() {
     return { feitos: janela.filter((x) => x.status === "concluida").length, total: janela.length };
   })();
 
-  // Alerta único (prioridade: PAR-Q > alerta do plano > ajuste do check-in)
-  const alertaUnico = parqBloqueado
-    ? "parq"
-    : alerta && alerta.nivel !== "N0"
-      ? "alerta"
-      : deloadResumo
-        ? "deload"
-        : null;
+  // Avisos do coach num formato só, em ordem de prioridade: o Hoje mostra o primeiro e guarda o resto.
+  const mensagens: MensagemCoach[] = [];
+  if (parqBloqueado) {
+    mensagens.push({
+      id: "parq",
+      tom: "bloqueio",
+      titulo: "Plano pausado por segurança",
+      texto: "Uma resposta do questionário de saúde pede liberação profissional antes de treinar com progressão. Procure um médico ou profissional de saúde.",
+      acao: parqPendente ? { rotulo: "Responder triagem PAR-Q+", href: "/onboarding" } : { rotulo: "Abrir eparmedx.com", onClick: () => window.open("https://eparmedx.com/", "_blank", "noreferrer") },
+      fechavel: false,
+    });
+  }
+  if (syncErro) {
+    mensagens.push({
+      id: "sync",
+      tom: "atencao",
+      titulo: syncErro.startsWith("leitura") ? "Não consegui ler seus dados do servidor" : "Não consegui salvar no servidor",
+      texto: syncErro.startsWith("leitura")
+        ? "Este aparelho mostra só o que está guardado nele, então outro aparelho pode estar diferente."
+        : "Suas mudanças estão guardadas neste aparelho e sobem quando o servidor voltar.",
+      dica: /403|blocked|bloque/i.test(syncErro) ? `O armazenamento recusou o acesso (${syncErro}): confira o Blob no painel da Vercel.` : `Detalhe: ${syncErro}. Se continuar, me manda um print.`,
+    });
+  }
+  if (!parqBloqueado && alerta && alerta.nivel !== "N0") {
+    const ap = apresentarAlerta(alerta);
+    const alvo = ap.acao?.tipo === "revisar_treino" ? proximoTreinoParaAlerta(state, ap.acao.grupo) : null;
+    mensagens.push({
+      id: "alerta",
+      tom: ap.urgencia,
+      titulo: ap.titulo,
+      texto: ap.porque,
+      dica: ap.dica,
+      acao: ap.acao && alvo ? { rotulo: ap.acao.rotulo, onClick: () => { setAvisoEdicao(null); setEditar(alvo); } } : undefined,
+    });
+  }
+  if (aviso && sess?.id === agenda.pendentes[0]?.sessao_id) {
+    mensagens.push({ id: "pendente", tom: "atencao", titulo: aviso.titulo, texto: aviso.texto });
+  }
+  if (!parqBloqueado && deloadResumo) {
+    mensagens.push({ id: "rampa", tom: "info", titulo: ehSemanaDeload(meso) ? "Semana leve" : "Ajuste de hoje", texto: deloadResumo });
+  }
+  if (state.plano?.estrutura?.fases?.length && state.plano.mesociclo?.data_inicio && !state.perfil?.dias_treino_semana?.length) {
+    mensagens.push({
+      id: "dias",
+      tom: "info",
+      titulo: "Quais dias você treina?",
+      texto: "Marque os dias da semana pra o calendário bater com a sua rotina.",
+      acao: { rotulo: "Escolher dias", href: "/plano/calendario" },
+    });
+  }
+  // Sono, água e proteína: o mais urgente vira uma mensagem (antes era um cartão a mais na tela).
+  {
+    const ordem = { bloqueio: 0, atencao: 1, info: 2 } as const;
+    const top = [sonoAgua.sono, sonoAgua.agua, sonoAgua.proteina]
+      .filter((x): x is NonNullable<typeof x> => !!x)
+      .sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia])[0];
+    if (top) mensagens.push({ id: "sono-agua", tom: top.urgencia === "bloqueio" ? "atencao" : top.urgencia, titulo: top.titulo, texto: top.porque, acao: { rotulo: "Ver sono, água e proteína", href: "/progresso#sono-agua" } });
+  }
+  const tituloDia =
+    estadoHero === "andamento"
+      ? "Treino em andamento"
+      : estadoHero === "feito" || estadoHero === "proximo"
+        ? "Treino feito ✓"
+        : estadoHero === "descanso"
+          ? "Dia de descanso"
+          : "Bora treinar";
 
   // Opções pra trocar o treino de hoje: qualquer treino do plano (um já feito vira "repetir").
   // Treino aberto sem nenhuma série (tocou em Começar e voltou) também pode ser trocado.
@@ -369,6 +427,9 @@ export default function HojePage() {
     </button>
   ) : null;
 
+  // Séries do dia no cartão: já com rampa, ajuste por músculo, check-in e tempo curto (o mesmo que o treino vai usar).
+  const prescricoesHero =
+    estadoHero === "novo" ? ativos(tempoPreview?.prescricoes ?? deloadPreview?.prescricoes ?? sess?.prescricoes ?? []) : (sess?.prescricoes ?? []);
   const ctaDisabled = !sess || !!plano?.bloqueado || sess.prescricoes.length === 0 || parqBloqueado;
   const coachPergunta = sess
     ? `Por que ${sess.nome} hoje com esse volume?`
@@ -379,140 +440,28 @@ export default function HojePage() {
       {editar ? (
         <EditarTreinoSheet sessaoId={editar} onClose={() => setEditar(null)} onSalvo={(m) => setAvisoEdicao(m)} />
       ) : null}
-      <div className="mb-5 flex items-start justify-between gap-3">
+      <header className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-muted capitalize">
-            {hojeLabel || "Hoje"}
-          </p>
-          <h1 className="text-2xl font-bold">Bora treinar</h1>
+          <p className="text-xs uppercase tracking-wide text-muted capitalize">{hojeLabel || "Hoje"}</p>
+          <h1 className="text-2xl font-bold">{tituloDia}</h1>
           {plano && meso ? (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-xs text-muted">
-                {meso.semana_atual > meso.total_semanas ? (
-                  "Bloco concluído"
-                ) : (
-                  <>
-                    Meso · sem <span className="num text-go">{meso.semana_atual}</span>/{meso.total_semanas}
-                    {ehSemanaDeload(meso) ? " · deload" : ""}
-                  </>
-                )}
-              </span>
-              <div className="w-20">
-                <VolumeBar
-                  label="Mesociclo"
-                  valor={Math.min(meso.semana_atual, meso.total_semanas)}
-                  max={meso.total_semanas}
-                  faixa={null}
-                  cabecalho={false}
-                  unidade={`de ${meso.total_semanas} semanas`}
-                  fina
-                />
-              </div>
-            </div>
-          ) : null}
-          {fase && (state.plano?.estrutura?.fases.length ?? 0) > 1 ? (
-            <p className="mt-1 text-xs opacity-70">{fase.nome} · semanas {fase.semana_inicio}–{fase.semana_inicio + fase.semanas - 1}</p>
-          ) : null}
-        </div>
-        <span className="pill-offline">Offline</span>
-      </div>
-
-      {state.plano?.estrutura?.fases?.length && state.plano.mesociclo?.data_inicio && !state.perfil?.dias_treino_semana?.length ? (
-        <Link
-          href="/plano/calendario"
-          data-testid="aviso-dias-treino"
-          className="motion-press mb-4 block rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-bone-300"
-        >
-          Marque os dias da semana em que você treina pra o calendário bater com a sua rotina.{" "}
-          <span className="font-semibold text-accent">Escolher dias →</span>
-        </Link>
-      ) : null}
-
-      {syncErro ? (
-        <p role="status" data-testid="sync-erro" className="mb-4 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-          {syncErro.startsWith("leitura")
-            ? `Não consegui ler seus dados do servidor (${syncErro}). Este aparelho mostra só o que está guardado nele, então outro aparelho pode estar diferente.`
-            : `Não consegui salvar no servidor (${syncErro}). Suas mudanças estão guardadas neste aparelho.`}{" "}
-          {/403|blocked|bloque/i.test(syncErro) ? "O armazenamento recusou o acesso (403): confira o Blob no painel da Vercel." : "Se isso continuar, me manda um print."}
-        </p>
-      ) : null}
-
-      {alertaUnico && !alertaFechado ? (
-        <div className="motion-swap relative mb-4">
-          {alertaUnico === "parq" ? (
-            <Card className="border-danger/40 bg-danger/10 text-sm">
-              <p className="mb-1 font-bold text-danger">⛔ Plano pausado por segurança</p>
-              <p className="mb-2 text-muted">Uma resposta do questionário de saúde pede liberação profissional antes de treinar com progressão. Procure um médico ou profissional de saúde.</p>
-              {parqPendente ? (
-                <Link href="/onboarding" className="text-xs font-semibold text-accent underline">
-                  Responder triagem PAR-Q+
-                </Link>
+            <p className="mt-1 text-xs text-muted" data-testid="semana-bloco">
+              {meso.semana_atual > meso.total_semanas ? (
+                "Bloco concluído"
               ) : (
-                <a href="https://eparmedx.com/" target="_blank" rel="noreferrer" className="text-xs font-semibold text-accent underline">
-                  eparmedx.com
-                </a>
+                <>
+                  Semana <span className="num text-bone-50">{meso.semana_atual}</span> de {meso.total_semanas}
+                  {ehSemanaDeload(meso) ? " · semana leve (deload)" : ""}
+                  {fase && (state.plano?.estrutura?.fases.length ?? 0) > 1 ? ` · ${fase.nome}` : ""}
+                </>
               )}
-            </Card>
-          ) : alertaUnico === "alerta" && alerta ? (
-            (() => {
-              const ap = apresentarAlerta(alerta);
-              const alvo = ap.acao?.tipo === "revisar_treino" ? proximoTreinoParaAlerta(state, ap.acao.grupo) : null;
-              return (
-                <AlertaCard
-                  alerta={ap}
-                  onAcao={alvo ? () => { setAvisoEdicao(null); setEditar(alvo); } : undefined}
-                />
-              );
-            })()
-          ) : (
-            <div className="rounded-2xl border border-accent/30 bg-[rgba(184,255,60,.08)] px-4 py-3 pr-10 text-sm text-accent">
-              {deloadResumo}
-            </div>
-          )}
-          {alertaUnico !== "parq" ? (
-            <button
-              type="button"
-              aria-label="Fechar aviso"
-              onClick={() => setAlertaFechado(true)}
-              className="motion-press absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full text-muted"
-            >
-              ×
-            </button>
+            </p>
           ) : null}
         </div>
-      ) : null}
+        <StatusConexao />
+      </header>
 
-      {/* Séries que sobem hoje: aparece também quando há um alerta (antes o alerta escondia este aviso). */}
-      {alertaUnico === "alerta" && deloadResumo && !rampaFechada ? (
-        <div className="motion-swap relative mb-4" data-testid="aviso-rampa">
-          <div className="rounded-2xl border border-accent/30 bg-[rgba(184,255,60,.08)] px-4 py-3 pr-10 text-sm text-accent">
-            {deloadResumo}
-          </div>
-          <button
-            type="button"
-            aria-label="Fechar aviso"
-            onClick={() => setRampaFechada(true)}
-            className="motion-press absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full text-muted"
-          >
-            ×
-          </button>
-        </div>
-      ) : null}
-
-      <ReavaliacaoNivelCard />
-
-      {/* Fim do bloco: análise por músculo e proposta do próximo (só muda com confirmação). */}
-      {hojeSP ? <FechamentoBlocoCard hojeIso={hojeSP} /> : null}
-
-      {/* Revisão da semana: domingo (semana fechando) e segunda (semana que passou). */}
-      {revisao ? <RevisaoSemanalResumo r={revisao} /> : null}
-
-      {aviso && sess?.id === agenda.pendentes[0]?.sessao_id ? (
-        <Card className="mb-4 border border-warn/40 bg-[rgba(255,184,60,.08)]" data-testid="aviso-pendente">
-          <p className="text-sm font-semibold text-warn">{aviso.titulo}</p>
-          <p className="mt-1 text-sm text-muted">{aviso.texto}</p>
-        </Card>
-      ) : null}
+      <MensagensCoach mensagens={mensagens} />
 
       {/* Hero: Treino do dia */}
       {sess && (
@@ -560,7 +509,7 @@ export default function HojePage() {
             <>
               <h2 className="text-3xl font-bold tracking-tight">{sess.nome}</h2>
               <div className="mt-2 flex flex-wrap gap-2 text-sm text-bone-300">
-                <span className="num">~{sess.duracao_estimada_min} min</span>
+                <span className="num">~{estadoHero === "novo" ? (tempoPreview ? tempoPreview.duracao_depois : duracaoDia || sess.duracao_estimada_min) : sess.duracao_estimada_min} min</span>
                 <span>·</span>
                 <span>{sess.grupos.slice(0, 4).map((g) => labelGrupo(g).toLowerCase()).join(" · ")}</span>
               </div>
@@ -577,23 +526,32 @@ export default function HojePage() {
               {ultimaDecisao.motivo.length > 120 ? "…" : ""}
             </p>
           )}
-          {(estadoHero === "novo" && !(briefing && !parqBloqueado)) || estadoHero === "andamento" || estadoHero === "proximo" ? (
-            <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
-              {sess.prescricoes.slice(0, 5).map((p) => {
+          {estadoHero === "novo" || estadoHero === "andamento" || estadoHero === "proximo" ? (
+            <ul className="mt-3 space-y-1.5 border-t border-border pt-3" data-testid="hero-exercicios">
+              {prescricoesHero.slice(0, 4).map((p) => {
                 const ex = state.exercicios.find((e) => e.id === p.exercicio_id);
                 const est = state.estados.find((e) => e.exercicio_id === p.exercicio_id);
                 const carga = est?.alvo_proxima_sessao.carga_kg ?? p.carga.trabalho_kg;
                 return (
-                  <li key={p.id} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate">{ex?.nome ?? "Exercício"}</span>
-                    <span className="load-num shrink-0 text-muted">
-                      {textoCarga(carga, ex, alternado(ex?.id))} · {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]}
-                    </span>
+                  <li key={p.id} className="text-sm">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate font-medium">{ex?.nome ?? "Exercício"}</span>
+                      <span className="load-num shrink-0 text-bone-200">
+                        {p.series}×{p.faixa_reps[0]}–{p.faixa_reps[1]}
+                        {(() => {
+                          const base = sess.prescricoes.find((x) => x.id === p.id)?.series ?? p.series;
+                          return p.series !== base ? (
+                            <span className={p.series > base ? "text-accent" : "text-warn"}> ({p.series > base ? "+" : ""}{p.series - base})</span>
+                          ) : null;
+                        })()}
+                      </span>
+                    </div>
+                    <div className="load-num truncate text-xs text-muted">{textoCarga(carga, ex, alternado(ex?.id))}</div>
                   </li>
                 );
               })}
-              {sess.prescricoes.length > 5 ? (
-                <li className="text-xs text-faint">+{sess.prescricoes.length - 5} exercícios</li>
+              {prescricoesHero.length > 4 ? (
+                <li className="text-xs text-faint">+{prescricoesHero.length - 4} exercícios</li>
               ) : null}
             </ul>
           ) : null}
@@ -623,7 +581,7 @@ export default function HojePage() {
               </Link>
             ) : (
               <>
-              {estadoHero === "novo" && !parqBloqueado && opcoesDeTempo(duracaoDia).length > 0 ? (
+              {estadoHero === "novo" && !parqBloqueado && opcoesDeTempo(duracaoDia).length > 0 && (tempoAberto || tempoHoje !== null) ? (
                 <div className="mb-3" data-testid="tempo-curto">
                   <p className="mb-1.5 text-xs text-muted">Quanto tempo você tem hoje?</p>
                   <div className="flex flex-wrap gap-2">
@@ -655,7 +613,7 @@ export default function HojePage() {
               <Button onClick={iniciar} disabled={ctaDisabled} className="motion-cta-glow min-h-14 py-5 text-lg">
                 {estadoHero === "andamento"
                   ? `Continuar · série ${Math.min(feitas + 1, totalSeries || 1)}/${totalSeries}`
-                  : `Começar · ${sess.nome} · ~${tempoPreview ? tempoPreview.duracao_depois : sess.duracao_estimada_min} min`}
+                  : `Começar · ~${tempoPreview ? tempoPreview.duracao_depois : duracaoDia || sess.duracao_estimada_min} min`}
               </Button>
               </>
             )}
@@ -735,17 +693,30 @@ export default function HojePage() {
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  data-testid="hoje-trocar-treino"
-                  onClick={() => { setTrocarAberto(true); setEscolhaHoje(null); setAvisoEdicao(null); }}
-                  className="motion-press mt-2 min-h-11 w-full rounded-2xl border border-border text-sm font-semibold text-bone-50"
-                >
-                  {estadoHero === "descanso" ? "Treinar hoje mesmo assim" : "Trocar o treino de hoje"}
-                </button>
+                <div className="mt-2 grid grid-flow-col auto-cols-fr gap-2">
+                  {estadoHero === "novo" && !parqBloqueado && opcoesDeTempo(duracaoDia).length > 0 && !tempoAberto && tempoHoje === null ? (
+                    <button
+                      type="button"
+                      data-testid="abrir-tempo-curto"
+                      onClick={() => setTempoAberto(true)}
+                      className="motion-press min-h-11 rounded-2xl border border-border px-2 text-sm font-semibold text-bone-50"
+                    >
+                      Menos tempo
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    data-testid="hoje-trocar-treino"
+                    onClick={() => { setTrocarAberto(true); setEscolhaHoje(null); setAvisoEdicao(null); }}
+                    className="motion-press min-h-11 rounded-2xl border border-border px-2 text-sm font-semibold text-bone-50"
+                  >
+                    {estadoHero === "descanso" ? "Treinar hoje mesmo assim" : "Trocar treino"}
+                  </button>
+                </div>
               )
             ) : null}
-            {botaoEdicao}
+            {/* Corrigir um registro antigo do mesmo treino não faz sentido antes de começar: só depois de feito. */}
+            {alvoEdicao && !(estadoHero === "novo" && alvoEdicao.modo === "corrigir") ? botaoEdicao : null}
             {avisoEdicao ? (
               <p role="status" className="mt-2 text-xs text-muted">{avisoEdicao}</p>
             ) : null}
@@ -753,22 +724,59 @@ export default function HojePage() {
         </Card>
       )}
 
-      {/* Briefing: recuperação, ajustes do dia e meta de cada exercício (só antes de começar). */}
+      {/* Briefing: recuperação, ajustes do dia e meta de cada exercício (só antes de começar). Recolhido: abre ao tocar. */}
       {sess && briefing && estadoHero === "novo" && !parqBloqueado ? (
-        <BriefingTreino
-          briefing={briefing}
-          grupos={gruposPrincipaisDoTreino(sess.prescricoes, state.exercicios)}
-          ajustes={autoPreview ? textosAutorregulado(autoPreview, state.exercicios) : []}
-          trocar={(autoPreview?.trocar ?? []).map((t) => state.exercicios.find((e) => e.id === t.exercicio_id)?.nome ?? t.exercicio_id)}
-        />
+        (() => {
+          const ajustesHoje = autoPreview ? textosAutorregulado(autoPreview, state.exercicios) : [];
+          const trocarHoje = (autoPreview?.trocar ?? []).map((t) => state.exercicios.find((e) => e.id === t.exercicio_id)?.nome ?? t.exercicio_id);
+          if (briefingAberto || trocarHoje.length) {
+            return (
+              <BriefingTreino
+                briefing={briefing}
+                grupos={gruposPrincipaisDoTreino(sess.prescricoes, state.exercicios)}
+                ajustes={ajustesHoje}
+                trocar={trocarHoje}
+              />
+            );
+          }
+          return (
+            <button
+              type="button"
+              data-testid="abrir-briefing"
+              onClick={() => setBriefingAberto(true)}
+              className="motion-press mb-4 flex min-h-12 w-full items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-2 text-left text-sm"
+            >
+              <span className="min-w-0">
+                <span className="font-semibold">Meta de cada exercício</span>
+                <span className="block truncate text-xs text-muted">
+                  {ajustesHoje.length ? "Ajustei o volume pra hoje · " : ""}recuperação, carga e o que buscar
+                </span>
+              </span>
+              <span className="shrink-0 text-accent">›</span>
+            </button>
+          );
+        })()
       ) : null}
+
+      <ReavaliacaoNivelCard />
+
+      {/* Fim do bloco: análise por músculo e proposta do próximo (só muda com confirmação). */}
+      {hojeSP ? <FechamentoBlocoCard hojeIso={hojeSP} /> : null}
+
+      {/* Revisão da semana: domingo (semana fechando) e segunda (semana que passou). */}
+      {revisao ? <RevisaoSemanalResumo r={revisao} /> : null}
 
       {/* Faixa de dias: mesma agenda do calendário (datas reais). Tocar abre as ações do dia aqui. */}
       {faixa.length ? (
         <section aria-label="Seus dias de treino" className="mb-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs uppercase text-muted">Seus dias</p>
-            <Link href="/plano/calendario" className="text-xs font-semibold text-accent">Abrir calendário →</Link>
+            <p className="text-xs uppercase text-muted">
+              Sua semana
+              {consistencia ? (
+                <span className="normal-case text-faint"> · <span className="num text-bone-200">{consistencia.feitos}</span> de {consistencia.total} treinos em 4 semanas</span>
+              ) : null}
+            </p>
+            <Link href="/plano/calendario" className="shrink-0 text-xs font-semibold text-accent">Calendário ›</Link>
           </div>
           <div
             ref={faixaRef}
@@ -828,107 +836,42 @@ export default function HojePage() {
         </section>
       ) : null}
 
-      {/* Check-in: entrada única */}
-      {ck ? (
-        <Link href="/checkin" className="motion-press mb-4 block">
-          <Card>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted">Check-in de hoje · toque pra editar</p>
-              <span className="text-xs font-semibold text-go">feito</span>
-            </div>
-            <p className="mt-1 text-sm">
-              Prontidão <span className="num">{ck.prontidao}</span>/5 · Sono {resumoSonoCheckin(ck)}
-              {typeof ck.agua_ml === "number" ? ` · Água ${ck.agua_ml} ml` : ""}
-            </p>
-            {(() => {
-              const hist = state.checkins
-                .filter((c) => c.data !== ck.data)
-                .sort((a, b) => b.data.localeCompare(a.data))
-                .slice(0, 6);
-              const fb = feedbackSono(ck.sono_h, hist, ck.sono_inicio);
-              return (
-                <p className={`mt-1 text-xs ${fb.nivel === "baixo" || fb.nivel === "inconsistente" ? "text-warn" : fb.nivel === "ok" ? "text-go" : "text-muted"}`}>
-                  {fb.titulo}. {fb.dica}
-                </p>
-              );
-            })()}
-            {ck.prontidao <= 2 || ck.sono_h < 6 ? (
-              <p className="mt-1 text-xs text-warn">Sessão do dia ajustada: −1 série nos compostos (carga mantida).</p>
-            ) : null}
-          </Card>
-        </Link>
-      ) : (
+      {/* Atalhos do dia: check-in e cardio numa linha cada (o detalhe fica em Evolução). */}
+      <div className="mb-4 flex flex-col gap-2">
         <Link
           href="/checkin"
-          className="motion-press mb-4 flex min-h-12 items-center justify-between rounded-2xl border border-accent/60 px-4 py-3 text-sm"
+          data-testid="atalho-checkin"
+          className="motion-press flex min-h-12 items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-2 text-sm"
         >
-          <span className="font-semibold text-accent">Check-in 30s</span>
-          <span className="text-xs text-muted">sono, energia, dor →</span>
+          {ck ? (
+            <span className="min-w-0">
+              <span className="text-muted">Check-in </span>
+              <span className="font-semibold text-go">feito</span>
+              <span className="text-muted">
+                {" "}· disposição <span className="num text-bone-50">{ck.prontidao}</span>/5 · sono {resumoSonoCheckin(ck)}
+              </span>
+              {ck.prontidao <= 2 || ck.sono_h < 6 ? (
+                <span className="block text-xs text-warn">Treino de hoje ajustado: −1 série nos compostos, carga mantida.</span>
+              ) : null}
+            </span>
+          ) : (
+            <span className="min-w-0">
+              <span className="font-semibold text-accent">Check-in · 30 s</span>
+              <span className="text-muted"> · sono, energia, dor</span>
+            </span>
+          )}
+          <span className="shrink-0 text-accent">›</span>
         </Link>
-      )}
-
-      <CardioResumo />
-
-      <SonoAguaResumo />
-
-      {/* Semana strip → calendário */}
-      {semana.length ? (
-        <div className="mb-4 block">
-          <Card>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs uppercase text-muted">Semana</p>
-              <Link href="/plano/calendario" className="text-xs font-semibold text-accent">Calendário →</Link>
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {semana.map((d) => (
-                <Link
-                  key={d.iso}
-                  href={`/plano/calendario?dia=${d.iso}`}
-                  data-testid={`chip-${d.iso}`}
-                  aria-label={`${d.iso.slice(8)}/${d.iso.slice(5, 7)}${d.nome ? ` · ${d.nome}` : ""}: abrir no calendário`}
-                  className="motion-press flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg"
-                >
-                  <span className={`text-[10px] ${d.hoje ? "font-bold text-accent" : "text-faint"}`}>{d.label}</span>
-                  <span
-                    data-status={d.st}
-                    title={d.nome ?? undefined}
-                    className={`h-2.5 w-2.5 rounded-full ${
-                      d.st === "feito"
-                        ? "bg-accent"
-                        : d.st === "planejado"
-                          ? "border border-accent/70"
-                          : d.st === "em_andamento"
-                            ? "bg-accent/60"
-                            : d.st === "pulado"
-                              ? "bg-warn/50"
-                              : d.st === "limpo"
-                                ? "border border-dashed border-ink-600"
-                                : "bg-ink-800"
-                    } ${d.hoje ? "ring-2 ring-accent/40 ring-offset-1 ring-offset-transparent" : ""}`}
-                  />
-                </Link>
-              ))}
-            </div>
-            {consistencia ? (
-              <p className="mt-2 text-xs text-muted">
-                Últimas 4 semanas: <span className="num text-bone-50">{consistencia.feitos}</span> de {consistencia.total} treinos agendados
-              </p>
-            ) : !temAgenda ? (
-              <p className="mt-2 text-xs text-muted">Defina a data de início em Plano › Ajustar pra agendar a semana.</p>
-            ) : null}
-          </Card>
-        </div>
-      ) : null}
+        <CardioResumo compacto />
+      </div>
 
       {/* Atalho coach contextual */}
-      <Link href="/coach" className="motion-press mb-2 block">
-        <Card className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase text-muted">Pergunta pro coach</p>
-            <p className="truncate text-sm font-semibold">{coachPergunta}</p>
-          </div>
-          <span className="text-accent">→</span>
-        </Card>
+      <Link href="/coach" className="motion-press mb-2 flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border px-4 py-2" data-testid="atalho-coach">
+        <span className="min-w-0">
+          <span className="block text-xs text-muted">Pergunta pro coach</span>
+          <span className="block truncate text-sm font-semibold">{coachPergunta}</span>
+        </span>
+        <span className="text-accent">›</span>
       </Link>
     </main>
   );

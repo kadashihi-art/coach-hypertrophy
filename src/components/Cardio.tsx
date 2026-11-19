@@ -395,13 +395,35 @@ function BeneficiosCardio({ minutos }: { minutos: number }) {
 }
 
 /** Card compacto no Hoje. */
-export function CardioResumo() {
+export function CardioResumo({ compacto = false }: { compacto?: boolean } = {}) {
   const { hoje, meta, semana } = useCardio();
   const [sheet, setSheet] = useState<string | null>(null);
 
   if (!semana || !hoje) return null;
   // Sem meta e sem registro: não ocupa espaço no Hoje.
   if (meta <= 0 && semana.registros.length === 0) return null;
+
+  // Atalho de uma linha (Hoje): o detalhe por dia fica em Evolução.
+  if (compacto) {
+    return (
+      <div data-testid="cardio-resumo">
+        <div className="flex min-h-12 items-center justify-between gap-2 rounded-2xl border border-border bg-surface px-4 py-2">
+          <Link href="/progresso#cardio" className="min-w-0 text-sm">
+            <span className="text-muted">Cardio </span>
+            <span className="num font-semibold text-sky-300">{formatarMinutos(semana.minutos)}</span>
+            {meta > 0 ? <span className="text-muted"> de {formatarMinutos(meta)}</span> : null}
+            {semana.batido ? <span className="text-go"> · meta batida</span> : null}
+          </Link>
+          <button type="button" data-testid="cardio-registrar" onClick={() => setSheet(hoje)} className="motion-press shrink-0 text-xs font-semibold text-accent">
+            + Registrar
+          </button>
+        </div>
+        {sheet ? (
+          <CardioSheet hoje={hoje} registros={semana.registros} dataInicial={sheet} onClose={() => setSheet(null)} />
+        ) : null}
+      </div>
+    );
+  }
 
   const extras = [formatarKm(semana.distancia_km), formatarKcal(semana.calorias_kcal)].filter(
     (p): p is string => Boolean(p),

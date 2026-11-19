@@ -40,7 +40,7 @@ const tabs: Tab[] = [
   },
   {
     href: "/plano",
-    label: "Plano",
+    label: "Semana",
     also: ["/calendario", "/meu-treino"],
     icon: (
       <Ico>
@@ -51,7 +51,7 @@ const tabs: Tab[] = [
   },
   {
     href: "/progresso",
-    label: "Progresso",
+    label: "Evolução",
     icon: (
       <Ico>
         <path d="M5 20V13M12 20V6M19 20v-9" />
@@ -69,7 +69,7 @@ const tabs: Tab[] = [
   },
   {
     href: "/perfil",
-    label: "Perfil",
+    label: "Você",
     icon: (
       <Ico>
         <circle cx="12" cy="8.5" r="3.5" />
@@ -85,7 +85,7 @@ function isActive(pathname: string | null, t: Tab) {
   return roots.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 }
 
-/** Tabbar 5 abas: Hoje · Plano · Progresso · Coach · Perfil (docs/ia-nav-audit.md §3). */
+/** Tabbar 5 abas: Hoje · Semana · Evolução · Coach · Você (rotas: /hoje, /plano, /progresso, /coach, /perfil). */
 export function BottomNav() {
   const pathname = usePathname();
   const { state, ready } = useApp();
