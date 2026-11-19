@@ -429,7 +429,10 @@ export default function HojePage() {
 
       {syncErro ? (
         <p role="status" data-testid="sync-erro" className="mb-4 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
-          Não consegui salvar no servidor ({syncErro}). Suas mudanças estão guardadas neste aparelho. Se isso continuar, me manda um print.
+          {syncErro.startsWith("leitura")
+            ? `Não consegui ler seus dados do servidor (${syncErro}). Este aparelho mostra só o que está guardado nele, então outro aparelho pode estar diferente.`
+            : `Não consegui salvar no servidor (${syncErro}). Suas mudanças estão guardadas neste aparelho.`}{" "}
+          {/403|blocked|bloque/i.test(syncErro) ? "O armazenamento recusou o acesso (403): confira o Blob no painel da Vercel." : "Se isso continuar, me manda um print."}
         </p>
       ) : null}
 

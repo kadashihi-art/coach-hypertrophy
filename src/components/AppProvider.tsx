@@ -215,7 +215,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (!res.ok) {
+          // Sem ler o servidor, este aparelho mostra só o que tem guardado nele (outro aparelho pode ter mais).
+          let det = "";
+          try {
+            const j = (await res.json()) as { error?: string; details?: unknown };
+            det = [j.error, typeof j.details === "string" ? j.details : ""].filter(Boolean).join(": ");
+          } catch { /* sem corpo */ }
           if (!cancelled) {
+            setSyncErro(`leitura ${res.status}${det ? ` · ${det}` : ""}`);
             setState(local);
             setReady(true);
           }
@@ -312,10 +319,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .catch(() => {
           /* offline — local cache keeps working; tenta de novo na próxima mudança */
         });
-    }, 1500);
+    }, 4000);
+    // Saiu do app (trocou de aba, bloqueou a tela): envia já, sem esperar.
+    const aoSair = () => {
+      if (document.visibilityState === "hidden") {
+        window.clearTimeout(t);
+        void fetch("/api/state", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: corpo })
+          .then(async (r) => {
+            if (!r.ok) return;
+            const body = (await r.json()) as { updated_at: string };
+            ultimoSalvo.current = corpo;
+            saveSyncedAt(body.updated_at);
+            limparPendente(Date.now());
+          })
+          .catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", aoSair);
     return () => {
       window.clearTimeout(t);
       if (retry) window.clearTimeout(retry);
+      document.removeEventListener("visibilitychange", aoSair);
     };
   }, [state, ready, authenticated, tentarDeNovo]);
 

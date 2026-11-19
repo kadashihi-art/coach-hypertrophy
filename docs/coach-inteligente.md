@@ -181,3 +181,5 @@ O cartão do Hoje passa para o próximo treino, com o dia dele ("Próximo treino
 - O erro 500 agora vem com o motivo, curto, no aviso laranja.
 - O app não reenvia um estado igual ao que o servidor já tem, e o servidor não grava de novo o que não mudou (cada gravação gasta a cota do armazenamento).
 - Depois de um erro do servidor, o app tenta de novo sozinho em 1 minuto.
+- Leitura que falha ao abrir o app (ex.: 403 do Blob bloqueado) também aparece no aviso: o aparelho mostra só o que tem guardado, e outro aparelho pode estar diferente.
+- O envio espera 4 s sem mudança (antes 0,5 s) e sai na hora quando o app vai pro fundo. Menos gravações por treino.
