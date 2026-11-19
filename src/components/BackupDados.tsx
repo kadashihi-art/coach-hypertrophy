@@ -21,7 +21,7 @@ function Resumo({ r }: { r: ResumoBackup }) {
  * Exportar e importar seus dados. Lê e grava só neste aparelho, então funciona mesmo com o servidor
  * fora do ar. Importar troca os dados deste aparelho só depois do "Substituir".
  */
-export function BackupDados() {
+export function BackupDados({ soImportar = false, aoImportar }: { soImportar?: boolean; aoImportar?: () => void } = {}) {
   const { state, importarDados } = useApp();
   const inputRef = useRef<HTMLInputElement>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -70,19 +70,25 @@ export function BackupDados() {
   return (
     <section data-testid="backup-dados" aria-label="Cópia dos seus dados">
       <Card className="mb-3">
-        <p className="text-sm font-semibold">Cópia dos seus dados</p>
+        <p className="text-sm font-semibold">{soImportar ? "Já usava o app?" : "Cópia dos seus dados"}</p>
         <p className="mt-1 text-xs text-muted">
-          Leva seu histórico pra outro aparelho ou outro endereço do app. Funciona mesmo sem o servidor.
+          {soImportar
+            ? "Importe a cópia que você exportou (Perfil → Exportar meus dados) e continue de onde parou, sem refazer o cadastro."
+            : "Leva seu histórico pra outro aparelho ou outro endereço do app. Funciona mesmo sem o servidor."}
         </p>
-        <p className="mt-2 text-xs text-muted">
-          Neste aparelho: <Resumo r={atual} />
-        </p>
+        {soImportar ? null : (
+          <p className="mt-2 text-xs text-muted">
+            Neste aparelho: <Resumo r={atual} />
+          </p>
+        )}
         <div className="mt-3 flex gap-2">
-          <Button className="min-h-11 flex-1 text-sm" data-testid="exportar-dados" onClick={() => void exportar()}>
-            Exportar meus dados
-          </Button>
+          {soImportar ? null : (
+            <Button className="min-h-11 flex-1 text-sm" data-testid="exportar-dados" onClick={() => void exportar()}>
+              Exportar meus dados
+            </Button>
+          )}
           <Button variant="ghost" className="min-h-11 flex-1 text-sm" data-testid="importar-dados" onClick={() => inputRef.current?.click()}>
-            Importar
+            {soImportar ? "Importar cópia" : "Importar"}
           </Button>
         </div>
         <input
@@ -114,6 +120,7 @@ export function BackupDados() {
                   importarDados(pendente.state);
                   setPendente(null);
                   setAviso("Pronto: os dados da cópia estão neste aparelho.");
+                  aoImportar?.();
                 }}
               >
                 Substituir
