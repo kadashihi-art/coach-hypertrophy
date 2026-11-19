@@ -4,6 +4,7 @@ import { LIMITES_ENTRADA as LE, validarAltura, validarPeso } from "@/lib/domain/
 import { VolumeBar } from "@/components/VolumeBar";
 import { labelGrupo } from "@/lib/labels";
 import { useState, type ReactNode } from "react";
+import { BackupDados } from "@/components/BackupDados";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import { Button, Card, NumStepper } from "@/components/ui";
@@ -320,6 +321,7 @@ export default function OnboardingPage() {
     return (
       <main className="flex min-h-dvh flex-col px-5 pb-8 pt-6">
         {barraRefazer}
+        {!refazer ? <BackupDados soImportar aoImportar={() => router.push("/hoje")} /> : null}
         <ColetaCoach
           onFallback={(m) => { setAvisoFallback(m === "usuario" ? null : "O coach não respondeu agora — segue pelo formulário rápido."); setModo("form"); }}
           onPronto={(r) => {
@@ -384,6 +386,7 @@ export default function OnboardingPage() {
       </div>
 
       {barraRefazer}
+      {step === 0 && !refazer ? <BackupDados soImportar aoImportar={() => router.push("/hoje")} /> : null}
       {avisoFallback && <p className="mb-3 rounded-xl bg-white/5 px-3 py-2 text-xs text-muted">{avisoFallback}</p>}
       {coleta && step === LAST_STEP && <p className="mb-3 rounded-xl bg-accent/10 px-3 py-2 text-xs text-bone-200">Já entendi seu perfil. Antes de te mostrar o plano, uma triagem rápida de saúde (PAR-Q+) — é obrigatória e eu não pulo.</p>}
       <div key={step} className="motion-swap flex flex-1 flex-col">
