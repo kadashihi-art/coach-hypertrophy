@@ -69,7 +69,8 @@
     "smoke:inicio-treino": "npx --yes tsx scripts/smoke-inicio-treino.ts",
     "smoke:selecao-exercicios": "npx --yes tsx scripts/smoke-selecao-exercicios.ts",
     "smoke:agenda-semanal": "npx --yes tsx scripts/smoke-agenda-semanal.ts",
-    "smoke:backup": "npx --yes tsx scripts/smoke-backup.ts"
+    "smoke:backup": "npx --yes tsx scripts/smoke-backup.ts",
+    "smoke:fim-treino": "npx --yes tsx scripts/smoke-fim-treino.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.9.0",

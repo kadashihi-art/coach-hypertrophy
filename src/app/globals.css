@@ -604,10 +604,14 @@ body.sheet-open nav.fixed { display: none; }
 }
 /* no logger o CTA "Concluir série" fica no rodapé: o pill sobe acima dele */
 body:has(.thumb-zone) .rt-spacer { display: none; }
-.rt-spacer-logger { flex: none; height: calc(150px + env(safe-area-inset-bottom, 0px)); }
+.rt-spacer-logger { flex: none; height: calc(104px + env(safe-area-inset-bottom, 0px)); }
 body:has(.thumb-zone) .rt-pill { bottom: calc(var(--thumb-gap, 96px) + 8px); }
 body:has(nav.fixed) .rt-pill { bottom: calc(var(--tabbar-h) + 10px + env(safe-area-inset-bottom, 0px)); }
 .rt-tempo { font-size: 34px; line-height: 1; font-weight: 800; color: var(--accent); letter-spacing: -.02em; text-shadow: 0 0 14px rgba(184,255,60,.45); }
+/* No treino o cronômetro fica compacto: cobre menos da carga e das reps. */
+.rt-pill.rt-compacto { padding: 8px 10px 8px 12px; }
+.rt-compacto .rt-tempo { font-size: 24px; }
+.rt-compacto .rt-btn { padding: 7px 9px; font-size: 12px; }
 .rt-btn { border-radius: 14px; border: 1px solid var(--ink-600); padding: 9px 10px; font-size: 13px; font-weight: 700; color: var(--text); background: rgba(245,245,240,.04); transition: transform .12s; }
 .rt-btn:active { transform: scale(.94); }
 .rt-btn-main { background: var(--accent); color: #050505; border-color: var(--accent); }

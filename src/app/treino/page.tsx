@@ -562,8 +562,8 @@ export default function TreinoPage() {
           </Link>
           <div className="flex items-center gap-2">
             <StatusConexao />
-            <span className="num text-xs text-faint">
-              {prescIdx + 1}/{prescricoes.length}
+            <span className="num text-xs text-muted">
+              exercício {prescIdx + 1} de {prescricoes.length}
             </span>
           </div>
         </div>
@@ -587,40 +587,28 @@ export default function TreinoPage() {
           </button>
         </div>
 
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="text-sm text-muted">{alvoLabel}</div>
-          <EvidenciaBadge evidencia={presc.evidencia} />
-        </div>
+        <div className="mb-3 text-sm text-muted">{alvoLabel}</div>
         {rirDia.motivos.length > 0 ? (
-          <p data-testid="rir-do-dia" className="-mt-2 mb-3 text-[11px] leading-snug text-muted">
-            RIR {alvoRir} hoje: {rirDia.motivos.join(" ")}
-          </p>
+          <details className="-mt-2 mb-3 text-[11px] leading-snug text-muted" data-testid="rir-do-dia">
+            <summary className="cursor-pointer text-accent">Por que parar com {alvoRir} {alvoRir === 1 ? "rep sobrando" : "reps sobrando"} hoje?</summary>
+            <p className="mt-1">{rirDia.motivos.join(" ")}</p>
+          </details>
         ) : null}
 
-        {altEx && (
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-[14px] border border-border px-3 py-2 text-xs text-muted">
-            <span>
-              {ocupado ? "Usando" : "Sugestão"}:{" "}
-              <b className="text-accent">{ocupado ? altEx.nome : altEx.nome}</b>{" "}
-              (mesmo padrão: {labelPadrao(altEx.padrao)})
-            </span>
-            <button type="button" onClick={toggleOcupado} className="shrink-0 text-accent">
-              {ocupado ? "Voltar" : "Trocar"}
-            </button>
-          </div>
-        )}
         <div className="mb-4 flex gap-2">
           <button
             type="button"
             onClick={toggleOcupado}
             disabled={!altEx}
-            className={`flex-1 rounded-[14px] border py-2.5 text-xs ${
+            data-testid="aparelho-ocupado"
+            title={altEx ? `Mesmo padrão: ${labelPadrao(altEx.padrao)}` : undefined}
+            className={`min-w-0 flex-1 truncate rounded-[14px] border px-3 py-2.5 text-xs ${
               ocupado
                 ? "border-accent bg-[rgba(184,255,60,.12)] text-accent"
                 : "border-border text-muted"
             } disabled:opacity-40`}
           >
-            {ocupado ? "Usando alternativa" : "Ocupado"}
+            {ocupado ? `Usando ${altEx?.nome ?? "alternativa"} · voltar` : altEx ? `Ocupado? Fazer ${altEx.nome}` : "Ocupado"}
           </button>
           <button
             type="button"
@@ -748,7 +736,7 @@ export default function TreinoPage() {
                 hitFlash && idx === seriesDone.length - 1 ? "hit-flash" : ""
               }`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 flex-col items-start gap-0.5">
                 <span className="text-xs font-bold text-faint">
                   S{s.numero}
                 </span>
@@ -758,7 +746,7 @@ export default function TreinoPage() {
                 {s.dor && <span className="text-xs text-warn">dor</span>}
                 {s.tecnica ? <span className="text-[10px] font-semibold text-accent">{nomeTecnica(s.tecnica.tipo)}</span> : null}
               </div>
-              <span className="num text-sm font-bold">
+              <span className="num min-w-0 text-right text-sm font-bold">
                 {textoCarga(s.carga_kg, exPorId(s.exercicio_id), alternado(s.exercicio_id))} · {s.reps} reps · RIR {s.rir_percebido}
                 {s.tecnica?.reps_extra.length ? ` + ${s.tecnica.carga_extra_kg ? `${String(s.tecnica.carga_extra_kg).replace(".", ",")} kg × ` : ""}${s.tecnica.reps_extra.join("+")}` : ""}
               </span>
@@ -819,7 +807,8 @@ export default function TreinoPage() {
 
           {exercicioPendente && (
             <div key={`active-${presc.id}-${seriesDone.length}`} className="set-card expanded motion-expand p-4">
-              <div className="mb-1 flex flex-wrap gap-2">
+              {/* Tipos de série numa linha só (antes quebravam em duas). */}
+              <div className="mb-1 flex gap-1.5" role="group" aria-label="Tipo de série">
                 {FASE_ORDEM.filter((t) => fasesDoExercicio.has(t)).map((t) => (
                   <button
                     key={t}
@@ -829,7 +818,8 @@ export default function TreinoPage() {
                       if (t !== tipo && (t === "aquecimento" || tipo === "aquecimento")) setCarga(cargaDaFase(t));
                     }}
                     title={FASE_META[t].hint}
-                    className={`chip-motion text-xs ${tipo === t ? "on" : ""}`}
+                    aria-pressed={tipo === t}
+                    className={`chip-motion flex-auto whitespace-nowrap !px-2.5 text-xs ${tipo === t ? "on" : ""}`}
                   >
                     {FASE_META[t].label}
                   </button>
@@ -980,12 +970,13 @@ export default function TreinoPage() {
           </button>
         </div>
 
+        {/* Com série a fazer, o principal é "Concluir série": finalizar fica discreto (evita encerrar sem querer). */}
         <button
           type="button"
           onClick={finalizar}
-          className="btn btn-primary motion-press mt-3 w-full py-4 text-base"
+          className={`motion-press mt-3 w-full ${exercicioPendente ? "min-h-12 rounded-[14px] border border-border py-3 text-sm font-semibold text-bone-200" : "btn btn-primary py-4 text-base"}`}
         >
-          Finalizar sessão
+          Finalizar treino
         </button>
       </div>
 
@@ -1012,7 +1003,7 @@ export default function TreinoPage() {
           </Button>
         </div>
       )}
-      <RestTimerPill rt={rt} />
+      <RestTimerPill rt={rt} compacto />
     </main>
   );
 }

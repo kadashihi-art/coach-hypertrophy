@@ -13,7 +13,6 @@ import {
   Badge,
   Button,
   Card,
-  EvidenciaBadge,
   ProgressBar,
   SectionTitle,
 } from "@/components/ui";
@@ -21,6 +20,11 @@ import { comparacaoMeta, duracaoDaSessao, formatarDescanso } from "@/lib/engine/
 import type { LlmResponseEnvelope } from "@/lib/llm/contract";
 import { textoCarga } from "@/lib/catalog/tipo-carga";
 import { useModoCarga } from "@/lib/use-modo-carga";
+import { kgTexto, recordesDaSessao, textoAcao } from "@/lib/treino/fim-do-treino";
+import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
+import { agendaEfetiva } from "@/lib/plan/pendente";
+import { projetarOcorrencias } from "@/lib/plan/projecao";
+import { useClientValue } from "@/lib/use-client-value";
 
 /** T6 — Análise pós-treino com evidência, R# e volume vs planejado */
 export default function FeedbackPage() {
@@ -115,45 +119,84 @@ export default function FeedbackPage() {
   const analise = coach?.analise_pos_treino;
   const useApiCoach = coachStatus === "ok" && analise;
 
+  const recordes = lastSess ? recordesDaSessao(state, lastSess) : [];
+  // Dia de São Paulo só no cliente (no build não há "hoje").
+  const hojeSP = useClientValue<string | null>(hojeIsoSaoPaulo, null);
+  const proximo = (() => {
+    if (!hojeSP) return null;
+    const p = proximaSessao(state, hojeSP);
+    if (!p) return null;
+    const data = projetarOcorrencias(state, hojeSP, agendaEfetiva(state, hojeSP))
+      .filter((x) => x.status === "planejada" && !!x.data && x.data >= hojeSP && x.id.split("#")[0] === p.id)
+      .map((x) => x.data!)
+      .sort()[0];
+    const dia = data
+      ? data === hojeSP
+        ? "hoje"
+        : new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "numeric" })
+      : null;
+    return { nome: p.nome, dia };
+  })();
+  const dt = lastSess ? duracaoDaSessao(lastSess, state.registros) : null;
+  const metaTempo = dt ? comparacaoMeta(dt.duracao_min, state.perfil?.minutos_por_sessao) : null;
+  const nomeEx = (id: string) => state.exercicios.find((e) => e.id === id);
+
   return (
     <main className="motion-fade-up motion-stagger px-5 pb-8 pt-8">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">
-        Pós-treino
-      </p>
-      <h1 className="mb-1 text-2xl font-bold">
-        {lastSess?.nome ?? "Sessão"} concluída
-      </h1>
-      <p className="mb-4 text-sm text-muted">
-        {seriesCount} {seriesCount === 1 ? "série" : "séries"} de trabalho · regras de progressão aplicadas
-      </p>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-accent">Fim do treino</p>
+      <h1 className="text-2xl font-bold">Treino feito ✓</h1>
+      <p className="mb-4 text-sm text-muted">{lastSess?.nome ?? "Sessão"}</p>
 
-      {(() => {
-        const dt = lastSess ? duracaoDaSessao(lastSess, state.registros) : null;
-        if (!dt) return null;
-        const meta = comparacaoMeta(dt.duracao_min, state.perfil?.minutos_por_sessao);
-        return (
-          <section data-testid="duracao-treino" aria-label="Duração do treino"><Card className="mb-4">
-            <div className="flex justify-around text-center">
-              <div>
-                <p className="load-num text-2xl font-bold">{dt.duracao_min} min</p>
-                <p className="text-xs text-muted">Duração</p>
-              </div>
-              <div>
-                <p className="load-num text-2xl font-bold">
-                  {dt.descanso_medio_s != null ? formatarDescanso(dt.descanso_medio_s) : "—"}
-                </p>
-                <p className="text-xs text-muted">Descanso médio real</p>
-              </div>
+      <section data-testid="duracao-treino" aria-label="Resumo do treino">
+        <Card className="mb-4">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="load-num text-2xl font-bold">{dt ? `${dt.duracao_min}` : "—"}<span className="text-sm font-normal text-muted"> min</span></p>
+              <p className="text-xs text-muted">duração</p>
             </div>
-            {meta ? <p className="mt-3 text-center text-sm text-muted">{meta}</p> : null}
-            {dt.pausas_ignoradas > 0 ? (
-              <p className="mt-1 text-center text-xs text-muted">
-                {dt.pausas_ignoradas === 1 ? "Uma pausa longa ficou fora da conta." : `${dt.pausas_ignoradas} pausas longas ficaram fora da conta.`}
-              </p>
-            ) : null}
-          </Card></section>
-        );
-      })()}
+            <div>
+              <p className="load-num text-2xl font-bold">{seriesCount}</p>
+              <p className="text-xs text-muted">{seriesCount === 1 ? "série de trabalho" : "séries de trabalho"}</p>
+            </div>
+            <div>
+              <p className="load-num text-2xl font-bold">{dt?.descanso_medio_s != null ? formatarDescanso(dt.descanso_medio_s) : "—"}</p>
+              <p className="text-xs text-muted">descanso médio</p>
+            </div>
+          </div>
+          {metaTempo ? <p className="mt-3 text-center text-xs text-muted">{metaTempo}</p> : null}
+          {dt && dt.pausas_ignoradas > 0 ? (
+            <p className="mt-1 text-center text-xs text-muted">
+              {dt.pausas_ignoradas === 1 ? "Uma pausa longa ficou fora da conta." : `${dt.pausas_ignoradas} pausas longas ficaram fora da conta.`}
+            </p>
+          ) : null}
+        </Card>
+      </section>
+
+      {recordes.length ? (
+        <section data-testid="recordes" aria-label="Recordes">
+          <Card className="mb-4 border border-go/35">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-semibold">Recordes de hoje</p>
+              <Badge tone="go">{recordes.length === 1 ? "1 novo" : `${recordes.length} novos`}</Badge>
+            </div>
+            <ul className="space-y-2">
+              {recordes.map((r) => {
+                const ex = nomeEx(r.exercicio_id);
+                return (
+                  <li key={r.exercicio_id} className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="min-w-0 truncate">{ex?.nome ?? r.exercicio_id}</span>
+                    <span className="load-num shrink-0 text-right">
+                      <span className="text-go">{kgTexto(r.atual.carga_kg)} kg × {r.atual.reps}</span>
+                      <span className="block text-xs text-muted">antes {kgTexto(r.antes.carga_kg)} × {r.antes.reps}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-2 text-xs text-muted">Comparado pela força estimada: mais carga ou mais reps na mesma carga.</p>
+          </Card>
+        </section>
+      ) : null}
 
       {(() => {
         const volAlerts = state.alertas.filter(
@@ -182,72 +225,65 @@ export default function FeedbackPage() {
 
       {lastSess ? <FeedbackPosTreino sessao={lastSess} /> : null}
 
-      <SectionTitle title="Volume vs planejado" />
-      <Card className="card-motion mb-4 space-y-3">
-        {volumeVs.length === 0 && (
-          <p className="text-sm text-muted">
-            Sem volume registrado — conclua séries no logger.
-          </p>
-        )}
-        {volumeVs.map((v) => (
-          <div key={v.grupo}>
-            <div className="mb-1 flex justify-between text-sm">
-              <span>{labelGrupo(v.grupo)}</span>
-              <span className="load-num text-muted">
-                {v.realizado}/{v.planejado}
-              </span>
-            </div>
-            <ProgressBar
-              value={v.realizado}
-              max={Math.max(v.planejado, 1)}
-              tone={v.realizado >= v.planejado ? "go" : "accent"}
-            />
-          </div>
-        ))}
-      </Card>
-
-      <SectionTitle title="Decisões de progressão" />
-      <div className="mb-4 space-y-3 motion-stagger">
-        {decisoes.length === 0 && (
-          <Card>
-            <p className="text-sm text-muted">
-              Nenhuma decisão nesta sessão (registre séries no logger).
+      {proximo ? (
+        <section data-testid="proximo-treino" aria-label="Próximo treino">
+          <Card className="mb-4 border border-accent/30">
+            <p className="text-xs uppercase tracking-wide text-muted">Próximo treino</p>
+            <p className="text-lg font-bold">
+              {proximo.nome}
+              {proximo.dia ? <span className="text-sm font-normal capitalize text-muted"> · {proximo.dia}</span> : null}
             </p>
           </Card>
-        )}
-        {decisoes.map((d) => {
-          const ex = state.exercicios.find((e) => e.id === d.exercicio_id);
-          return (
-            <Card key={d.id} className="card-motion">
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <Badge tone="accent">{d.regra}</Badge>
-                <Badge
-                  tone={
-                    d.acao === "subir_carga"
-                      ? "go"
-                      : d.acao === "reduzir_carga" || d.acao === "deload"
-                        ? "warn"
-                        : d.acao === "suspender"
-                          ? "danger"
-                          : "muted"
-                  }
-                >
-                  {d.acao.replace(/_/g, " ")}
-                </Badge>
-                <EvidenciaBadge evidencia={d.evidencia} />
-              </div>
-              <p className="font-semibold">{ex?.nome ?? d.exercicio_id}</p>
-              <p className="load-num mt-1 text-lg">
-                {String(d.carga_anterior_kg).replace(".", ",")} → {textoCarga(d.nova_carga_kg, ex, alternado(ex?.id))}
-                {d.faixa_reps_reiniciada ? " · faixa reiniciada" : ""}
-              </p>
-              <p className="mt-2 text-sm text-muted">{semCodigoRegra(d.motivo)}</p>
-            </Card>
-          );
-        })}
+        </section>
+      ) : null}
+
+      <SectionTitle title="O que muda na próxima vez" />
+      <div className="mb-4">
+        <Card>
+          {decisoes.length === 0 ? (
+            <p className="text-sm text-muted">Sem séries de trabalho registradas, então as cargas ficam como estavam.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {decisoes.map((d) => {
+                const ex = nomeEx(d.exercicio_id);
+                const a = textoAcao(d.acao);
+                return (
+                  <li key={d.id} className="py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate text-sm font-semibold">{ex?.nome ?? d.exercicio_id}</span>
+                      <Badge tone={a.tom}>{a.texto}</Badge>
+                    </div>
+                    <p className="load-num mt-0.5 text-sm text-bone-200">
+                      {d.nova_carga_kg !== d.carga_anterior_kg ? `${kgTexto(d.carga_anterior_kg)} → ` : ""}
+                      {textoCarga(d.nova_carga_kg, ex, alternado(ex?.id))}
+                      {d.faixa_reps_reiniciada ? " · reps voltam pro começo da faixa" : ""}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">{semCodigoRegra(d.motivo)}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
       </div>
 
-      <SectionTitle title="Pontos (coach)" />
+      <details className="mb-4 rounded-2xl border border-border bg-surface px-4 py-3" data-testid="volume-vs-planejado">
+        <summary className="cursor-pointer text-sm font-semibold">Séries por músculo: feito × planejado</summary>
+        <div className="mt-3 space-y-3">
+          {volumeVs.length === 0 && <p className="text-sm text-muted">Sem séries registradas.</p>}
+          {volumeVs.map((v) => (
+            <div key={v.grupo}>
+              <div className="mb-1 flex justify-between text-sm">
+                <span>{labelGrupo(v.grupo)}</span>
+                <span className="load-num text-muted">{v.realizado}/{v.planejado}</span>
+              </div>
+              <ProgressBar value={v.realizado} max={Math.max(v.planejado, 1)} tone={v.realizado >= v.planejado ? "go" : "accent"} />
+            </div>
+          ))}
+        </div>
+      </details>
+
+      <SectionTitle title="O coach sobre o treino" />
       <Card className="mb-4">
         {coachStatus === "loading" && (
           <p className="mb-3 text-sm text-muted">Coach analisando a sessão…</p>
@@ -261,17 +297,17 @@ export default function FeedbackPage() {
           </p>
         ) : null}
 
-        <p className="mb-2 text-sm font-semibold text-go">Fortes</p>
+        <p className="mb-2 text-sm font-semibold text-go">O que foi bem</p>
         <ul className="mb-3 list-disc pl-4 text-sm text-muted">
           {useApiCoach ? (
             analise.pontos_fortes.map((t, i) => <li key={`f-${i}`}>{t}</li>)
           ) : (
             <>
               {decisoes.some((d) => d.acao === "subir_carga") ? (
-                <li>Progressão aplicada — carga sobe com base nas suas séries.</li>
+                <li>Carga subiu onde as suas séries mostraram margem.</li>
               ) : (
                 <li>
-                  Sessão registrada. O coach avaliou cada exercício com séries.
+                  Treino registrado. Cada exercício com série de trabalho foi avaliado.
                 </li>
               )}
               {decisoes
@@ -282,15 +318,14 @@ export default function FeedbackPage() {
                   );
                   return (
                     <li key={d.id}>
-                      {ex?.nome}: {String(d.carga_anterior_kg).replace(".", ",")}→{textoCarga(d.nova_carga_kg, ex, alternado(ex?.id))} (
-                      {d.regra})
+                      {ex?.nome}: {kgTexto(d.carga_anterior_kg)} → {textoCarga(d.nova_carga_kg, ex, alternado(ex?.id))}
                     </li>
                   );
                 })}
             </>
           )}
         </ul>
-        <p className="mb-2 text-sm font-semibold text-warn">Fracos / ajustes</p>
+        <p className="mb-2 text-sm font-semibold text-warn">O que ajustar</p>
         <ul className="list-disc pl-4 text-sm text-muted">
           {useApiCoach ? (
             <>
@@ -318,7 +353,7 @@ export default function FeedbackPage() {
                   );
                   return (
                     <li key={d.id}>
-                      {ex?.nome}: {d.regra} — {d.acao.replace(/_/g, " ")}
+                      {ex?.nome}: {textoAcao(d.acao).texto}. {semCodigoRegra(d.motivo)}
                     </li>
                   );
                 })}
@@ -330,8 +365,7 @@ export default function FeedbackPage() {
         </ul>
         {coachStatus === "err" && (
           <p className="mt-3 text-xs text-muted">
-            Coach indisponível agora — resumo local (as cargas continuam
-            calculadas pelo app).
+            O coach não respondeu agora. Este é o resumo do próprio app, e as cargas continuam calculadas normalmente.
           </p>
         )}
       </Card>
@@ -343,7 +377,7 @@ export default function FeedbackPage() {
         href="/progresso"
         className="mt-3 block text-center text-sm text-muted"
       >
-        Ver progresso →
+        Ver evolução →
       </Link>
     </main>
   );

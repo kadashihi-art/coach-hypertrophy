@@ -198,3 +198,7 @@ Proposta completa: artifact "Coach Hypertrophy 2.0" (diagnóstico, mapa de abas,
 - `StatusConexao`: o selo "Offline" só aparece sem internet.
 - Hoje: cartão do treino com as séries do dia já ajustadas ("4×6–12 (+1)"), um botão "Começar" e, lado a lado, "Menos tempo" e "Trocar treino". "Corrigir registro" não aparece antes de começar. A meta de cada exercício abre ao tocar (abre sozinha se algum exercício incomodou a articulação). Check-in e cardio viram uma linha cada; a faixa de dias é uma só.
 - Altura do Hoje no celular (390 px, dados de teste): 2.260 → 1.470 px.
+
+## Reformulação 2.0: fase 2 (treino + fim do treino)
+- Treino: "exercício X de Y" no topo; uma linha de meta, com o porquê do RIR num toque; "Ocupado? Fazer <alternativa>" num botão só (antes eram sugestão + botão); séries feitas com rótulo em cima e valores embaixo; tipos de série numa linha; cronômetro compacto (`RestTimerPill compacto`) cobrindo menos da carga; "Finalizar treino" discreto enquanto há série a fazer.
+- Fim do treino (`/treino/feedback`): resumo (duração, séries de trabalho, descanso médio), recordes de hoje (`recordesDaSessao`), feedback por músculo, próximo treino com o dia, "O que muda na próxima vez" (sobe/mantém/desce, sem código de regra) e séries por músculo recolhidas. Smoke: `smoke:fim-treino`.
