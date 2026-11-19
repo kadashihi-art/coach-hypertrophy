@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -170,6 +171,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(seedState);
   const [ready, setReady] = useState(false);
   const [syncErro, setSyncErro] = useState<string | null>(null);
+  // Último estado que o servidor confirmou (não reenvia igual) e gatilho pra tentar de novo após erro.
+  const ultimoSalvo = useRef<string | null>(null);
+  const [tentarDeNovo, setTentarDeNovo] = useState(0);
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
   const authenticated = status === "authenticated" && Boolean(userId);
@@ -230,6 +234,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           !localSynced ||
           (pendente ? body.updated_at > localSynced : body.updated_at >= localSynced);
         const next = preferServer ? corrigirDataDoTreinoNoturno(body.state) : local;
+        // Veio do servidor: não reenvia a mesma coisa ao abrir o app.
+        if (preferServer) ultimoSalvo.current = JSON.stringify(body.state);
         saveState(next);
         saveSyncedAt(body.updated_at);
         if (!preferServer) {
@@ -272,13 +278,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveState(state);
     if (!authenticated) return;
     // Até o servidor confirmar, a mudança fica marcada como pendente (não some ao reabrir o app).
+    const corpo = JSON.stringify(state);
+    // Igual ao que o servidor já tem: nada a enviar (cada gravação gasta a cota do armazenamento).
+    if (corpo === ultimoSalvo.current) return;
     marcarPendente();
+    let retry: number | undefined;
     const t = window.setTimeout(() => {
       const enviadoEm = Date.now();
       void fetch("/api/state", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state),
+        body: corpo,
       })
         .then(async (r) => {
           if (!r.ok) {
@@ -289,9 +299,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
               det = [j.error, typeof j.details === "string" ? j.details : j.details ? JSON.stringify(j.details).slice(0, 160) : ""].filter(Boolean).join(": ");
             } catch { /* sem corpo */ }
             setSyncErro(`${r.status}${det ? ` · ${det}` : ""}`);
+            // Erro do servidor: tenta de novo sozinho em 1 min (dado inválido, 4xx, não adianta repetir).
+            if (r.status >= 500) retry = window.setTimeout(() => setTentarDeNovo((n) => n + 1), 60_000);
             return;
           }
           const body = (await r.json()) as { updated_at: string };
+          ultimoSalvo.current = corpo;
           saveSyncedAt(body.updated_at);
           limparPendente(enviadoEm);
           setSyncErro(null);
@@ -299,9 +312,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .catch(() => {
           /* offline — local cache keeps working; tenta de novo na próxima mudança */
         });
-    }, 500);
-    return () => window.clearTimeout(t);
-  }, [state, ready, authenticated]);
+    }, 1500);
+    return () => {
+      window.clearTimeout(t);
+      if (retry) window.clearTimeout(retry);
+    };
+  }, [state, ready, authenticated, tentarDeNovo]);
 
   const updatePerfil = useCallback((partial: Partial<Perfil>) => {
     setState((s) => {

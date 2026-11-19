@@ -164,3 +164,20 @@ Agora, para planos com fases:
 - Parcial aparece como feito.
 
 Planos antigos sem fases continuam com a agenda legada. Smoke: `smoke:agenda-semanal`.
+
+### Dias da semana escolhidos (`perfil.dias_treino_semana`)
+Relato do uso: mesmo com a agenda única, o calendário ainda não batia com a rotina. Causa: as folgas do microciclo são posições contadas da data de início do plano ("dia 1, dia 4"). Com início numa quarta, a folga do "dia 1" caía na quarta, e o domingo virava dia de treino.
+
+Agora:
+- No calendário, o card "Em quais dias você treina?" marca os dias da semana (ex.: seg, ter, qui, sex, sáb). Ele já vem com os dias que o calendário usa, e só grava com "Salvar dias". O número de dias tem que ser igual ao de treinos da semana.
+- Com os dias salvos, o k-ésimo treino de cada semana do plano cai no k-ésimo dia escolhido, na ordem do microciclo. Folga e pendente seguem as mesmas regras de antes.
+- Só muda as datas. O treino, as séries e o plano salvo não mudam.
+- Sem os dias salvos, vale o microciclo como antes. O Hoje mostra um aviso com o link "Escolher dias".
+
+### Depois de concluir o treino do dia
+O cartão do Hoje passa para o próximo treino, com o dia dele ("Próximo treino · sexta-feira") e a linha "✓ Hoje: Lower A feito". Embaixo ficam "Ver semana" e "Adiantar pra hoje".
+
+### Falha ao salvar no servidor
+- O erro 500 agora vem com o motivo, curto, no aviso laranja.
+- O app não reenvia um estado igual ao que o servidor já tem, e o servidor não grava de novo o que não mudou (cada gravação gasta a cota do armazenamento).
+- Depois de um erro do servidor, o app tenta de novo sozinho em 1 minuto.

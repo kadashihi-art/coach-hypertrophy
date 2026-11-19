@@ -11,8 +11,10 @@
  *   a semana recomeça (uma pausa longa não empurra o plano todo).
  * - Dias limpos, dias com treino feito/em andamento/pulado e dias marcados à mão não recebem outro treino.
  * - Passado não é inventado: antes de hoje só aparece o que aconteceu de verdade.
+ * - Com `perfil.dias_treino_semana` (ex.: seg, ter, qui, sex, sáb), os treinos caem nesses dias da
+ *   semana, na ordem do microciclo; sem isso, valem as posições do microciclo contadas da data de início.
  */
-import type { AppState, FasePlano, Plano, Sessao } from "@/lib/domain";
+import type { AppState, FasePlano, Perfil, Plano, Sessao } from "@/lib/domain";
 
 const DIA_MS = 86400_000;
 const somaDias = (iso: string, n: number) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * DIA_MS).toISOString().slice(0, 10);
@@ -47,11 +49,24 @@ export function semanaDoPlano(dataInicio: string, iso: string): number {
   return Math.floor(diasEntre(dataInicio, iso) / 7) + 1;
 }
 
-/** Dia de treino pelo microciclo da fase daquela semana (antes do início: nunca). */
-export function ehDiaDeTreino(plano: Pick<Plano, "mesociclo" | "estrutura">, iso: string): boolean {
+/** Dia da semana (0 = domingo) de uma data AAAA-MM-DD. */
+export const diaDaSemana = (iso: string) => new Date(`${iso}T12:00:00Z`).getUTCDay();
+
+/** Dias da semana escolhidos pelo usuário (sem repetição, em ordem), ou null. */
+export function diasEscolhidos(perfil: Pick<Perfil, "dias_treino_semana"> | null | undefined): number[] | null {
+  const d = perfil?.dias_treino_semana;
+  return d?.length ? [...new Set(d)].sort((a, b) => a - b) : null;
+}
+
+/**
+ * Dia de treino: pelos dias da semana escolhidos, se houver; senão pelo microciclo da fase daquela
+ * semana (antes do início: nunca).
+ */
+export function ehDiaDeTreino(plano: Pick<Plano, "mesociclo" | "estrutura">, iso: string, dias?: number[] | null): boolean {
   const ini = plano.mesociclo?.data_inicio;
   const fases = plano.estrutura?.fases;
   if (!ini || !fases?.length || iso < ini) return false;
+  if (dias?.length) return dias.includes(diaDaSemana(iso));
   const semana = semanaDoPlano(ini, iso);
   const off = diasEntre(ini, iso) % 7;
   return faseDaSemana(fases, semana).microciclo.some((d) => d.dia === off && !!d.sessao_id);
@@ -72,11 +87,19 @@ export function montarAgendaSemanal(
   const validos = new Set(state.sessoes.filter((s) => ehBase(s) && (s.prescricoes?.length ?? 0) > 0).map((s) => s.id));
   const totalSemanas = Math.max(plano.mesociclo.total_semanas || 6, ...fases.map((f) => f.semana_inicio + f.semanas - 1));
   const inicioSemana = (w: number) => somaDias(ini, (w - 1) * 7);
-  const daSemana = (w: number) =>
-    [...faseDaSemana(fases, w).microciclo]
+  const dias = diasEscolhidos(state.perfil);
+  // Com dias escolhidos: o k-ésimo treino da semana do plano cai no k-ésimo dia escolhido dela.
+  const diasDaSemanaDoPlano = (w: number) =>
+    dias ? Array.from({ length: 7 }, (_, i) => somaDias(inicioSemana(w), i)).filter((d) => dias.includes(diaDaSemana(d))) : [];
+  const daSemana = (w: number) => {
+    const itens = [...faseDaSemana(fases, w).microciclo]
       .filter((d) => !!d.sessao_id && validos.has(d.sessao_id))
-      .sort((a, b) => a.dia - b.dia)
-      .map((d) => ({ id: d.sessao_id!, previsto: somaDias(inicioSemana(w), d.dia) }));
+      .sort((a, b) => a.dia - b.dia);
+    if (!dias) return itens.map((d) => ({ id: d.sessao_id!, previsto: somaDias(inicioSemana(w), d.dia) }));
+    const datas = diasDaSemanaDoPlano(w);
+    const ultimo = datas[datas.length - 1] ?? somaDias(inicioSemana(w), 6);
+    return itens.map((d, k) => ({ id: d.sessao_id!, previsto: datas[k] ?? ultimo }));
+  };
 
   const inicio = hoje < ini ? ini : hoje;
   const semanaAtual = semanaDoPlano(ini, inicio);
@@ -118,7 +141,11 @@ export function montarAgendaSemanal(
   const fimPlano = somaDias(inicioSemana(totalSemanas), 6);
   // Depois do fim do plano, a fila que sobrou usa o padrão da última fase.
   const ehTreino = (d: string) =>
-    d <= fimPlano ? ehDiaDeTreino(plano, d) : ehDiaDeTreino(plano, somaDias(inicioSemana(totalSemanas), diasEntre(ini, d) % 7));
+    dias
+      ? ehDiaDeTreino(plano, d, dias)
+      : d <= fimPlano
+        ? ehDiaDeTreino(plano, d)
+        : ehDiaDeTreino(plano, somaDias(inicioSemana(totalSemanas), diasEntre(ini, d) % 7));
   const ocorrencias: OcorrenciaAgenda[] = [];
   let semana = semanaAtual;
   for (let d = inicio, n = 0; n < 7 * (totalSemanas + 6); d = somaDias(d, 1), n++) {
@@ -143,4 +170,29 @@ export function montarAgendaSemanal(
     ocorrencias.push({ sessao_id: it.id, data: d, semana: w, pendente_de: it.previsto < hoje ? it.previsto : null, fixo: false });
   }
   return { ocorrencias };
+}
+
+/**
+ * Dias da semana (0 = domingo) em que o microciclo da semana atual põe treino, contando da data de
+ * início do plano. Serve de sugestão inicial na escolha dos dias.
+ */
+export function diasDoMicrociclo(plano: Pick<Plano, "mesociclo" | "estrutura"> | null | undefined, hoje: string): number[] {
+  const ini = plano?.mesociclo?.data_inicio;
+  const fases = plano?.estrutura?.fases;
+  if (!ini || !fases?.length) return [];
+  const w = semanaDoPlano(ini, hoje < ini ? ini : hoje);
+  const inicio = somaDias(ini, (w - 1) * 7);
+  return faseDaSemana(fases, w)
+    .microciclo.filter((d) => !!d.sessao_id)
+    .map((d) => diaDaSemana(somaDias(inicio, d.dia)))
+    .sort((a, b) => a - b);
+}
+
+/** Quantos treinos o microciclo da semana atual tem. */
+export function treinosNaSemana(plano: Pick<Plano, "mesociclo" | "estrutura"> | null | undefined, hoje: string): number {
+  const ini = plano?.mesociclo?.data_inicio;
+  const fases = plano?.estrutura?.fases;
+  if (!fases?.length) return 0;
+  const w = ini ? semanaDoPlano(ini, hoje < ini ? ini : hoje) : 1;
+  return faseDaSemana(fases, w).microciclo.filter((d) => !!d.sessao_id).length;
 }

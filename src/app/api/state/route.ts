@@ -28,11 +28,29 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  return upsert(request);
+  return comMotivo(() => upsert(request));
 }
 
 export async function PATCH(request: Request) {
-  return upsert(request);
+  return comMotivo(() => upsert(request));
+}
+
+/**
+ * Erro inesperado (ex.: o armazenamento recusou a gravação) volta com o motivo, curto e sem dados
+ * do usuário, pra aparecer no aviso do app. Antes era só "500" e não dava pra saber a causa.
+ */
+async function comMotivo(fn: () => Promise<Response>): Promise<Response> {
+  try {
+    return await fn();
+  } catch (e) {
+    const nome = e instanceof Error ? e.name : "Erro";
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[api/state] falha ao salvar", nome, msg);
+    return NextResponse.json(
+      { error: "Falha ao salvar", details: `${nome}: ${msg}`.replace(/\s+/g, " ").slice(0, 200) },
+      { status: 500 },
+    );
+  }
 }
 
 async function upsert(request: Request) {
@@ -75,6 +93,10 @@ async function upsert(request: Request) {
   const erroLimite = validarEntradasNovas(anterior?.state ?? null, parsed.data);
   if (erroLimite) {
     return NextResponse.json({ error: "Invalid input", details: erroLimite }, { status: 400 });
+  }
+  // Nada mudou desde a última gravação: não grava de novo (cada gravação gasta a cota do armazenamento).
+  if (anterior && JSON.stringify(anterior.state) === JSON.stringify(parsed.data)) {
+    return NextResponse.json(anterior);
   }
   const stored = await writeUserState(session.user.id, parsed.data);
   return NextResponse.json(stored);

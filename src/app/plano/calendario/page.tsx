@@ -15,6 +15,7 @@ import { hojeIsoSaoPaulo, proximaSessao } from "@/lib/plan/proxima-sessao";
 import { agendaEfetiva } from "@/lib/plan/pendente";
 import { projetarOcorrencias } from "@/lib/plan/projecao";
 import { DiaAcoes } from "@/components/DiaAcoes";
+import { DiasDeTreinoCard } from "@/components/DiasDeTreinoCard";
 
 /** "2026-10-29" → "Qui, 29 out" (pt-BR, sem pontos). */
 function dataHumana(iso: string): string {
@@ -141,6 +142,8 @@ export default function CalendarioPage() {
             .join(" · ")}
         </p>
       ) : null}
+
+      {hojeCal ? <DiasDeTreinoCard hoje={hojeCal} /> : null}
 
       <div className="mb-3 flex gap-2">
         <Button variant="ghost" className="min-h-10 flex-1 text-sm" onClick={prevMonth} aria-label="Mês anterior">

@@ -270,14 +270,20 @@ export default function HojePage() {
   const faixa = faixaDeDias(state, hoje);
   const diaSel = faixa.find((f) => f.dia.data === diaAberto) ?? null;
   const sessHoje = hoje ? doCalendario.find((s) => s.data === hoje && s.status !== "pulada") : undefined;
-  const estadoHero: "andamento" | "feito" | "descanso" | "novo" =
+  // Treino já feito hoje (o de hoje acabou): o cartão passa a mostrar o próximo, com o dia dele.
+  const feitoHoje = hoje
+    ? doCalendario.find((s) => s.data === hoje && (s.status === "concluida" || s.status === "parcial"))
+    : undefined;
+  const estadoHero: "andamento" | "feito" | "descanso" | "novo" | "proximo" =
     emAndamento
       ? "andamento"
       : sess?.status === "concluida" && (!hoje || sess.data === hoje || !sess.data)
         ? "feito"
-        : temAgenda && hoje && !sessHoje
-          ? "descanso"
-          : "novo";
+        : feitoHoje && sess && sess.id !== feitoHoje.id.split("#")[0] && sess.id !== feitoHoje.id
+          ? "proximo"
+          : temAgenda && hoje && !sessHoje
+            ? "descanso"
+            : "novo";
   const proxData = dataEfetiva(sess?.id)
     ? new Date(`${dataEfetiva(sess?.id)}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long" })
     : null;
@@ -410,6 +416,17 @@ export default function HojePage() {
         <span className="pill-offline">Offline</span>
       </div>
 
+      {state.plano?.estrutura?.fases?.length && state.plano.mesociclo?.data_inicio && !state.perfil?.dias_treino_semana?.length ? (
+        <Link
+          href="/plano/calendario"
+          data-testid="aviso-dias-treino"
+          className="motion-press mb-4 block rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-bone-300"
+        >
+          Marque os dias da semana em que você treina pra o calendário bater com a sua rotina.{" "}
+          <span className="font-semibold text-accent">Escolher dias →</span>
+        </Link>
+      ) : null}
+
       {syncErro ? (
         <p role="status" data-testid="sync-erro" className="mb-4 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
           Não consegui salvar no servidor ({syncErro}). Suas mudanças estão guardadas neste aparelho. Se isso continuar, me manda um print.
@@ -481,7 +498,13 @@ export default function HojePage() {
         <Card className="motion-press mb-4 border border-accent/25 p-5">
           <div className="mb-1 flex items-center justify-between">
             <div className="text-xs uppercase text-muted">
-              {estadoHero === "descanso" ? "Hoje é descanso" : estadoHero === "feito" ? "Treino de hoje" : "Treino do dia"}
+              {estadoHero === "descanso"
+                ? "Hoje é descanso"
+                : estadoHero === "feito"
+                  ? "Treino de hoje"
+                  : estadoHero === "proximo"
+                    ? `Próximo treino${proxData ? ` · ${proxData}` : ""}`
+                    : "Treino do dia"}
             </div>
             {sess.prescricoes[0] && <EvidenciaBadge evidencia={sess.prescricoes[0].evidencia} />}
           </div>
@@ -492,6 +515,18 @@ export default function HojePage() {
                 {sess.id === sugerida?.id ? "Próximo" : sess.status === "concluida" ? "Feito" : "Escolhido"}: <span className="font-semibold">{sess.nome}</span>
                 {proxData ? <span className="capitalize"> · {proxData}</span> : null}
               </p>
+            </>
+          ) : estadoHero === "proximo" ? (
+            <>
+              <p className="mb-2 text-sm text-go" data-testid="feito-hoje">
+                ✓ Hoje: {feitoHoje?.nome} feito
+              </p>
+              <h2 className="text-3xl font-bold tracking-tight" data-testid="proximo-treino">{sess.nome}</h2>
+              <div className="mt-2 flex flex-wrap gap-2 text-sm text-bone-300">
+                <span className="num">~{sess.duracao_estimada_min} min</span>
+                <span>·</span>
+                <span>{sess.grupos.slice(0, 4).map((g) => labelGrupo(g).toLowerCase()).join(" · ")}</span>
+              </div>
             </>
           ) : estadoHero === "feito" ? (
             <>
@@ -521,7 +556,7 @@ export default function HojePage() {
               {ultimaDecisao.motivo.length > 120 ? "…" : ""}
             </p>
           )}
-          {(estadoHero === "novo" && !(briefing && !parqBloqueado)) || estadoHero === "andamento" ? (
+          {(estadoHero === "novo" && !(briefing && !parqBloqueado)) || estadoHero === "andamento" || estadoHero === "proximo" ? (
             <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
               {sess.prescricoes.slice(0, 5).map((p) => {
                 const ex = state.exercicios.find((e) => e.id === p.exercicio_id);
@@ -542,7 +577,22 @@ export default function HojePage() {
             </ul>
           ) : null}
           <div className="mt-4">
-            {estadoHero === "feito" ? (
+            {estadoHero === "proximo" ? (
+              <div className="flex gap-2">
+                <Link href="/plano/calendario" className="motion-press block flex-1 rounded-[14px] bg-white/5 py-3 text-center text-sm font-semibold text-accent">
+                  Ver semana →
+                </Link>
+                <button
+                  type="button"
+                  data-testid="adiantar-proximo"
+                  onClick={iniciar}
+                  disabled={ctaDisabled}
+                  className="motion-press flex-1 rounded-[14px] border border-border py-3 text-center text-sm font-semibold text-bone-50 disabled:opacity-50"
+                >
+                  Adiantar pra hoje
+                </button>
+              </div>
+            ) : estadoHero === "feito" ? (
               <Link href="/progresso" className="motion-press block rounded-[14px] bg-white/5 py-3 text-center text-sm font-semibold text-accent">
                 Ver progresso →
               </Link>
