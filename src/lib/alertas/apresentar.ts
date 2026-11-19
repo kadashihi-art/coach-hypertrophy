@@ -56,7 +56,7 @@ export function textoLimpo(t: string): string {
 }
 
 function num(s: string | undefined): number {
-  return Number(String(s ?? "").replace(",", "."));
+  return Math.round(Number(String(s ?? "").replace(",", ".")) * 10) / 10;
 }
 
 export function apresentarAlerta(a: AlertaLike): AlertaApresentado {
@@ -66,7 +66,8 @@ export function apresentarAlerta(a: AlertaLike): AlertaApresentado {
 
   if (mk && mk[1] === "R10") {
     const g = mk[2]!;
-    const m = /abaixo de (\d+) por 2 semanas \((\d+)\s*→\s*(\d+)/.exec(motivo);
+    // Séries efetivas podem ter casa decimal (ex.: 9.5): lê o número inteiro, não só o fim dele.
+    const m = /abaixo de ([\d.,]+) por 2 semanas \(([\d.,]+)\s*→\s*([\d.,]+)/.exec(motivo);
     const delta = num(/(\d+)\s*série/.exec(rec)?.[1]) || 1;
     const min = m ? num(m[1]) : 10;
     const ant = m ? num(m[2]) : null;
@@ -78,7 +79,7 @@ export function apresentarAlerta(a: AlertaLike): AlertaApresentado {
       titulo: `${nomeMusculo(g)} com pouco volume`,
       porque:
         ant != null && cur != null
-          ? `Nas últimas 2 semanas você fez ${ant} e depois ${plural(cur, "série")} de ${nm}, abaixo das ${min} que ajudam a crescer.`
+          ? `Nas últimas 2 semanas você fez ${String(ant).replace(".", ",")} e depois ${plural(cur, "série")} de ${nm}, abaixo das ${min} que ajudam a crescer.`
           : `Faz 2 semanas que ${nm} fica abaixo de ${plural(min, "série")} por semana.`,
       dica: `Já deixei ${plural(delta, "série")} a mais de ${nm} nos próximos treinos. Confira e ajuste se quiser.`,
       acao: { tipo: "revisar_treino", rotulo: "Ver no próximo treino", grupo: g },
@@ -86,7 +87,8 @@ export function apresentarAlerta(a: AlertaLike): AlertaApresentado {
   }
   if (mk && mk[1] === "R11") {
     const g = mk[2]!;
-    const m = /(\d+)\s*>\s*(\d+)/.exec(motivo);
+    // "Volume efetivo de costas 24.5 > 20": antes lia só o "5" de "24.5".
+    const m = /\s([\d.,]+)\s*>\s*([\d.,]+)/.exec(motivo.replace(MARK, " "));
     const rir = /RIR médio ([\d.,]+)[^.]*?alvo (\d+)/.exec(motivo);
     const nm = nomeMusculo(g, true);
     const cur = m ? num(m[1]) : null;

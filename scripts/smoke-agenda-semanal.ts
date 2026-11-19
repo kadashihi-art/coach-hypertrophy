@@ -14,7 +14,7 @@ import { agendaEfetiva } from "../src/lib/plan/pendente";
 import { projetarOcorrencias } from "../src/lib/plan/projecao";
 import { proximaSessao } from "../src/lib/plan/proxima-sessao";
 import { arquivarConclusao } from "../src/lib/plan/repetir";
-import { ehDiaDeTreino, montarAgendaSemanal } from "../src/lib/plan/agenda-semanal";
+import { diasDoMicrociclo, ehDiaDeTreino, montarAgendaSemanal, treinosNaSemana } from "../src/lib/plan/agenda-semanal";
 import { trocarTreinoHoje } from "../src/lib/plan/trocar-hoje";
 import { seedState } from "../src/lib/seed";
 import type { AppState, Perfil } from "../src/lib/domain";
@@ -131,6 +131,52 @@ function checarDia(st: AppState, hoje: string, tag: string) {
   const seg2 = add(INI, 8);
   const proj = projetarOcorrencias(st, seg2);
   ok(proj.some((s) => s.data === seg2 && s.status === "planejada"), "segunda da semana 2 tem treino (não é descanso)");
+}
+
+// 6) Dias da semana escolhidos: plano começando numa quarta, você treina seg, ter, qui, sex, sáb.
+{
+  const INI2 = "2026-11-04"; // quarta
+  const plano2 = { ...g.plano, mesociclo: { ...g.plano.mesociclo, data_inicio: INI2 } };
+  const base: AppState = { ...inicial, plano: plano2, sessoes: agendarSessoes(g.sessoes, plano2, INI2) };
+  // Sem escolher os dias, as folgas do microciclo contam da quarta: caem na quarta e no sábado,
+  // e o domingo vira dia de treino (era assim que o calendário saía da sua rotina).
+  ok(!ehDiaDeTreino(plano2, "2026-11-07") && ehDiaDeTreino(plano2, "2026-11-08"), "sem dias escolhidos: sábado folga e domingo treino (fora da rotina)");
+  ok(treinosNaSemana(plano2, INI2) === 5 && diasDoMicrociclo(plano2, INI2).length === 5, "plano tem 5 treinos por semana e a sugestão inicial tem 5 dias");
+  const DIAS = [1, 2, 4, 5, 6];
+  let st: AppState = { ...base, perfil: { ...perfil, dias_treino_semana: DIAS } };
+  const escolhidos = new Set(DIAS);
+  const ordemMicro = [...plano2.estrutura!.fases[0]!.microciclo].filter((d) => d.sessao_id).sort((a, b) => a.dia - b.dia).map((d) => d.sessao_id);
+  const primeiras = montarAgendaSemanal(st, INI2)!.ocorrencias.slice(0, 5);
+  ok(JSON.stringify(primeiras.map((o) => o.sessao_id)) === JSON.stringify(ordemMicro), "dias escolhidos: os treinos seguem a ordem do plano");
+  ok(primeiras[0]!.data === "2026-11-05", `dias escolhidos: o primeiro treino cai na quinta, não na quarta (${primeiras[0]!.data})`);
+  for (let i = 0; i < 21; i++) {
+    const hoje = add(INI2, i);
+    const ag = agendaEfetiva(st, hoje);
+    const futuras = projetarOcorrencias(st, hoje, ag).filter((s) => s.data && s.data >= hoje && s.status === "planejada");
+    ok(futuras.every((s) => escolhidos.has(dow(s.data!))), `dias escolhidos ${hoje}: nenhum treino na quarta nem no domingo`);
+    const prox = proximaSessao(st, hoje);
+    const primeiro = futuras.sort((a, b) => a.data!.localeCompare(b.data!))[0];
+    ok(!!prox && !!primeiro && prox.id === primeiro.id.split("#")[0], `dias escolhidos ${hoje}: Hoje = calendário`);
+    const deHoje = futuras.find((s) => s.data === hoje);
+    ok(!!deHoje === escolhidos.has(dow(hoje)), `dias escolhidos ${hoje}: ${escolhidos.has(dow(hoje)) ? "dia de treino com treino" : "folga sem treino"}`);
+    if (deHoje) st = treinar(st, deHoje.id.split("#")[0]!, hoje);
+  }
+  const proj = projetarOcorrencias(st, add(INI2, 21), agendaEfetiva(st, add(INI2, 21)));
+  for (let w = 0; w < 3; w++) {
+    const ini = add(INI2, w * 7), fim = add(ini, 6);
+    const n = proj.filter((s) => s.data && s.data >= ini && s.data <= fim && s.status === "concluida").length;
+    ok(n === 5, `dias escolhidos, semana ${w + 1}: 5 treinos feitos (${n})`);
+  }
+  // Perdeu a sexta: vai pro sábado; o de sábado anda pra segunda (nunca pro domingo).
+  let st2: AppState = { ...base, perfil: { ...perfil, dias_treino_semana: DIAS } };
+  for (const dia of ["2026-11-05"]) {
+    const t = projetarOcorrencias(st2, dia).find((s) => s.data === dia && s.status === "planejada")!;
+    st2 = treinar(st2, t.id.split("#")[0]!, dia);
+  }
+  const sab = "2026-11-07";
+  const ag2 = montarAgendaSemanal(st2, sab)!;
+  ok(ag2.ocorrencias[0]!.data === sab && ag2.ocorrencias[0]!.pendente_de === "2026-11-06", "perdeu a sexta: o treino de sexta vai pro sábado (pendente)");
+  ok(ag2.ocorrencias[1]!.data === "2026-11-09", `o de sábado anda pra segunda, não pro domingo (${ag2.ocorrencias[1]!.data})`);
 }
 
 // 5) Agenda é só leitura e determinística.

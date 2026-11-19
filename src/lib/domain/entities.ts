@@ -40,6 +40,11 @@ export const PerfilSchema = z.object({
   fase2_semanas: z.number().int().min(1).max(16).optional(),
   /** Descansos fixos: posição no microciclo (0 = dia 1 da semana do plano). */
   dias_descanso_fixos: z.array(z.number().int().min(0).max(6)).max(5).optional(),
+  /**
+   * Dias da semana em que você treina (0 = domingo … 6 = sábado). Com isso a agenda põe os
+   * treinos nesses dias, na ordem do microciclo, seja qual for o dia de início do plano.
+   */
+  dias_treino_semana: z.array(z.number().int().min(0).max(6)).max(7).optional(),
   /** Condições/ajustes acordados na negociação do plano (texto curto). */
   acordos_plano: z.array(z.string().max(240)).max(12).optional(),
   /**
